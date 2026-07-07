@@ -110,47 +110,44 @@ async def sync(
         total = len(sets)
         logger.info("Discovered %d sets%s", total, " (dry-run)" if dry_run else "")
 
-        reached = start_at is None
-        for i, s in enumerate(sets, start=1):
-            set_id = s["id"]
-            if not reached:
-                if set_id == start_at:
-                    reached = True
-                else:
-                    logger.info("[%d/%d] %s - skipped (before --start-at)", i, total, set_id)
-                    continue
+        # Respect --start-at by trimming the head of the (sorted) set list.
+        if start_at is not None:
+            idx = next((k for k, s in enumerate(sets) if s["id"] == start_at), None)
+            if idx is None:
+                logger.warning("--start-at %s not found; processing all sets", start_at)
+            else:
+                sets = sets[idx:]
+                total = len(sets)
 
+        async def process_set(s: dict, i: int, total_n: int) -> None:
+            """Fetch + upsert one set. Raises on failure so the caller can retry/skip."""
+            set_id = s["id"]
             cards = [c async for c in client.iter_cards(set_id)]
 
-            if dry_run:
-                price_rows = sum(len(mappers.price_rows_from_card(c)) for c in cards)
-                history_rows = sum(len(mappers.history_rows_from_card(c)) for c in cards)
-                logger.info(
-                    "[%d/%d] %s %s - %d cards, %d price rows, %d history rows (dry-run)",
-                    i,
-                    total,
-                    set_id,
-                    s.get("name"),
-                    len(cards),
-                    price_rows,
-                    history_rows,
-                )
-                continue
-
-            card_rows = [mappers.card_to_values(c) for c in cards]
             price_rows: list[dict] = []
             history_rows: list[dict] = []
             for c in cards:
                 price_rows.extend(mappers.price_rows_from_card(c))
                 history_rows.extend(mappers.history_rows_from_card(c))
-            n_prices = len(price_rows)
-            n_history = len(history_rows)
+
+            if dry_run:
+                logger.info(
+                    "[%d/%d] %s %s - %d cards, %d price rows, %d history rows (dry-run)",
+                    i,
+                    total_n,
+                    set_id,
+                    s.get("name"),
+                    len(cards),
+                    len(price_rows),
+                    len(history_rows),
+                )
+                return
 
             # Batch per set: a handful of multi-row upserts instead of thousands of
             # per-row round-trips over the pooler. Still idempotent and committed per set.
             async with SessionLocal() as session:
                 await _upsert_sets(session, [mappers.set_to_values(s)])
-                await _upsert_cards(session, card_rows)
+                await _upsert_cards(session, [mappers.card_to_values(c) for c in cards])
                 await _upsert_prices(session, price_rows)
                 await _upsert_price_history(session, history_rows)
                 await session.commit()
@@ -158,14 +155,41 @@ async def sync(
             logger.info(
                 "[%d/%d] %s %s - %d cards, %d price rows, %d history rows",
                 i,
-                total,
+                total_n,
                 set_id,
                 s.get("name"),
                 len(cards),
-                n_prices,
-                n_history,
+                len(price_rows),
+                len(history_rows),
             )
 
+        # Process each set independently. The pokemontcg.io API intermittently returns
+        # transient 404s / timeouts under load, so a single set's failure must not abort
+        # the whole run — record it and retry once at the end.
+        failed: list[dict] = []
+        for i, s in enumerate(sets, start=1):
+            try:
+                await process_set(s, i, total)
+            except Exception as exc:  # noqa: BLE001 - keep going; one bad set != whole catalog
+                logger.warning(
+                    "[%d/%d] %s - FAILED (%s); will retry at end", i, total, s["id"], exc
+                )
+                failed.append(s)
+
+        if failed:
+            logger.info("Retrying %d failed set(s)...", len(failed))
+            retry, failed = failed, []
+            for j, s in enumerate(retry, start=1):
+                try:
+                    await process_set(s, j, len(retry))
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Retry FAILED for %s (%s)", s["id"], exc)
+                    failed.append(s)
+
+        if failed:
+            logger.warning(
+                "%d set(s) still unsynced: %s", len(failed), ", ".join(s["id"] for s in failed)
+            )
     logger.info("Catalog sync complete.")
 
 

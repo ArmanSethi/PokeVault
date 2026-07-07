@@ -5,6 +5,45 @@ Detailed rationale lives in `docs/`.
 
 ---
 
+## 2026-07-07 — Goal 1: Full catalog + read API ✅
+
+**Data (live Supabase DB, after full sync):**
+
+| table | rows |
+| ----- | ---- |
+| sets | 173 |
+| cards | 20,314 |
+| card_prices_current | 52,021 |
+| price_history | 52,624 (today's snapshot, written inline by the sync) |
+
+DB size **71 MB** — 14% of the 500 MB free-tier cap, comfortable headroom.
+
+**Done this goal:**
+
+- Added the missing **`/sets` read API** — `GET /api/v1/sets` (list, name-search, paginate)
+  and `GET /api/v1/sets/{id}` (404). `app/services/sets.py` + `endpoints/sets.py`, registered
+  in the v1 router. (`SetRead` schema already existed; only the endpoint/service were missing.)
+- Added **`tests/test_catalog.py`** — 9 tests for `/sets` and `/cards`
+  list/search/filter/paginate/get/404, scoped to a unique seeded set id so the shared live
+  catalog can't skew assertions. All 9 green.
+- Ran the **full pokemontcg.io sync** into the live DB: 173 sets / 20,314 cards / 52,021 prices.
+- Full backend suite: **38 passed, 3 skipped** (3 = the Tesseract-dependent scan tests).
+
+**Decisions / gotchas:**
+
+- The per-row upsert sync was far too slow over the session pooler (a round-trip per row →
+  hours) and fragile. **Batched the writes** (one multi-row `ON CONFLICT` upsert per table per
+  set, with intra-batch conflict-key dedupe); base1 went from stalling-for-minutes to ~23s.
+- The pokemontcg.io API **intermittently 404s / times out** under load — a single set's error
+  used to abort the whole run. Made the loop **resilient**: skip-and-continue per set, then one
+  retry pass at the end. This run had 7 transient failures; all 7 recovered on retry, 0 unsynced.
+- Sync must run with echo off (`DEBUG=false`) or SQLAlchemy floods logs and slows to a crawl.
+
+**Next:** Goal 2 — auth is already green in unit/integration; only the genuine-token e2e `/me`
+demo remains (needs a real Supabase token — human-only).
+
+---
+
 ## 2026-07-07 — Goal 0: Baseline + regressions ✅
 
 **State-of-repo audit (verified, not assumed):**

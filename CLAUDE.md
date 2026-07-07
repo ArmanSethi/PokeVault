@@ -165,12 +165,16 @@ Supabase DB** (not stubs, not skipped). The prior "scaffold only" status below w
 - ✅ Frontend on **Tailwind v4 CSS-first + React 19 + Vite 8**; `pnpm build`/`lint` clean;
   both dev servers boot.
 
-**Data reality:** only set **`sv3`** is ingested so far (Goal 1 runs the full sync).
+- ✅ **Goal 1 done:** full catalog synced — **173 sets / 20,314 cards / 52,021 prices**
+  (DB 71 MB). Added `/sets` read API + `tests/test_catalog.py`. Sync is now batched (multi-row
+  upserts per set) and resilient (per-set skip + end-of-run retry). Full suite: 38 pass, 3 skip.
+
+**Data reality:** full English catalog ingested.
 **Table naming:** `collection_entries` (not `collection_items`) — kept per code-is-truth.
 
 **Next up:**
 
-- ⬜ Goal 1: run the full catalog sync into the DB (~150+ sets / ~15k+ cards).
+- ⬜ Goal 2: genuine-token e2e `/me` demo (auth unit/integration already green) — needs a real token.
 - ⬜ Goal 4: run the daily snapshot for real + add cron/Task-Scheduler + GitHub Actions.
 - ⬜ Goal 5: card scanning (Pillow + Tesseract + rapidfuzz) — Tesseract binary needed.
 - ⬜ Goal 6: full React SPA (auth, catalog, collection, dashboard, charts, scan).

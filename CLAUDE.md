@@ -172,10 +172,17 @@ Supabase DB** (not stubs, not skipped). The prior "scaffold only" status below w
 **Data reality:** full English catalog ingested.
 **Table naming:** `collection_entries` (not `collection_items`) — kept per code-is-truth.
 
-**Next up:**
+- ✅ **Goal 4 done:** snapshot job runs (fixed standalone import bug); daily schedulers added
+  (GitHub Actions + Task Scheduler + cron). Card + portfolio series endpoints verified.
+- ✅ **Goal 6 built:** full React 19 + Tailwind v4 SPA (auth, catalog, collection, dashboard,
+  set-completion, price charts, scan). `pnpm build`/`lint` clean.
+- 🔧 **Goal 5 code-complete:** OCR scan pipeline built; 3 OCR tests skip until Tesseract installed.
+- 🔧 **Goal 7 config-ready:** `render.yaml`, `frontend/vercel.json`, `docs/deployment.md`.
 
-- ⬜ Goal 2: genuine-token e2e `/me` demo (auth unit/integration already green) — needs a real token.
-- ⬜ Goal 4: run the daily snapshot for real + add cron/Task-Scheduler + GitHub Actions.
-- ⬜ Goal 5: card scanning (Pillow + Tesseract + rapidfuzz) — Tesseract binary needed.
-- ⬜ Goal 6: full React SPA (auth, catalog, collection, dashboard, charts, scan).
-- ⬜ Goal 7: hardening + free-tier deployment.
+**Outstanding human-only actions (see PROGRESS.md / docs/deployment.md):**
+
+- Goal 2 e2e: a genuine Supabase JWT to demo `/me` live (unit/integration already green).
+- Goal 5: install the Tesseract binary, then the 3 skipped scan tests must go green.
+- Goal 6: `VITE_SUPABASE_ANON_KEY` (+ URL) in `frontend/.env` to exercise the authed UI.
+- Goal 7: push to GitHub + create Render/Vercel from the committed config; set secrets.
+- Recommended: rotate the DB password + API key that were exposed in `backend/.env`.

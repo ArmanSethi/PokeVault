@@ -5,6 +5,27 @@ Detailed rationale lives in `docs/`.
 
 ---
 
+## 2026-07-07 — Goal 7: Hardening + free deploy — config ready ⏳ (go-live is human-only)
+
+**Hardening (done in code):** CORS is env-locked to specific origins via `BACKEND_CORS_ORIGINS`
+(not `*`); API input is Pydantic-validated; the SPA has consistent loading/empty/error states.
+
+**Deploy artifacts added:**
+- `render.yaml` — Render Blueprint for the backend (free plan, uv build, `/api/v1/health`
+  health check, `sync:false` secrets).
+- `frontend/vercel.json` — Vite build + SPA rewrite (client routing) + output dir.
+- `docs/deployment.md` — full free-tier checklist (Supabase Auth → Render → Vercel → GH Actions
+  secrets → smoke test).
+- Root `README.md` refreshed (features, run steps, deploy pointer).
+
+**Go-live is human-only** (account signups + dashboard secrets): push to GitHub, create the
+Render Blueprint + Vercel project, set env/secrets. See `docs/deployment.md`.
+
+**Known prod gotcha:** Render's native Python env has no Tesseract binary, so server-side
+scanning needs a Dockerfile (`apt-get install tesseract-ocr`) — documented as backlog.
+
+---
+
 ## 2026-07-07 — Goal 6: Frontend SPA — built ⏳ (interactive e2e pending SUPABASE_ANON_KEY)
 
 Full React 19 + Tailwind v4 SPA against the existing API. `pnpm build` (strict TS) + `pnpm lint`

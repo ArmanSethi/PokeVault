@@ -19,6 +19,9 @@ import logging
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 
+# Import the full model registry so SQLAlchemy can resolve inter-model relationships
+# (e.g. CardPriceCurrent.card -> Card) when this job runs standalone via `python -m ...`.
+import app.db.base  # noqa: F401
 from app.db.session import SessionLocal
 from app.models.price import CardPriceCurrent, PriceHistory
 

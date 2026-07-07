@@ -1,0 +1,46 @@
+name: Daily price sync + snapshot
+
+# PokéVault builds its own price history: pokemontcg.io has no historical series, so we
+# refresh current prices from the API daily and snapshot them into price_history (one row
+# per card/variant/day). Daily cadence is required — sparser runs permanently degrade the
+# charts. Runs at 08:00 UTC; also runnable on demand via the Actions tab.
+
+on:
+  schedule:
+    - cron: "0 8 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: daily-price-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Refresh current prices from pokemontcg.io + snapshot today's history
+        env:
+          # Set these as repository Actions secrets (Settings -> Secrets and variables ->
+          # Actions). Never commit them. DATABASE_URL uses the +asyncpg session-pooler URL.
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          POKEMONTCG_API_KEY: ${{ secrets.POKEMONTCG_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          # sync_catalog refreshes card_prices_current AND writes today's price_history
+          # inline; snapshot_prices then guarantees every priced row has today's history row.
+          uv run python -m app.ingest.sync_catalog
+          uv run python -m app.ingest.snapshot_prices

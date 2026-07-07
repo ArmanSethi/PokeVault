@@ -5,6 +5,52 @@ Detailed rationale lives in `docs/`.
 
 ---
 
+## 2026-07-07 — Goal 4: Price history + daily schedulers ✅
+
+**Ran the snapshot job for real:** `python -m app.ingest.snapshot_prices` → **51,988**
+price_history rows for today. `price_history` now holds **2 distinct snapshot days**, so the
+series is already accumulating.
+
+**Endpoints proven:**
+- Card price series — `GET /api/v1/cards/base1-4/history` returns the live series
+  (Charizard holofoil = $720.34 today).
+- Portfolio-value series — green via `test_portfolio_history_and_isolation`.
+
+**Schedulers added (daily cadence):**
+- `.github/workflows/daily-snapshot.yml` — 08:00 UTC + manual dispatch; runs `sync_catalog`
+  (refreshes current prices from the API + writes today's history) then `snapshot_prices`.
+  Needs repo Actions secrets: `DATABASE_URL`, `POKEMONTCG_API_KEY`, `SUPABASE_URL`.
+- `backend/scripts/daily_sync.ps1` (Windows Task Scheduler) + `backend/scripts/README.md`
+  (schtasks + cron instructions).
+
+**Bug fixed:** `snapshot_prices` crashed when run standalone (`python -m ...`) — it imported
+only from `app.models.price`, so `Card` was never registered and the `CardPriceCurrent.card`
+relationship failed to map. Now imports `app.db.base` (the full registry). The existing test
+passed only because the app import chain pre-registers all models.
+
+**Next:** Goal 5 — commit the scan code; full proof once Tesseract is installed (human).
+
+---
+
+## 2026-07-07 — Goals 2 & 3: Auth + Collections/portfolio ✅ (Goal 2 e2e pending token)
+
+Both were already code-complete; this was verification against the real DB + auth path.
+
+**Goal 2 (auth) — 8/8 green** (`test_auth_verify.py` + `test_me.py`): valid-token→claims,
+expired/wrong-aud/bad-sig/missing-sub all rejected (real ES256+JWKS path), `/me` 401 without
+token, `/me` returns user + upserts the mirror row, garbage token → 401.
+⏳ **Remaining (human-only):** one genuine Supabase-token e2e `/me` call. Not blocking later
+goals — will demo when a real token is provided.
+
+**Goal 3 (collections & portfolio) — 6/6 green** (`test_collection.py`): requires-auth,
+add-increments-stack, unknown-card→404, update+delete, **ownership isolation** (user B cannot
+read/mutate user A's items — proven against the real Goal 2 auth, not a stub), portfolio
+summary + set-completion math. Plus `test_history` portfolio-value series + isolation green.
+
+**Next:** Goal 4 — run the snapshot job once (show today's rows) + commit the schedulers.
+
+---
+
 ## 2026-07-07 — Goal 1: Full catalog + read API ✅
 
 **Data (live Supabase DB, after full sync):**

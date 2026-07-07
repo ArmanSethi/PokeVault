@@ -1,8 +1,33 @@
+import { Navigate, Route, Routes } from "react-router-dom";
+import { Layout } from "./components/Layout";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { LoginPage } from "./pages/LoginPage";
+import { DashboardPage } from "./pages/DashboardPage";
+import { CatalogPage } from "./pages/CatalogPage";
+import { CardDetailPage } from "./pages/CardDetailPage";
+import { CollectionPage } from "./pages/CollectionPage";
+import { SetCompletionPage } from "./pages/SetCompletionPage";
+import { ScanPage } from "./pages/ScanPage";
+
 export default function App() {
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center gap-4">
-      <h1 className="text-4xl font-bold tracking-tight">PokéVault</h1>
-      <p className="text-slate-400">Your Pokémon collection tracker — scaffold ready.</p>
-    </main>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<DashboardPage />} />
+        <Route path="catalog" element={<CatalogPage />} />
+        <Route path="cards/:id" element={<CardDetailPage />} />
+        <Route path="collection" element={<CollectionPage />} />
+        <Route path="sets" element={<SetCompletionPage />} />
+        <Route path="scan" element={<ScanPage />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }

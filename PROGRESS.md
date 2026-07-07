@@ -5,6 +5,37 @@ Detailed rationale lives in `docs/`.
 
 ---
 
+## 2026-07-07 — Goal 6: Frontend SPA — built ⏳ (interactive e2e pending SUPABASE_ANON_KEY)
+
+Full React 19 + Tailwind v4 SPA against the existing API. `pnpm build` (strict TS) + `pnpm lint`
+both clean; dev server serves the app. TS types in `src/types` mirror the backend schemas 1:1.
+
+**Structure:**
+- `lib/supabase.ts` (client, session persistence), `lib/api.ts` (auth-aware fetch, typed methods
+  for every endpoint, `ApiError`), `lib/format.ts`, `lib/useAsync.ts`.
+- `context/AuthContext.tsx` — Supabase auth (sign up/in/out), session persisted + auto-refreshed.
+- `components/` — `Layout` (nav), `ProtectedRoute` (auth guard), `CardTile`, `PriceChart`
+  (recharts; shows a "history still building" note when sparse), `States` (Spinner/Empty/Error).
+- `pages/` — Login (sign up/in), Dashboard (portfolio value + per-set + value chart), Catalog
+  (search + set filter + paginated grid), CardDetail (price-history chart + add-to-collection),
+  Collection (list/edit-modal/qty stepper/remove), SetCompletion (progress bars), Scan
+  (upload → ranked candidates → confirm into collection).
+- Loading / empty / error states throughout.
+
+**Decisions/gotchas:**
+- React-router v7 layout-route pattern: `ProtectedRoute` wraps `<Layout/>`; `Layout` renders `<Outlet/>`.
+- recharts `Tooltip` formatter types are strict — coerce the value with `Number(v)`.
+- Collection endpoint returns only `card_id`, so the collection page enriches rows with card
+  names via `getCard` (parallel) for display.
+- Login page shows a clear banner when Supabase env is unset.
+
+**To finish Goal 6 (human-only):** put `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` in
+`frontend/.env`, restart `pnpm dev`, then sign up and exercise each flow.
+
+**Next:** Goal 7 — hardening + free-tier deployment (needs hosting signups).
+
+---
+
 ## 2026-07-07 — Goal 5: Card scanning (OCR) — code complete ⏳ (OCR proof pending Tesseract)
 
 Built the free-OCR scan pipeline; the non-OCR tests are green, but the 3 OCR-dependent

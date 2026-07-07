@@ -34,34 +34,58 @@ from app.models.price import CardPriceCurrent, PriceHistory
 logger = logging.getLogger("app.ingest.sync_catalog")
 
 
-async def _upsert_set(session: AsyncSession, values: dict) -> None:
-    stmt = insert(Set).values(**values)
-    update = {k: getattr(stmt.excluded, k) for k in values if k != "id"}
+def _dedupe(rows: list[dict], key: tuple[str, ...]) -> list[dict]:
+    """Keep the last row per conflict key.
+
+    A single ``INSERT ... ON CONFLICT DO UPDATE`` statement cannot touch the same target
+    row twice, so any intra-batch key collision must be collapsed before the upsert.
+    """
+    seen: dict[tuple, dict] = {}
+    for r in rows:
+        seen[tuple(r[k] for k in key)] = r
+    return list(seen.values())
+
+
+async def _upsert_sets(session: AsyncSession, rows: list[dict]) -> None:
+    if not rows:
+        return
+    rows = _dedupe(rows, ("id",))
+    stmt = insert(Set).values(rows)
+    update = {k: getattr(stmt.excluded, k) for k in rows[0] if k != "id"}
     await session.execute(stmt.on_conflict_do_update(index_elements=[Set.id], set_=update))
 
 
-async def _upsert_card(session: AsyncSession, values: dict) -> None:
-    stmt = insert(Card).values(**values)
-    update = {k: getattr(stmt.excluded, k) for k in values if k != "id"}
+async def _upsert_cards(session: AsyncSession, rows: list[dict]) -> None:
+    if not rows:
+        return
+    rows = _dedupe(rows, ("id",))
+    stmt = insert(Card).values(rows)
+    update = {k: getattr(stmt.excluded, k) for k in rows[0] if k != "id"}
     await session.execute(stmt.on_conflict_do_update(index_elements=[Card.id], set_=update))
 
 
-async def _upsert_price(session: AsyncSession, values: dict) -> None:
+async def _upsert_prices(session: AsyncSession, rows: list[dict]) -> None:
     # Stamp updated_at on both insert and update so "current" always means latest.
-    values = {**values, "updated_at": func.now()}
     key = ("card_id", "source", "variant")
-    stmt = insert(CardPriceCurrent).values(**values)
-    update = {k: getattr(stmt.excluded, k) for k in values if k not in key}
+    if not rows:
+        return
+    rows = [{**r, "updated_at": func.now()} for r in _dedupe(rows, key)]
+    stmt = insert(CardPriceCurrent).values(rows)
+    update = {k: getattr(stmt.excluded, k) for k in rows[0] if k not in key}
     await session.execute(stmt.on_conflict_do_update(index_elements=list(key), set_=update))
 
 
-async def _upsert_price_history(session: AsyncSession, values: dict) -> None:
+async def _upsert_price_history(session: AsyncSession, rows: list[dict]) -> None:
     # One market observation per (card, source, variant, day). Re-running on the same
     # day refreshes today's row; distinct days accumulate for trend charts.
-    values = {**values, "snapshot_date": func.current_date()}
     key = ("card_id", "source", "variant", "snapshot_date")
-    stmt = insert(PriceHistory).values(**values)
-    update = {k: getattr(stmt.excluded, k) for k in values if k not in key}
+    if not rows:
+        return
+    rows = [{**r, "snapshot_date": func.current_date()} for r in rows]
+    # Dedupe by the full conflict key (snapshot_date is uniform within a run).
+    rows = _dedupe(rows, ("card_id", "source", "variant"))
+    stmt = insert(PriceHistory).values(rows)
+    update = {k: getattr(stmt.excluded, k) for k in rows[0] if k not in key}
     await session.execute(
         stmt.on_conflict_do_update(
             constraint="uq_price_history_card_source_variant_day", set_=update
@@ -113,18 +137,22 @@ async def sync(
                 )
                 continue
 
-            n_prices = 0
-            n_history = 0
+            card_rows = [mappers.card_to_values(c) for c in cards]
+            price_rows: list[dict] = []
+            history_rows: list[dict] = []
+            for c in cards:
+                price_rows.extend(mappers.price_rows_from_card(c))
+                history_rows.extend(mappers.history_rows_from_card(c))
+            n_prices = len(price_rows)
+            n_history = len(history_rows)
+
+            # Batch per set: a handful of multi-row upserts instead of thousands of
+            # per-row round-trips over the pooler. Still idempotent and committed per set.
             async with SessionLocal() as session:
-                await _upsert_set(session, mappers.set_to_values(s))
-                for c in cards:
-                    await _upsert_card(session, mappers.card_to_values(c))
-                    for row in mappers.price_rows_from_card(c):
-                        await _upsert_price(session, row)
-                        n_prices += 1
-                    for hrow in mappers.history_rows_from_card(c):
-                        await _upsert_price_history(session, hrow)
-                        n_history += 1
+                await _upsert_sets(session, [mappers.set_to_values(s)])
+                await _upsert_cards(session, card_rows)
+                await _upsert_prices(session, price_rows)
+                await _upsert_price_history(session, history_rows)
                 await session.commit()
 
             logger.info(

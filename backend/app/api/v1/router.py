@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, cards, collection
+from app.api.v1.endpoints import auth, cards, collection, sets
 
 api_router = APIRouter()
 
@@ -16,5 +16,6 @@ async def health() -> dict[str, str]:
 
 
 api_router.include_router(auth.router, prefix="/me", tags=["auth"])
+api_router.include_router(sets.router, prefix="/sets", tags=["sets"])
 api_router.include_router(cards.router, prefix="/cards", tags=["cards"])
 api_router.include_router(collection.router, prefix="/collection", tags=["collection"])

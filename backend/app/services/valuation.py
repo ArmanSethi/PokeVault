@@ -1,0 +1,128 @@
+"""Collection valuation — join a user's entries against current TCGPlayer prices."""
+
+from __future__ import annotations
+
+import uuid
+from collections.abc import Sequence
+from dataclasses import dataclass, field
+from decimal import Decimal
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.models.card import Card
+from app.models.collection import CollectionEntry
+from app.schemas.collection import CollectionEntryRead, CollectionSummary, SetHolding
+from app.services.cards import market_price_for_entry
+
+
+def _to_entry_read(entry: CollectionEntry) -> CollectionEntryRead:
+    unit = market_price_for_entry(entry.card.prices_current, is_foil=entry.is_foil)
+    value = unit * entry.quantity if unit is not None else None
+    return CollectionEntryRead(
+        id=entry.id,
+        card_id=entry.card_id,
+        quantity=entry.quantity,
+        condition=entry.condition,
+        grade=entry.grade,
+        is_foil=entry.is_foil,
+        acquired_price=entry.acquired_price,
+        notes=entry.notes,
+        created_at=entry.created_at,
+        updated_at=entry.updated_at,
+        market_price=unit,
+        market_value=value,
+    )
+
+
+async def _load_entries(
+    session: AsyncSession, user_id: uuid.UUID
+) -> Sequence[CollectionEntry]:
+    # Eager-load each entry's card, its prices, and its set so valuation + the per-set
+    # breakdown need no per-entry queries.
+    stmt = (
+        select(CollectionEntry)
+        .where(CollectionEntry.user_id == user_id)
+        .options(
+            selectinload(CollectionEntry.card).selectinload(Card.prices_current),
+            selectinload(CollectionEntry.card).selectinload(Card.set),
+        )
+    )
+    return (await session.execute(stmt)).scalars().all()
+
+
+async def list_entries_with_value(
+    session: AsyncSession, user_id: uuid.UUID
+) -> list[CollectionEntryRead]:
+    """A user's collection entries, each with its unit price and total market value."""
+    entries = await _load_entries(session, user_id)
+    return [_to_entry_read(e) for e in entries]
+
+
+@dataclass
+class _SetAgg:
+    set_name: str
+    set_size: int | None
+    owned_quantity: int = 0
+    market_value: Decimal = field(default_factory=lambda: Decimal("0"))
+    card_ids: set[str] = field(default_factory=set)
+
+
+async def collection_summary(
+    session: AsyncSession, user_id: uuid.UUID
+) -> CollectionSummary:
+    """Portfolio totals plus a per-set breakdown with completion (TCGPlayer USD)."""
+    entries = await _load_entries(session, user_id)
+
+    total_quantity = 0
+    total_market_value = Decimal("0")
+    total_cost = Decimal("0")
+    all_card_ids: set[str] = set()
+    by_set: dict[str, _SetAgg] = {}
+
+    for entry in entries:
+        card = entry.card
+        unit = market_price_for_entry(card.prices_current, is_foil=entry.is_foil)
+        line_value = unit * entry.quantity if unit is not None else Decimal("0")
+
+        total_quantity += entry.quantity
+        total_market_value += line_value
+        all_card_ids.add(card.id)
+        if entry.acquired_price is not None:
+            total_cost += entry.acquired_price * entry.quantity
+
+        agg = by_set.get(card.set_id)
+        if agg is None:
+            set_obj = card.set
+            agg = _SetAgg(
+                set_name=set_obj.name if set_obj else card.set_id,
+                set_size=(set_obj.printed_total or set_obj.total) if set_obj else None,
+            )
+            by_set[card.set_id] = agg
+        agg.owned_quantity += entry.quantity
+        agg.market_value += line_value
+        agg.card_ids.add(card.id)
+
+    sets = [
+        SetHolding(
+            set_id=set_id,
+            set_name=agg.set_name,
+            owned_quantity=agg.owned_quantity,
+            distinct_cards_owned=len(agg.card_ids),
+            set_size=agg.set_size,
+            completion_pct=(len(agg.card_ids) / agg.set_size) if agg.set_size else 0.0,
+            market_value=agg.market_value,
+        )
+        for set_id, agg in by_set.items()
+    ]
+    sets.sort(key=lambda s: s.market_value, reverse=True)
+
+    return CollectionSummary(
+        total_quantity=total_quantity,
+        total_distinct_cards=len(all_card_ids),
+        total_market_value=total_market_value,
+        total_cost=total_cost,
+        currency="USD",
+        sets=sets,
+    )

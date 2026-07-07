@@ -1,0 +1,16 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.0
+    hooks:
+      - id: ruff          # lint (backend/)
+        args: [--fix]
+      - id: ruff-format   # format (backend/)
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.3.3
+    hooks:
+      - id: prettier      # format frontend/ (ts, tsx, css, md)
+        files: ^frontend/
+
+# ESLint runs via `pnpm lint` in the frontend rather than a pre-commit hook by
+# default; wire it in later with a local hook if desired. `rev:` pins should be
+# bumped to the latest releases when you first run `pre-commit autoupdate`.

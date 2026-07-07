@@ -1,0 +1,50 @@
+# ---- Python / backend ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+.python-version.local
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+build/
+
+# uv
+# (uv.lock IS committed; only ignore ephemeral caches)
+.uv/
+
+# ---- Node / frontend ----
+node_modules/
+frontend/dist/
+.vite/
+*.local
+*.tsbuildinfo
+# compiled twins of vite.config.ts (should never be committed)
+frontend/vite.config.js
+frontend/vite.config.d.ts
+
+# ---- Environments / secrets ----
+backend/.env
+.env
+.env.*
+!.env.example
+!backend/.env.example
+!frontend/.env.example
+
+# ---- Editors / OS ----
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ---- Logs ----
+*.log
+npm-debug.log*
+pnpm-debug.log*

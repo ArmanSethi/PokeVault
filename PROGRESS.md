@@ -21,8 +21,11 @@ Detailed rationale lives in `docs/`.
 **Go-live is human-only** (account signups + dashboard secrets): push to GitHub, create the
 Render Blueprint + Vercel project, set env/secrets. See `docs/deployment.md`.
 
-**Known prod gotcha:** Render's native Python env has no Tesseract binary, so server-side
-scanning needs a Dockerfile (`apt-get install tesseract-ocr`) — documented as backlog.
+**Backend now ships as Docker** (`backend/Dockerfile`, `render.yaml` → `runtime: docker`) on the
+`ghcr.io/astral-sh/uv:python3.11-bookworm-slim` base with `tesseract-ocr` installed, so
+server-side `/scan` works in production. Layer-cached uv deps (`--no-dev`), venv on PATH,
+`$PORT`-aware CMD. `.dockerignore` keeps secrets/caches out (but keeps `README.md` — hatchling
+needs it). Local build/verify pending Docker Desktop being up.
 
 ---
 

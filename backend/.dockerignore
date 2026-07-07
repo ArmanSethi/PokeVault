@@ -1,0 +1,22 @@
+# Keep the build context (and image) lean and secret-free.
+.venv/
+.git/
+.gitignore
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+
+# Never bake secrets into the image — env comes from the platform at runtime.
+.env
+.env.*
+!.env.example
+
+# Local dev noise
+*.log
+scripts/
+# NOTE: README.md is intentionally NOT ignored — pyproject.toml declares
+# `readme = "README.md"`, so the hatchling build needs it present.

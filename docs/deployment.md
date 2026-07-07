@@ -27,7 +27,9 @@ frontend).
 
 ## 2. Backend → Render
 
-1. Render → **New + → Blueprint**, point it at your GitHub repo. It reads `render.yaml`.
+1. Render → **New + → Blueprint**, point it at your GitHub repo. It reads `render.yaml`,
+   which builds the backend from `backend/Dockerfile` (Docker runtime, so the **Tesseract**
+   binary is baked in and `/scan` works in production).
 2. Set the `sync:false` env vars in the service's **Environment** tab:
    - `DATABASE_URL` — the `postgresql+asyncpg://…pooler.supabase.com:5432/postgres` URL.
    - `POKEMONTCG_API_KEY`, `SUPABASE_URL`.
@@ -62,8 +64,8 @@ set-completion, and a price-history point. All on free tiers.
 ## Notes / backlog
 
 - The backend is stateless; scale-to-zero on Render's free tier is fine for an MVP.
-- Server-side OCR scanning needs the Tesseract binary on the host — Render's native Python env
-  does not include it. To enable scanning in production, deploy the backend via a Dockerfile that
-  `apt-get install -y tesseract-ocr` (backlog; local dev works once Tesseract is installed).
+- Server-side OCR scanning works in production because the backend ships as a Docker image
+  (`backend/Dockerfile`) with `tesseract-ocr` installed. (For **local** non-Docker dev you
+  still need the Tesseract binary on your PATH.)
 - `/scan` is currently unauthenticated (propose-only, no writes). Consider requiring auth before
   exposing it publicly to avoid anonymous OCR compute abuse.

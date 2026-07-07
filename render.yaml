@@ -2,20 +2,20 @@
 # Create the service via Render dashboard -> "New +" -> "Blueprint" pointed at this repo,
 # then fill the sync:false secrets. Free web services sleep when idle and cold-start on the
 # next request — fine for an MVP.
+#
+# Uses a Docker build (backend/Dockerfile) rather than Render's native Python runtime so the
+# Tesseract OCR binary is present and the /scan endpoint works in production.
 services:
   - type: web
     name: pokevault-api
-    runtime: python
+    runtime: docker
     plan: free
     rootDir: backend
-    # uv manages the venv + lockfile; --frozen fails if uv.lock is stale (deterministic build).
-    buildCommand: "pip install uv && uv sync --frozen"
-    startCommand: "uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /api/v1/health
     autoDeploy: true
     envVars:
-      - key: PYTHON_VERSION
-        value: "3.11"
       # Fill these in the dashboard (Environment tab). Never commit them.
       - key: DATABASE_URL # postgresql+asyncpg://...pooler.supabase.com:5432/postgres
         sync: false

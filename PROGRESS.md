@@ -5,6 +5,31 @@ Detailed rationale lives in `docs/`.
 
 ---
 
+## 2026-07-07 — Goal 5: Card scanning (OCR) — code complete ⏳ (OCR proof pending Tesseract)
+
+Built the free-OCR scan pipeline; the non-OCR tests are green, but the 3 OCR-dependent
+tests **skip until the Tesseract binary is installed** (human-only), so Goal 5 is not yet
+"done" per its verification bar.
+
+- Deps added: `pillow`, `pytesseract`, `rapidfuzz`, `python-multipart`.
+- `app/services/scan.py`: Pillow preprocess (grayscale/orient/autocontrast/upscale) →
+  Tesseract text → `parse_ocr` (collector number regex + best alphabetic name line) →
+  rapidfuzz match (number-filtered pool when detected, else `process.extract` over names) →
+  ranked candidates with confidence + current price. Lightweight column queries so it scales
+  to 20k cards. **Proposes only** — never auto-adds.
+- `POST /api/v1/scan` (multipart upload, propose-only): 422 on empty/non-image, 413 over
+  10 MB, **503 if Tesseract is not installed**.
+- `tests/test_scan.py`: synthetic PIL card images (deterministic, catalog-unique fictional
+  names so the shared live catalog can't skew matches) + a no-binary `parse_ocr` unit test.
+  Currently: `parse_ocr` tests + reject tests **pass**; 3 OCR tests **skip**.
+
+**To finish Goal 5:** install Tesseract (`winget install UB-Mannheim.TesseractOCR`), then
+`uv run pytest tests/test_scan.py` — the 3 skips must turn green.
+
+**Next:** Goal 6 — the React SPA (largest remaining chunk).
+
+---
+
 ## 2026-07-07 — Goal 4: Price history + daily schedulers ✅
 
 **Ran the snapshot job for real:** `python -m app.ingest.snapshot_prices` → **51,988**

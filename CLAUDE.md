@@ -150,31 +150,28 @@ pre-commit install        # once; runs ruff (backend) + prettier (frontend)
 
 _Keep this section updated as the project evolves._
 
-**As of 2026-07-06 — scaffold verified; catalog ingestion built.**
+**As of 2026-07-07 — Goal 0 complete; backend Goals 1–4 code-complete (see `PROGRESS.md`).**
 
-- ✅ Monorepo scaffolded (backend, frontend, docs, root tooling).
-- ✅ Backend boots; `GET /api/v1/health` returns 200; 1 pytest passing.
-- ✅ Frontend installs, builds, and lints clean.
-- ✅ ORM models: `Set`, `Card`, `CollectionEntry`, `CardPriceCurrent`, `PriceHistory`.
-  Catalog schema mirrors pokemontcg.io v2 (string PKs, `raw_json` JSONB). See
-  `docs/data-model.md`.
-- ✅ Placeholder endpoints: `/api/v1/cards`, `/api/v1/collection` (return `[]`).
-- ✅ pokemontcg.io ingestion (`app/ingest/`): async client (auth, pagination, backoff),
-  pure mappers, idempotent resumable sync CLI (`python -m app.ingest.sync_catalog`).
-  Seeds `sets`, `cards`, and `card_prices_current`.
+Backend is substantially built and covered by **25 real pytest passing against the live
+Supabase DB** (not stubs, not skipped). The prior "scaffold only" status below was outdated.
 
-- ✅ Initial migration applied to Supabase: `alembic/versions/0001_initial_schema.py`
-  creates all 5 tables; DB is at head `0001_initial_schema`. Connects via the Supabase
-  **Session pooler** (`...pooler.supabase.com:5432`, user `postgres.<ref>`); `DATABASE_URL`
-  uses `+asyncpg` and Alembic rewrites it to `+psycopg` for migrations. `alembic/env.py`
-  loads `backend/.env` via python-dotenv so `uv run alembic ...` picks up the URL.
+- ✅ Repo under **git** (baseline `f263208`); `backend/.env` gitignored.
+- ✅ ORM models: `Set`, `Card`, `CollectionEntry` (has `user_id`), `CardPriceCurrent`,
+  `PriceHistory`, `User`. 3 migrations applied on the Supabase **session pooler**
+  (`...pooler.supabase.com:5432`, `postgres.<ref>`); `+asyncpg` app / `+psycopg` (v3) Alembic.
+- ✅ **Real** endpoints: cards list/get/history, collection CRUD + summary + history, `/me`.
+  Auth is genuine Supabase JWKS verification (sig/exp/aud/iss) — `app/core/security.py`.
+- ✅ Ingest (`app/ingest/`): idempotent resumable sync CLI + DB-only `snapshot_prices` job.
+- ✅ Frontend on **Tailwind v4 CSS-first + React 19 + Vite 8**; `pnpm build`/`lint` clean;
+  both dev servers boot.
 
-**Not done yet / next up:**
+**Data reality:** only set **`sv3`** is ingested so far (Goal 1 runs the full sync).
+**Table naming:** `collection_entries` (not `collection_items`) — kept per code-is-truth.
 
-- ⬜ Run the catalog sync against the DB (currently code-complete but never run end-to-end).
-- ⬜ Populate `price_history` — the model exists but the sync writes only
-  `card_prices_current`.
-- ⬜ Authentication (Supabase Auth); add `User` entity + `user_id` FK on `CollectionEntry`.
-- ⬜ Real card/collection CRUD + queries wired through `app/services/`.
-- ⬜ Frontend pages: dashboard, collection view, card browser.
-- ⬜ Pricing/valuation (join `CollectionEntry` × `CardPriceCurrent`).
+**Next up:**
+
+- ⬜ Goal 1: run the full catalog sync into the DB (~150+ sets / ~15k+ cards).
+- ⬜ Goal 4: run the daily snapshot for real + add cron/Task-Scheduler + GitHub Actions.
+- ⬜ Goal 5: card scanning (Pillow + Tesseract + rapidfuzz) — Tesseract binary needed.
+- ⬜ Goal 6: full React SPA (auth, catalog, collection, dashboard, charts, scan).
+- ⬜ Goal 7: hardening + free-tier deployment.

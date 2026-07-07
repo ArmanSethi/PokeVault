@@ -176,13 +176,15 @@ Supabase DB** (not stubs, not skipped). The prior "scaffold only" status below w
   (GitHub Actions + Task Scheduler + cron). Card + portfolio series endpoints verified.
 - ✅ **Goal 6 built:** full React 19 + Tailwind v4 SPA (auth, catalog, collection, dashboard,
   set-completion, price charts, scan). `pnpm build`/`lint` clean.
-- 🔧 **Goal 5 code-complete:** OCR scan pipeline built; 3 OCR tests skip until Tesseract installed.
-- 🔧 **Goal 7 config-ready:** `render.yaml`, `frontend/vercel.json`, `docs/deployment.md`.
+- ✅ **Goal 5 done:** OCR scan pipeline built + **verified in the Docker image** (Tesseract 5.3.0,
+  `test_scan.py` 7/7 green in-container). No host Tesseract needed.
+- ✅ **Goal 7 config-ready + Docker verified:** `render.yaml` (runtime: docker),
+  `backend/Dockerfile` (builds clean; container serves health + 173 sets), `frontend/vercel.json`,
+  `docs/deployment.md`.
 
 **Outstanding human-only actions (see PROGRESS.md / docs/deployment.md):**
 
 - Goal 2 e2e: a genuine Supabase JWT to demo `/me` live (unit/integration already green).
-- Goal 5: install the Tesseract binary, then the 3 skipped scan tests must go green.
 - Goal 6: `VITE_SUPABASE_ANON_KEY` (+ URL) in `frontend/.env` to exercise the authed UI.
-- Goal 7: push to GitHub + create Render/Vercel from the committed config; set secrets.
+- Goal 7 go-live: push to GitHub + create Render/Vercel from the committed config; set secrets.
 - Recommended: rotate the DB password + API key that were exposed in `backend/.env`.

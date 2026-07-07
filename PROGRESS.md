@@ -25,7 +25,12 @@ Render Blueprint + Vercel project, set env/secrets. See `docs/deployment.md`.
 `ghcr.io/astral-sh/uv:python3.11-bookworm-slim` base with `tesseract-ocr` installed, so
 server-side `/scan` works in production. Layer-cached uv deps (`--no-dev`), venv on PATH,
 `$PORT`-aware CMD. `.dockerignore` keeps secrets/caches out (but keeps `README.md` — hatchling
-needs it). Local build/verify pending Docker Desktop being up.
+needs it).
+
+**Built + verified locally:** image builds clean; `tesseract --version` → 5.3.0 in-image;
+`tests/test_scan.py` → **7/7 passed inside the container**; the running container serves
+`/api/v1/health` → ok and `/api/v1/sets` → 173 (live DB reachable from the container). This
+also completes Goal 5's verification without any host Tesseract install.
 
 ---
 
@@ -60,11 +65,14 @@ both clean; dev server serves the app. TS types in `src/types` mirror the backen
 
 ---
 
-## 2026-07-07 — Goal 5: Card scanning (OCR) — code complete ⏳ (OCR proof pending Tesseract)
+## 2026-07-07 — Goal 5: Card scanning (OCR) ✅ (proven in the Docker image)
 
-Built the free-OCR scan pipeline; the non-OCR tests are green, but the 3 OCR-dependent
-tests **skip until the Tesseract binary is installed** (human-only), so Goal 5 is not yet
-"done" per its verification bar.
+**Now fully verified.** Rather than require a host Tesseract install, the OCR tests were run
+inside the production Docker image (Tesseract 5.3.0): **`tests/test_scan.py` → 7/7 passed**,
+including the 3 formerly-skipped OCR tests (clear-photo ranks the correct card + price,
+blank→no candidates, name-only fuzzy match). See the Goal 7 Dockerfile entry.
+
+Built the free-OCR scan pipeline; the non-OCR tests were already green.
 
 - Deps added: `pillow`, `pytesseract`, `rapidfuzz`, `python-multipart`.
 - `app/services/scan.py`: Pillow preprocess (grayscale/orient/autocontrast/upscale) →

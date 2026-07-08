@@ -1,0 +1,42 @@
+name: Keep backend warm
+
+# Render's free tier sleeps a web service after ~15 min idle (30–60s cold start on the next
+# request). This pings the health endpoint every 10 minutes so the API stays responsive.
+#
+# Setup: repo -> Settings -> Secrets and variables -> Actions -> Variables -> New variable
+#   API_URL = https://<your-api>.onrender.com/api/v1   (same base as the frontend's VITE_API_URL)
+# If API_URL is unset the job no-ops (so it won't fail before you've deployed).
+#
+# Note: on a PRIVATE repo this uses ~4.3k Actions minutes/month (over the 2,000 free) — either
+# keep the repo public, widen the interval, or use an external monitor (e.g. UptimeRobot) instead
+# and delete this workflow.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: keep-warm
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping health endpoint
+        env:
+          API_URL: ${{ vars.API_URL }}
+        run: |
+          if [ -z "$API_URL" ]; then
+            echo "API_URL variable not set — skipping (set it in repo Variables to enable)."
+            exit 0
+          fi
+          echo "Pinging $API_URL/health"
+          # Retry to tolerate a cold start; fail the job only if it never responds 200.
+          curl --fail --silent --show-error --location \
+               --retry 5 --retry-all-errors --retry-delay 15 --max-time 90 \
+               "$API_URL/health"
+          echo ""
+          echo "OK"

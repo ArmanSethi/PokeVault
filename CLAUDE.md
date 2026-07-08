@@ -182,9 +182,14 @@ Supabase DB** (not stubs, not skipped). The prior "scaffold only" status below w
   `backend/Dockerfile` (builds clean; container serves health + 173 sets), `frontend/vercel.json`,
   `docs/deployment.md`.
 
-**Outstanding human-only actions (see PROGRESS.md / docs/deployment.md):**
+**All 8 goals functionally verified.** On 2026-07-09 the full flow was driven end-to-end against
+the running stack (Docker backend :8000 + Vite :5173) with a real Supabase JWT: auth/`me`,
+catalog, collection + portfolio, and scan→confirm. Repo pushed to GitHub (`ArmanSethi/PokeVault`).
 
-- Goal 2 e2e: a genuine Supabase JWT to demo `/me` live (unit/integration already green).
-- Goal 6: `VITE_SUPABASE_ANON_KEY` (+ URL) in `frontend/.env` to exercise the authed UI.
-- Goal 7 go-live: push to GitHub + create Render/Vercel from the committed config; set secrets.
+**Outstanding (human-only):**
+
+- Goal 7 go-live: create Render/Vercel from the committed config (`render.yaml`,
+  `frontend/vercel.json`) + set dashboard secrets; add GitHub Actions secrets for the daily snapshot.
 - Recommended: rotate the DB password + API key that were exposed in `backend/.env`.
+- Note: Supabase "Confirm email" is currently OFF (enabled headless signup for the e2e). Re-enable
+  it (and add email templates) before real public launch.

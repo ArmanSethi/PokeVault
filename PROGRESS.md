@@ -34,10 +34,17 @@ also completes Goal 5's verification without any host Tesseract install.
 
 ---
 
-## 2026-07-07 — Goal 6: Frontend SPA — built ⏳ (interactive e2e pending SUPABASE_ANON_KEY)
+## 2026-07-07 — Goal 6: Frontend SPA ✅ (full flow driven end-to-end 2026-07-09)
 
 Full React 19 + Tailwind v4 SPA against the existing API. `pnpm build` (strict TS) + `pnpm lint`
 both clean; dev server serves the app. TS types in `src/types` mirror the backend schemas 1:1.
+
+**Interactive e2e (2026-07-09):** with `frontend/.env` configured and both servers up (Docker
+backend :8000 + Vite :5173), drove the whole journey via the real API with a genuine Supabase
+JWT — auth/`me`, catalog search + browse + card detail + price history, add 2 cards, list +
+portfolio summary ($1,893.84 → $2,614.18) + value history, and **scan** a synthetic Charizard
+photo (OCR read name+number; ranked candidates with prices) → **confirmed** into the collection.
+(Supabase "Confirm email" was toggled off so signups issue a session immediately.)
 
 **Structure:**
 - `lib/supabase.ts` (client, session persistence), `lib/api.ts` (auth-aware fetch, typed methods
@@ -127,8 +134,9 @@ Both were already code-complete; this was verification against the real DB + aut
 **Goal 2 (auth) — 8/8 green** (`test_auth_verify.py` + `test_me.py`): valid-token→claims,
 expired/wrong-aud/bad-sig/missing-sub all rejected (real ES256+JWKS path), `/me` 401 without
 token, `/me` returns user + upserts the mirror row, garbage token → 401.
-⏳ **Remaining (human-only):** one genuine Supabase-token e2e `/me` call. Not blocking later
-goals — will demo when a real token is provided.
+✅ **Live e2e done (2026-07-09):** signed up a real Supabase user via the anon key, called
+`GET /me` on the running backend with the genuine JWT → verified via JWKS, returned the user
+and created the `users` mirror row. `/collection` without a token → 401.
 
 **Goal 3 (collections & portfolio) — 6/6 green** (`test_collection.py`): requires-auth,
 add-increments-stack, unknown-card→404, update+delete, **ownership isolation** (user B cannot

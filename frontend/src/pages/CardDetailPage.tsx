@@ -1,39 +1,43 @@
 import { useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api, ApiError } from "../lib/api";
-import { useAsync } from "../lib/useAsync";
+import { ApiError } from "../lib/api";
+import { useAddEntry, useCard, useCardHistory } from "../lib/queries";
 import { money } from "../lib/format";
 import { PriceChart } from "../components/PriceChart";
-import { ErrorState, Spinner } from "../components/States";
+import { ErrorState } from "../components/States";
+import { DetailSkeleton } from "../components/Skeleton";
+import { useToast } from "../components/Toast";
 import type { CollectionEntryCreate } from "../types";
 
 const CONDITIONS = ["NM", "LP", "MP", "HP", "DMG"];
+const inputClass =
+  "w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800";
 
 export function CardDetailPage() {
   const { id = "" } = useParams();
-  const card = useAsync(() => api.getCard(id), [id]);
-  const history = useAsync(() => api.cardHistory(id), [id]);
+  const card = useCard(id);
+  const history = useCardHistory(id);
+  const addEntry = useAddEntry();
+  const toast = useToast();
 
-  const [form, setForm] = useState<CollectionEntryCreate>({ card_id: id, quantity: 1, is_foil: false });
-  const [saving, setSaving] = useState(false);
-  const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [form, setForm] = useState<CollectionEntryCreate>({
+    card_id: id,
+    quantity: 1,
+    is_foil: false,
+  });
 
-  if (card.loading) return <Spinner label="Loading card…" />;
-  if (card.error) return <ErrorState message={card.error} onRetry={card.reload} />;
-  const c = card.data!;
+  if (card.isPending) return <DetailSkeleton />;
+  if (card.isError)
+    return <ErrorState message={(card.error as Error).message} onRetry={() => card.refetch()} />;
+  const c = card.data;
 
   async function add(e: FormEvent) {
     e.preventDefault();
-    setSaving(true);
-    setFeedback(null);
     try {
-      await api.addEntry({ ...form, card_id: id });
-      setFeedback({ ok: true, msg: "Added to your collection." });
+      await addEntry.mutateAsync({ ...form, card_id: id });
+      toast.success(`Added ${c.name} to your collection.`);
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Could not add card";
-      setFeedback({ ok: false, msg });
-    } finally {
-      setSaving(false);
+      toast.error(err instanceof ApiError ? err.message : "Could not add card");
     }
   }
 
@@ -46,7 +50,12 @@ export function CardDetailPage() {
       <div className="mt-4 grid gap-8 md:grid-cols-2">
         <div className="flex items-start justify-center">
           {c.image_url ? (
-            <img src={c.image_url} alt={c.name} className="max-h-[520px] rounded-xl shadow-lg" />
+            <img
+              src={c.image_url}
+              alt={c.name}
+              decoding="async"
+              className="max-h-[520px] rounded-xl shadow-lg"
+            />
           ) : (
             <div className="flex aspect-[3/4] w-full items-center justify-center rounded-xl bg-slate-100 text-6xl opacity-30 dark:bg-slate-800">
               🃏
@@ -68,8 +77,13 @@ export function CardDetailPage() {
             <table className="mt-4 w-full text-sm">
               <tbody>
                 {c.prices.map((p) => (
-                  <tr key={`${p.source}-${p.variant}`} className="border-t border-slate-100 dark:border-slate-800">
-                    <td className="py-1 text-slate-500">{p.source} · {p.variant}</td>
+                  <tr
+                    key={`${p.source}-${p.variant}`}
+                    className="border-t border-slate-100 dark:border-slate-800"
+                  >
+                    <td className="py-1 text-slate-500">
+                      {p.source} · {p.variant}
+                    </td>
                     <td className="py-1 text-right">{money(p.market, p.currency)}</td>
                   </tr>
                 ))}
@@ -77,7 +91,10 @@ export function CardDetailPage() {
             </table>
           )}
 
-          <form onSubmit={add} className="mt-6 space-y-3 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+          <form
+            onSubmit={add}
+            className="mt-6 space-y-3 rounded-xl border border-slate-200 p-4 dark:border-slate-800"
+          >
             <p className="font-semibold">Add to collection</p>
             <div className="grid grid-cols-2 gap-3">
               <label className="text-sm">
@@ -86,8 +103,10 @@ export function CardDetailPage() {
                   type="number"
                   min={1}
                   value={form.quantity}
-                  onChange={(e) => setForm({ ...form, quantity: Math.max(1, Number(e.target.value)) })}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800"
+                  onChange={(e) =>
+                    setForm({ ...form, quantity: Math.max(1, Number(e.target.value)) })
+                  }
+                  className={inputClass}
                 />
               </label>
               <label className="text-sm">
@@ -95,7 +114,7 @@ export function CardDetailPage() {
                 <select
                   value={form.condition ?? ""}
                   onChange={(e) => setForm({ ...form, condition: e.target.value || null })}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800"
+                  className={inputClass}
                 >
                   <option value="">—</option>
                   {CONDITIONS.map((x) => (
@@ -109,7 +128,7 @@ export function CardDetailPage() {
                   placeholder="e.g. PSA 10"
                   value={form.grade ?? ""}
                   onChange={(e) => setForm({ ...form, grade: e.target.value || null })}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800"
+                  className={inputClass}
                 />
               </label>
               <label className="text-sm">
@@ -120,9 +139,12 @@ export function CardDetailPage() {
                   min={0}
                   value={form.acquired_price ?? ""}
                   onChange={(e) =>
-                    setForm({ ...form, acquired_price: e.target.value ? Number(e.target.value) : null })
+                    setForm({
+                      ...form,
+                      acquired_price: e.target.value ? Number(e.target.value) : null,
+                    })
                   }
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800"
+                  className={inputClass}
                 />
               </label>
             </div>
@@ -134,25 +156,22 @@ export function CardDetailPage() {
               />
               Foil / holo copy
             </label>
-            {feedback && (
-              <p className={`text-sm ${feedback.ok ? "text-green-600" : "text-red-600"}`}>{feedback.msg}</p>
-            )}
             <button
               type="submit"
-              disabled={saving}
+              disabled={addEntry.isPending}
               className="w-full rounded-lg bg-brand-600 py-2 font-medium text-white hover:bg-brand-700 disabled:opacity-50"
             >
-              {saving ? "Adding…" : "Add to collection"}
+              {addEntry.isPending ? "Adding…" : "Add to collection"}
             </button>
           </form>
         </div>
       </div>
 
       <h2 className="mb-2 mt-8 text-lg font-semibold">Price history</h2>
-      {history.loading ? (
-        <Spinner label="Loading history…" />
-      ) : history.error ? (
-        <ErrorState message={history.error} onRetry={history.reload} />
+      {history.isPending ? (
+        <div className="h-64 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
+      ) : history.isError ? (
+        <ErrorState message={(history.error as Error).message} onRetry={() => history.refetch()} />
       ) : (
         <PriceChart
           currency={history.data?.currency ?? "USD"}

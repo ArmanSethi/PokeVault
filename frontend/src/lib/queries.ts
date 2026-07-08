@@ -1,0 +1,176 @@
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { api } from "./api";
+import type {
+  CardSort,
+  CollectionEntry,
+  CollectionEntryCreate,
+  CollectionEntryUpdate,
+} from "../types";
+
+interface CardsParams {
+  set_id?: string;
+  q?: string;
+  rarity?: string;
+  sort?: CardSort;
+  limit?: number;
+  offset?: number;
+}
+
+/** Stable query keys so mutations can invalidate precisely. */
+export const qk = {
+  sets: ["sets"] as const,
+  rarities: ["rarities"] as const,
+  cards: (p: CardsParams) => ["cards", p] as const,
+  card: (id: string) => ["card", id] as const,
+  cardHistory: (id: string) => ["cardHistory", id] as const,
+  collection: ["collection"] as const,
+  summary: ["summary"] as const,
+  portfolioHistory: ["portfolioHistory"] as const,
+};
+
+// ---- catalog (long-lived cache) ----
+
+export function useSets() {
+  return useQuery({ queryKey: qk.sets, queryFn: () => api.listSets({ limit: 500 }) });
+}
+
+export function useRarities() {
+  return useQuery({
+    queryKey: qk.rarities,
+    queryFn: () => api.listRarities(),
+    staleTime: Infinity,
+  });
+}
+
+export function useCards(params: CardsParams) {
+  return useQuery({
+    queryKey: qk.cards(params),
+    queryFn: () => api.listCards(params),
+    placeholderData: keepPreviousData, // keep old rows visible while filters change
+  });
+}
+
+const CATALOG_PAGE = 24;
+
+/** Paginated catalog browse with "load more" (offset-based). */
+export function useInfiniteCards(filters: Omit<CardsParams, "limit" | "offset">) {
+  return useInfiniteQuery({
+    queryKey: ["cards-infinite", filters],
+    queryFn: ({ pageParam }) =>
+      api.listCards({ ...filters, limit: CATALOG_PAGE, offset: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length === CATALOG_PAGE ? allPages.length * CATALOG_PAGE : undefined,
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useCard(id: string) {
+  return useQuery({ queryKey: qk.card(id), queryFn: () => api.getCard(id), enabled: Boolean(id) });
+}
+
+export function useCardHistory(id: string) {
+  return useQuery({
+    queryKey: qk.cardHistory(id),
+    queryFn: () => api.cardHistory(id),
+    enabled: Boolean(id),
+  });
+}
+
+/** Resolve card names for a set of ids, reusing the shared card cache (no N+1 refetch). */
+export function useCardNames(ids: string[]): Record<string, string> {
+  const results = useQueries({
+    queries: ids.map((id) => ({
+      queryKey: qk.card(id),
+      queryFn: () => api.getCard(id),
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
+  const names: Record<string, string> = {};
+  results.forEach((r, i) => {
+    if (r.data) names[ids[i]] = r.data.name;
+  });
+  return names;
+}
+
+// ---- collection (fresh, auth) ----
+
+export function useCollection() {
+  return useQuery({ queryKey: qk.collection, queryFn: () => api.listCollection(), staleTime: 0 });
+}
+
+export function useSummary() {
+  return useQuery({ queryKey: qk.summary, queryFn: () => api.summary(), staleTime: 0 });
+}
+
+export function usePortfolioHistory() {
+  return useQuery({ queryKey: qk.portfolioHistory, queryFn: () => api.portfolioHistory() });
+}
+
+function invalidateCollection(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: qk.collection });
+  qc.invalidateQueries({ queryKey: qk.summary });
+  qc.invalidateQueries({ queryKey: qk.portfolioHistory });
+}
+
+export function useAddEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CollectionEntryCreate) => api.addEntry(data),
+    onSuccess: () => invalidateCollection(qc),
+  });
+}
+
+export function useUpdateEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: CollectionEntryUpdate }) =>
+      api.updateEntry(id, data),
+    // Optimistic: reflect qty/field edits instantly, roll back on error.
+    onMutate: async ({ id, data }) => {
+      await qc.cancelQueries({ queryKey: qk.collection });
+      const prev = qc.getQueryData<CollectionEntry[]>(qk.collection);
+      if (prev) {
+        qc.setQueryData<CollectionEntry[]>(
+          qk.collection,
+          // Transient optimistic merge (server response reconciles on settle); cast because
+          // the update DTO types acquired_price as number while the entry stores a string.
+          prev.map((e) => (e.id === id ? ({ ...e, ...data } as CollectionEntry) : e)),
+        );
+      }
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(qk.collection, ctx.prev);
+    },
+    onSettled: () => invalidateCollection(qc),
+  });
+}
+
+export function useDeleteEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.deleteEntry(id),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: qk.collection });
+      const prev = qc.getQueryData<CollectionEntry[]>(qk.collection);
+      if (prev)
+        qc.setQueryData<CollectionEntry[]>(
+          qk.collection,
+          prev.filter((e) => e.id !== id),
+        );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(qk.collection, ctx.prev);
+    },
+    onSettled: () => invalidateCollection(qc),
+  });
+}

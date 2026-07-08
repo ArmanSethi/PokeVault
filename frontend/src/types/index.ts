@@ -25,6 +25,8 @@ export interface Card {
   currency: string | null;
 }
 
+export type CardSort = "number" | "name" | "rarity" | "price_desc" | "price_asc";
+
 export interface CardSet {
   id: string;
   name: string;

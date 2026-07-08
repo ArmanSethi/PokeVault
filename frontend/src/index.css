@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
-/* PokéVault theme — Tailwind v4 CSS-first (@theme replaces tailwind.config.js) */
+/* Enable class-based dark mode (a .dark ancestor) so a toggle can override the OS. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* PokéVault design tokens — Tailwind v4 CSS-first (@theme replaces tailwind.config.js).
+   brand = electric blue, accent = energy amber; plus semantic + surface tokens. */
 @theme {
   --color-brand-50: #eff6ff;
   --color-brand-100: #dbeafe;
@@ -13,7 +17,39 @@
   --color-brand-800: #1e40af;
   --color-brand-900: #1e3a8a;
 
+  --color-accent-300: #fcd34d;
   --color-accent-400: #fbbf24;
   --color-accent-500: #f59e0b;
   --color-accent-600: #d97706;
+
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
+  --color-success-500: #22c55e;
+  --color-success-600: #16a34a;
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  --radius-xl: 0.9rem;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+    font-family: var(--font-sans);
+  }
+  /* Visible, consistent focus ring for keyboard users across interactive elements. */
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-950;
+  }
+}
+
+/* Thin, theme-aware scrollbars. */
+@supports (scrollbar-width: thin) {
+  * {
+    scrollbar-width: thin;
+  }
 }

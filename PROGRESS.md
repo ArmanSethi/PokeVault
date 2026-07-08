@@ -5,6 +5,48 @@ Detailed rationale lives in `docs/`.
 
 ---
 
+## 2026-07-09 — Frontend UX & performance overhaul ✅
+
+Made the SPA smoother, faster, more polished, mobile/accessible, and added catalog/collection
+conveniences. Backend got small additive `/cards` changes.
+
+**Data layer (smoothness):** added `@tanstack/react-query`; `src/lib/queries.ts` centralizes all
+query/mutation hooks with a key factory. Revisiting a page is now instant from cache with
+background refresh; collection qty/edit/delete are **optimistic**; the collection page's old N+1
+`getCard` calls are replaced by a shared cached `useCardNames` (reuses the card cache).
+
+**Performance:** route-level `React.lazy` + `<Suspense>` (skeleton fallback) in `App.tsx`, and
+`vite.config.ts` `manualChunks` splitting vendors. Before: one **817 KB (234 KB gz)** bundle with
+charts loaded upfront. After: initial path no longer includes charts — `charts` (recharts) is its
+own **104 KB gz** chunk loaded only on Dashboard/CardDetail; per-page chunks are 1–2.5 KB gz;
+vendors split (react 71, supabase 51, query 12 gz). Lazy images with `decoding="async"`.
+
+**Visual system:** expanded `@theme` palette (brand/accent/semantic) + Tailwind v4 manual-dark
+variant (`@custom-variant dark`); **light/dark theme toggle** (`ThemeContext`, persisted); **toasts**
+(`components/Toast.tsx`, no dep) replacing inline text; **skeleton** loaders (`components/Skeleton.tsx`);
+polished `CardTile` (hover lift, rarity chip), `Layout` (sticky nav → mobile hamburger + toggle),
+gradient dashboard stat tiles + area chart.
+
+**Mobile & a11y:** responsive hamburger nav; edit modal is `role="dialog"` + `aria-modal` + Esc-close
++ initial focus; aria-labels on icon buttons; global `:focus-visible` ring.
+
+**Conveniences:** catalog **rarity filter + sort** (number/name/rarity/price↑↓) + search by name or
+number; collection client-side sort (value/name/qty) + set/foil filters.
+- **Backend:** `GET /cards` gained `rarity` + `sort` (price sort via a max-TCGPlayer-market subquery
+  join) and a new `GET /cards/rarities`. `app/services/cards.py` + `endpoints/cards.py` +
+  `tests/test_catalog.py` (6 new tests).
+
+**Verified:** backend `pytest` **44 passed / 3 skipped** (skips = Tesseract scan tests, green in
+Docker) + ruff clean; frontend `pnpm build` (code-split) + `lint` + prettier clean. Rebuilt the prod
+Docker image and confirmed live: `/cards/rarities` (37), `sort=price_desc` (Shining Tyranitar
+$4,249.99 first), rarity filter, and **no regression** in authed `/me` + `/collection` + `/summary`.
+
+**Gotchas:** Vite 8/rolldown wants `manualChunks` as a **function** (object form rejected);
+`tsconfig.node.json` needed `target ES2022`/`lib ES2023` for `String.includes`; FastAPI `Query` in a
+multi-line default tripped ruff B008 → used the `Annotated[...]` form.
+
+---
+
 ## 2026-07-07 — Goal 7: Hardening + free deploy — config ready ⏳ (go-live is human-only)
 
 **Hardening (done in code):** CORS is env-locked to specific origins via `BACKEND_CORS_ORIGINS`

@@ -27,9 +27,17 @@ async def catalog(db_session):
     db_session.add(
         Set(id="zzt1", name="Zzz Test Expansion", series="TestSeries", printed_total=3, total=3)
     )
-    db_session.add(Card(id="zzt1-1", set_id="zzt1", name="Pikachu VMAX", number="1"))
-    db_session.add(Card(id="zzt1-2", set_id="zzt1", name="Raichu", number="2"))
-    db_session.add(Card(id="zzt1-3", set_id="zzt1", name="Charizard", number="3"))
+    # Rarities include a catalog-unique value ("ZzTestRare") so the rarity filter is
+    # deterministic despite the shared live catalog.
+    db_session.add(
+        Card(id="zzt1-1", set_id="zzt1", name="Pikachu VMAX", number="1", rarity="ZzTestRare")
+    )
+    db_session.add(
+        Card(id="zzt1-2", set_id="zzt1", name="Raichu", number="2", rarity="ZzTestCommon")
+    )
+    db_session.add(
+        Card(id="zzt1-3", set_id="zzt1", name="Charizard", number="3", rarity="ZzTestCommon")
+    )
     await db_session.flush()
     db_session.add_all(
         [
@@ -124,3 +132,44 @@ async def test_get_card_has_usd_market_price(auth_client, catalog):
 
 async def test_get_card_unknown_404(auth_client, catalog):
     assert (await auth_client.get(f"{_CARDS}/zzt1-999")).status_code == 404
+
+
+async def test_cards_search_matches_number(auth_client, catalog):
+    # q should match the collector number as well as the name.
+    resp = await auth_client.get(_CARDS, params={"set_id": "zzt1", "q": "2"})
+    assert resp.status_code == 200
+    assert {c["id"] for c in resp.json()} == {"zzt1-2"}
+
+
+async def test_cards_rarity_filter(auth_client, catalog):
+    resp = await auth_client.get(_CARDS, params={"rarity": "ZzTestRare"})
+    assert resp.status_code == 200
+    assert {c["id"] for c in resp.json()} == {"zzt1-1"}
+
+
+async def test_cards_sort_by_name(auth_client, catalog):
+    resp = await auth_client.get(_CARDS, params={"set_id": "zzt1", "sort": "name"})
+    assert resp.status_code == 200
+    names = [c["name"] for c in resp.json()]
+    assert names == ["Charizard", "Pikachu VMAX", "Raichu"]
+
+
+async def test_cards_sort_by_price_desc(auth_client, catalog):
+    resp = await auth_client.get(_CARDS, params={"set_id": "zzt1", "sort": "price_desc"})
+    assert resp.status_code == 200
+    ids = [c["id"] for c in resp.json()]
+    # zzt1-1 is the only priced card, so it must lead; the unpriced two sort last.
+    assert ids[0] == "zzt1-1"
+    assert set(ids) == {"zzt1-1", "zzt1-2", "zzt1-3"}
+
+
+async def test_cards_invalid_sort_rejected(auth_client, catalog):
+    resp = await auth_client.get(_CARDS, params={"set_id": "zzt1", "sort": "bogus"})
+    assert resp.status_code == 422  # Literal validation
+
+
+async def test_rarities_endpoint_includes_seeded(auth_client, catalog):
+    resp = await auth_client.get(f"{_CARDS}/rarities")
+    assert resp.status_code == 200
+    rarities = resp.json()
+    assert "ZzTestRare" in rarities and "ZzTestCommon" in rarities

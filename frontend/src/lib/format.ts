@@ -9,7 +9,9 @@ export function money(value: string | number | null | undefined, currency = "USD
 /** Short date for chart axes / labels. */
 export function shortDate(iso: string): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 export function pct(fraction: number): string {

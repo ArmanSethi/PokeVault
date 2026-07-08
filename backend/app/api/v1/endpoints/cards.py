@@ -22,12 +22,25 @@ SessionDep = Annotated[AsyncSession, Depends(get_session)]
 async def list_cards(
     session: SessionDep,
     set_id: str | None = Query(default=None, description="Filter by set id, e.g. sv3."),
-    q: str | None = Query(default=None, description="Case-insensitive name search."),
+    q: str | None = Query(default=None, description="Search card name or collector number."),
+    rarity: str | None = Query(default=None, description="Filter by exact rarity."),
+    sort: Annotated[
+        cards_service.CardSort,
+        Query(description="number | name | rarity | price_desc | price_asc"),
+    ] = "number",
     limit: int = Query(default=50, ge=1, le=250),
     offset: int = Query(default=0, ge=0),
 ) -> list[CardRead]:
     """List cards with their current prices and a TCGPlayer USD market summary."""
-    return await cards_service.list_cards(session, set_id=set_id, q=q, limit=limit, offset=offset)
+    return await cards_service.list_cards(
+        session, set_id=set_id, q=q, rarity=rarity, sort=sort, limit=limit, offset=offset
+    )
+
+
+@router.get("/rarities", response_model=list[str])
+async def list_rarities(session: SessionDep) -> list[str]:
+    """Distinct rarities in the catalog, for the filter dropdown."""
+    return await cards_service.list_rarities(session)
 
 
 @router.get("/{card_id}", response_model=CardRead)

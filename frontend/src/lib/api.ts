@@ -3,6 +3,7 @@ import type {
   Card,
   CardPriceHistory,
   CardSet,
+  CardSort,
   CollectionEntry,
   CollectionEntryCreate,
   CollectionEntryUpdate,
@@ -80,8 +81,17 @@ export const api = {
   listSets: (params: { q?: string; limit?: number; offset?: number } = {}) =>
     request<CardSet[]>(`/sets${qs(params)}`),
   getSet: (id: string) => request<CardSet>(`/sets/${encodeURIComponent(id)}`),
-  listCards: (params: { set_id?: string; q?: string; limit?: number; offset?: number } = {}) =>
-    request<Card[]>(`/cards${qs(params)}`),
+  listCards: (
+    params: {
+      set_id?: string;
+      q?: string;
+      rarity?: string;
+      sort?: CardSort;
+      limit?: number;
+      offset?: number;
+    } = {},
+  ) => request<Card[]>(`/cards${qs(params)}`),
+  listRarities: () => request<string[]>("/cards/rarities"),
   getCard: (id: string) => request<Card>(`/cards/${encodeURIComponent(id)}`),
   cardHistory: (id: string, params: { variant?: string; days?: number } = {}) =>
     request<CardPriceHistory>(`/cards/${encodeURIComponent(id)}/history${qs(params)}`),

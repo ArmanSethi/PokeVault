@@ -1,71 +1,50 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { api } from "../lib/api";
-import { useAsync } from "../lib/useAsync";
-import type { Card } from "../types";
+import { useInfiniteCards, useRarities, useSets } from "../lib/queries";
+import type { CardSort } from "../types";
 import { CardTile } from "../components/CardTile";
-import { EmptyState, ErrorState, Spinner } from "../components/States";
+import { EmptyState, ErrorState } from "../components/States";
+import { CardGridSkeleton } from "../components/Skeleton";
 
-const PAGE = 24;
+const SORTS: { value: CardSort; label: string }[] = [
+  { value: "number", label: "Set / number" },
+  { value: "name", label: "Name (A–Z)" },
+  { value: "rarity", label: "Rarity" },
+  { value: "price_desc", label: "Price (high → low)" },
+  { value: "price_asc", label: "Price (low → high)" },
+];
+
+const selectClass =
+  "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800";
 
 export function CatalogPage() {
   const [params, setParams] = useSearchParams();
   const setId = params.get("set") ?? "";
   const [q, setQ] = useState(params.get("q") ?? "");
   const [debouncedQ, setDebouncedQ] = useState(q);
+  const [rarity, setRarity] = useState("");
+  const [sort, setSort] = useState<CardSort>("number");
 
-  const sets = useAsync(() => api.listSets({ limit: 500 }), []);
+  const sets = useSets();
+  const rarities = useRarities();
 
-  // Debounce the search box so we don't fire a request per keystroke.
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q), 300);
     return () => clearTimeout(t);
   }, [q]);
 
-  const [cards, setCards] = useState<Card[]>([]);
-  const [offset, setOffset] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(true);
+  const filters = useMemo(
+    () => ({
+      set_id: setId || undefined,
+      q: debouncedQ || undefined,
+      rarity: rarity || undefined,
+      sort,
+    }),
+    [setId, debouncedQ, rarity, sort],
+  );
 
-  // Reset + load first page whenever the filters change.
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    setError(null);
-    api
-      .listCards({ set_id: setId || undefined, q: debouncedQ || undefined, limit: PAGE, offset: 0 })
-      .then((rows) => {
-        if (!alive) return;
-        setCards(rows);
-        setOffset(rows.length);
-        setHasMore(rows.length === PAGE);
-      })
-      .catch((e) => alive && setError(e instanceof Error ? e.message : "Failed to load"))
-      .finally(() => alive && setLoading(false));
-    return () => {
-      alive = false;
-    };
-  }, [setId, debouncedQ]);
-
-  async function loadMore() {
-    setLoading(true);
-    try {
-      const rows = await api.listCards({
-        set_id: setId || undefined,
-        q: debouncedQ || undefined,
-        limit: PAGE,
-        offset,
-      });
-      setCards((prev) => [...prev, ...rows]);
-      setOffset((o) => o + rows.length);
-      setHasMore(rows.length === PAGE);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const cardsQ = useInfiniteCards(filters);
+  const cards = cardsQ.data?.pages.flat() ?? [];
 
   function updateSet(value: string) {
     const next = new URLSearchParams(params);
@@ -78,18 +57,20 @@ export function CatalogPage() {
     <>
       <h1 className="mb-4 text-2xl font-bold">Catalog</h1>
 
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row">
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <input
           type="search"
-          placeholder="Search cards by name…"
+          placeholder="Search name or number…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800"
+          aria-label="Search cards"
+          className={selectClass}
         />
         <select
           value={setId}
           onChange={(e) => updateSet(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800"
+          aria-label="Filter by set"
+          className={selectClass}
         >
           <option value="">All sets</option>
           {(sets.data ?? []).map((s) => (
@@ -98,29 +79,54 @@ export function CatalogPage() {
             </option>
           ))}
         </select>
+        <select
+          value={rarity}
+          onChange={(e) => setRarity(e.target.value)}
+          aria-label="Filter by rarity"
+          className={selectClass}
+        >
+          <option value="">All rarities</option>
+          {(rarities.data ?? []).map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
+        </select>
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value as CardSort)}
+          aria-label="Sort cards"
+          className={selectClass}
+        >
+          {SORTS.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </select>
       </div>
 
-      {error && <ErrorState message={error} onRetry={() => setDebouncedQ((v) => v)} />}
-      {!error && cards.length === 0 && loading && <Spinner label="Loading cards…" />}
-      {!error && cards.length === 0 && !loading && (
-        <EmptyState title="No cards found" hint="Try a different name or set." />
-      )}
-
-      {cards.length > 0 && (
+      {cardsQ.isPending ? (
+        <CardGridSkeleton />
+      ) : cardsQ.isError ? (
+        <ErrorState message={(cardsQ.error as Error).message} onRetry={() => cardsQ.refetch()} />
+      ) : cards.length === 0 ? (
+        <EmptyState title="No cards found" hint="Try a different name, set, or rarity." />
+      ) : (
         <>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
             {cards.map((c) => (
               <CardTile key={c.id} card={c} />
             ))}
           </div>
-          {hasMore && (
+          {cardsQ.hasNextPage && (
             <div className="mt-6 text-center">
               <button
-                onClick={loadMore}
-                disabled={loading}
+                onClick={() => cardsQ.fetchNextPage()}
+                disabled={cardsQ.isFetchingNextPage}
                 className="rounded-lg border border-slate-300 px-5 py-2 text-sm font-medium hover:bg-slate-100 disabled:opacity-50 dark:border-slate-700 dark:hover:bg-slate-800"
               >
-                {loading ? "Loading…" : "Load more"}
+                {cardsQ.isFetchingNextPage ? "Loading…" : "Load more"}
               </button>
             </div>
           )}

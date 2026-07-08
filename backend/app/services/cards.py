@@ -8,14 +8,18 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from decimal import Decimal
+from typing import Literal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.card import Card
 from app.models.price import CardPriceCurrent
 from app.schemas.card import CardPriceRead, CardRead
+
+# Sort options exposed by the catalog list endpoint.
+CardSort = Literal["number", "name", "rarity", "price_desc", "price_asc"]
 
 # TCGPlayer variant preference for the single headline price shown per card.
 _VARIANT_PRIORITY = ("holofoil", "normal", "reverseHolofoil")
@@ -63,19 +67,65 @@ async def list_cards(
     *,
     set_id: str | None = None,
     q: str | None = None,
+    rarity: str | None = None,
+    sort: CardSort = "number",
     limit: int = 50,
     offset: int = 0,
 ) -> list[CardRead]:
-    """List cards (with current prices), optionally filtered by set and name."""
+    """List cards (with current prices), filtered by set/name/rarity and sorted.
+
+    ``q`` matches the card name or collector number (case-insensitive). Price sorts use
+    each card's max TCGPlayer market price as a headline-price proxy; cards without a
+    price sort last either way.
+    """
     stmt = select(Card).options(selectinload(Card.prices_current))
     if set_id:
         stmt = stmt.where(Card.set_id == set_id)
     if q:
-        stmt = stmt.where(Card.name.ilike(f"%{q}%"))
-    stmt = stmt.order_by(Card.set_id, Card.number).limit(limit).offset(offset)
+        stmt = stmt.where(Card.name.ilike(f"%{q}%") | Card.number.ilike(f"%{q}%"))
+    if rarity:
+        stmt = stmt.where(Card.rarity == rarity)
+
+    if sort in ("price_desc", "price_asc"):
+        # Rank by the card's highest TCGPlayer market price (headline-price proxy).
+        price_sub = (
+            select(
+                CardPriceCurrent.card_id,
+                func.max(CardPriceCurrent.market).label("max_market"),
+            )
+            .where(CardPriceCurrent.source == "tcgplayer")
+            .group_by(CardPriceCurrent.card_id)
+            .subquery()
+        )
+        stmt = stmt.outerjoin(price_sub, Card.id == price_sub.c.card_id)
+        col = price_sub.c.max_market
+        order = col.desc() if sort == "price_desc" else col.asc()
+        stmt = stmt.order_by(order.nullslast(), Card.set_id, Card.number)
+    elif sort == "name":
+        stmt = stmt.order_by(Card.name, Card.set_id, Card.number)
+    elif sort == "rarity":
+        stmt = stmt.order_by(Card.rarity.nullslast(), Card.set_id, Card.number)
+    else:  # "number"
+        stmt = stmt.order_by(Card.set_id, Card.number)
+
+    stmt = stmt.limit(limit).offset(offset)
     result = await session.execute(stmt)
     cards: Sequence[Card] = result.scalars().all()
     return [_to_card_read(c) for c in cards]
+
+
+async def list_rarities(session: AsyncSession) -> list[str]:
+    """Distinct non-null rarities present in the catalog (for a filter dropdown)."""
+    rows = (
+        (
+            await session.execute(
+                select(Card.rarity).where(Card.rarity.is_not(None)).distinct().order_by(Card.rarity)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return list(rows)
 
 
 async def get_card(session: AsyncSession, card_id: str) -> CardRead | None:

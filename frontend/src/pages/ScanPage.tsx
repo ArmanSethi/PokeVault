@@ -1,5 +1,7 @@
 import { useRef, useState } from "react";
 import { api, ApiError } from "../lib/api";
+import { useAddEntry } from "../lib/queries";
+import { useToast } from "../components/Toast";
 import { money } from "../lib/format";
 import type { ScanResult } from "../types";
 
@@ -11,6 +13,8 @@ export function ScanPage() {
   const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState<Record<string, boolean>>({});
   const inputRef = useRef<HTMLInputElement>(null);
+  const addEntry = useAddEntry();
+  const toast = useToast();
 
   function pick(f: File | null) {
     setFile(f);
@@ -28,7 +32,9 @@ export function ScanPage() {
       setResult(await api.scan(file));
     } catch (e) {
       if (e instanceof ApiError && e.status === 503) {
-        setError("The server's OCR engine (Tesseract) isn't installed yet. Ask the admin to install it.");
+        setError(
+          "The server's OCR engine (Tesseract) isn't installed yet. Ask the admin to install it.",
+        );
       } else {
         setError(e instanceof Error ? e.message : "Scan failed");
       }
@@ -37,12 +43,13 @@ export function ScanPage() {
     }
   }
 
-  async function addCandidate(cardId: string) {
+  async function addCandidate(cardId: string, name: string) {
     try {
-      await api.addEntry({ card_id: cardId, quantity: 1 });
+      await addEntry.mutateAsync({ card_id: cardId, quantity: 1 });
       setAdded((prev) => ({ ...prev, [cardId]: true }));
+      toast.success(`Added ${name} to your collection.`);
     } catch {
-      setAdded((prev) => ({ ...prev, [cardId]: false }));
+      toast.error("Could not add card.");
     }
   }
 
@@ -56,21 +63,22 @@ export function ScanPage() {
 
       <div className="grid gap-6 md:grid-cols-[280px_1fr]">
         <div>
-          <div
+          <button
             onClick={() => inputRef.current?.click()}
-            className="flex aspect-[3/4] cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-white text-center text-sm text-slate-400 hover:border-brand-400 dark:border-slate-700 dark:bg-slate-900"
+            className="flex aspect-[3/4] w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-white text-center text-sm text-slate-400 hover:border-brand-400 dark:border-slate-700 dark:bg-slate-900"
           >
             {preview ? (
-              <img src={preview} alt="preview" className="h-full w-full object-contain" />
+              <img src={preview} alt="Upload preview" className="h-full w-full object-contain" />
             ) : (
               <span className="px-4">Click to choose a card photo</span>
             )}
-          </div>
+          </button>
           <input
             ref={inputRef}
             type="file"
             accept="image/*"
             className="hidden"
+            aria-label="Card photo"
             onChange={(e) => pick(e.target.files?.[0] ?? null)}
           />
           <button
@@ -84,7 +92,7 @@ export function ScanPage() {
 
         <div>
           {error && (
-            <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
+            <div className="rounded-xl border border-danger-500 bg-danger-500/10 p-4 text-sm text-danger-600 dark:text-danger-500">
               {error}
             </div>
           )}
@@ -108,7 +116,12 @@ export function ScanPage() {
                       className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900"
                     >
                       {c.image_url ? (
-                        <img src={c.image_url} alt={c.name} className="h-20 w-14 rounded object-contain" />
+                        <img
+                          src={c.image_url}
+                          alt={c.name}
+                          loading="lazy"
+                          className="h-20 w-14 rounded object-contain"
+                        />
                       ) : (
                         <div className="flex h-20 w-14 items-center justify-center rounded bg-slate-100 dark:bg-slate-800">
                           🃏
@@ -121,13 +134,18 @@ export function ScanPage() {
                         </p>
                         <div className="mt-1 flex items-center gap-2">
                           <div className="h-1.5 w-24 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                            <div className="h-full bg-brand-500" style={{ width: `${Math.round(c.confidence * 100)}%` }} />
+                            <div
+                              className="h-full bg-brand-500"
+                              style={{ width: `${Math.round(c.confidence * 100)}%` }}
+                            />
                           </div>
-                          <span className="text-xs text-slate-400">{Math.round(c.confidence * 100)}% match</span>
+                          <span className="text-xs text-slate-400">
+                            {Math.round(c.confidence * 100)}% match
+                          </span>
                         </div>
                       </div>
                       <button
-                        onClick={() => addCandidate(c.card_id)}
+                        onClick={() => addCandidate(c.card_id, c.name)}
                         disabled={added[c.card_id]}
                         className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
                       >

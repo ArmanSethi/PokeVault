@@ -174,6 +174,8 @@ Supabase DB** (not stubs, not skipped). The prior "scaffold only" status below w
 
 - ✅ **Goal 4 done:** snapshot job runs (fixed standalone import bug); daily schedulers added
   (GitHub Actions + Task Scheduler + cron). Card + portfolio series endpoints verified.
+  **Price history is owned-cards-only** (snapshot filters to `collection_entries`; `sync_catalog`
+  no longer writes history) — keeps daily growth <1 MB/day within the Supabase free tier.
 - ✅ **Goal 6 built:** full React 19 + Tailwind v4 SPA (auth, catalog, collection, dashboard,
   set-completion, price charts, scan). `pnpm build`/`lint` clean.
 - ✅ **Goal 5 done:** OCR scan pipeline built + **verified in the Docker image** (Tesseract 5.3.0,

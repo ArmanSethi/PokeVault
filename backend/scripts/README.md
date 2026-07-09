@@ -5,6 +5,12 @@ so it builds its own by refreshing current prices and snapshotting them into
 `price_history` **once per day**. The job is idempotent (one row per
 card/source/variant/day), so re-running within a day updates rather than duplicates.
 
+**Scope: owned cards only.** The snapshot records history only for cards in at least one
+user's collection — that's all the app consumes (portfolio-value series + owned-card charts).
+Snapshotting the whole ~52k-card catalog daily would add ~30 MB/day and exhaust the Supabase
+free tier in weeks; owned-only keeps it to well under 1 MB/day. `sync_catalog` refreshes the
+catalog + current prices but no longer writes history.
+
 Two ways to schedule it. Production uses the GitHub Action; the local options are for
 running the daily job off your own machine.
 

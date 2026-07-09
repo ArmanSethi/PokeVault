@@ -5,6 +5,33 @@ Detailed rationale lives in `docs/`.
 
 ---
 
+## 2026-07-09 — Price history: owned-cards-only snapshot (free-tier fix) ✅
+
+**Problem:** the daily snapshot wrote a `price_history` row for every priced card (~52k) →
+measured **~30 MB/day**, which fills the 500 MB Supabase free tier in ~2 weeks. Weekly cadence
+would only delay that. Kept **daily** (best for charts) and fixed the **scope** instead.
+
+- `snapshot_prices.py`: `_snapshot_statement()` + eligible count now filter
+  `card_id IN (SELECT card_id FROM collection_entries)` — history only for owned cards.
+- `sync_catalog.py`: **stopped writing price_history inline** (it ran first in the daily job and
+  was the real 52k-row writer); dropped `_upsert_price_history` + the `PriceHistory` import. It
+  still refreshes the catalog + `card_prices_current` (fixed-size upsert, no growth).
+- `tests/test_history.py`: rewrote the snapshot test to seed a `User` + `CollectionEntry` and
+  assert owned-only (priced-but-un-owned card excluded, null market excluded). 10/10 history+
+  pricing tests green; ruff clean.
+- **Verified live:** the owned-only snapshot wrote **6 rows** (test user's owned cards) instead
+  of ~52k.
+
+**Gotcha / open item:** a one-time prune of the existing ~52k un-owned backlog
+(`DELETE FROM price_history WHERE card_id NOT IN (SELECT card_id FROM collection_entries)` +
+`VACUUM FULL`) was **blocked by the auto-mode safety classifier** (bulk delete on the live DB).
+It's non-essential (future growth is already fixed); left for the user to run/authorize. Script:
+`scratchpad/prune_history.py`.
+
+**Cadence unchanged:** `.github/workflows/daily-snapshot.yml` stays daily 08:00 UTC.
+
+---
+
 ## 2026-07-09 — Frontend UX & performance overhaul ✅
 
 Made the SPA smoother, faster, more polished, mobile/accessible, and added catalog/collection

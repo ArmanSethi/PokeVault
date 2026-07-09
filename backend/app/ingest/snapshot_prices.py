@@ -23,9 +23,15 @@ from sqlalchemy.dialects.postgresql import insert
 # (e.g. CardPriceCurrent.card -> Card) when this job runs standalone via `python -m ...`.
 import app.db.base  # noqa: F401
 from app.db.session import SessionLocal
+from app.models.collection import CollectionEntry
 from app.models.price import CardPriceCurrent, PriceHistory
 
 logger = logging.getLogger("app.ingest.snapshot_prices")
+
+# Only cards that at least one user owns get a daily history row. price_history is only
+# consumed for owned cards (portfolio-value series + owned-card charts), so snapshotting the
+# whole ~52k-card catalog daily would just burn the Supabase free-tier quota (~30 MB/day).
+_owned_card_ids = select(CollectionEntry.card_id).distinct()
 
 
 def _snapshot_statement():
@@ -37,7 +43,10 @@ def _snapshot_statement():
         CardPriceCurrent.market.label("market_price"),
         CardPriceCurrent.currency,
         func.current_date().label("snapshot_date"),
-    ).where(CardPriceCurrent.market.is_not(None))
+    ).where(
+        CardPriceCurrent.market.is_not(None),
+        CardPriceCurrent.card_id.in_(_owned_card_ids),
+    )
 
     stmt = insert(PriceHistory).from_select(
         ["card_id", "source", "variant", "market_price", "currency", "snapshot_date"],
@@ -58,7 +67,10 @@ async def snapshot(*, dry_run: bool = False) -> int:
         eligible = await session.scalar(
             select(func.count())
             .select_from(CardPriceCurrent)
-            .where(CardPriceCurrent.market.is_not(None))
+            .where(
+                CardPriceCurrent.market.is_not(None),
+                CardPriceCurrent.card_id.in_(_owned_card_ids),
+            )
         )
         eligible = eligible or 0
         if dry_run:

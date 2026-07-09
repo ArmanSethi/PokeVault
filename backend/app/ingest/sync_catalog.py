@@ -29,7 +29,7 @@ from app.db.session import SessionLocal
 from app.ingest import mappers
 from app.ingest.client import PokemonTcgClient
 from app.models.card import Card, Set
-from app.models.price import CardPriceCurrent, PriceHistory
+from app.models.price import CardPriceCurrent
 
 logger = logging.getLogger("app.ingest.sync_catalog")
 
@@ -75,24 +75,6 @@ async def _upsert_prices(session: AsyncSession, rows: list[dict]) -> None:
     await session.execute(stmt.on_conflict_do_update(index_elements=list(key), set_=update))
 
 
-async def _upsert_price_history(session: AsyncSession, rows: list[dict]) -> None:
-    # One market observation per (card, source, variant, day). Re-running on the same
-    # day refreshes today's row; distinct days accumulate for trend charts.
-    key = ("card_id", "source", "variant", "snapshot_date")
-    if not rows:
-        return
-    rows = [{**r, "snapshot_date": func.current_date()} for r in rows]
-    # Dedupe by the full conflict key (snapshot_date is uniform within a run).
-    rows = _dedupe(rows, ("card_id", "source", "variant"))
-    stmt = insert(PriceHistory).values(rows)
-    update = {k: getattr(stmt.excluded, k) for k in rows[0] if k not in key}
-    await session.execute(
-        stmt.on_conflict_do_update(
-            constraint="uq_price_history_card_source_variant_day", set_=update
-        )
-    )
-
-
 async def sync(
     *,
     start_at: str | None = None,
@@ -125,42 +107,40 @@ async def sync(
             cards = [c async for c in client.iter_cards(set_id)]
 
             price_rows: list[dict] = []
-            history_rows: list[dict] = []
             for c in cards:
                 price_rows.extend(mappers.price_rows_from_card(c))
-                history_rows.extend(mappers.history_rows_from_card(c))
 
             if dry_run:
                 logger.info(
-                    "[%d/%d] %s %s - %d cards, %d price rows, %d history rows (dry-run)",
+                    "[%d/%d] %s %s - %d cards, %d price rows (dry-run)",
                     i,
                     total_n,
                     set_id,
                     s.get("name"),
                     len(cards),
                     len(price_rows),
-                    len(history_rows),
                 )
                 return
 
             # Batch per set: a handful of multi-row upserts instead of thousands of
             # per-row round-trips over the pooler. Still idempotent and committed per set.
+            # Price *history* is NOT written here — the daily snapshot job records history for
+            # owned cards only (app/ingest/snapshot_prices.py). This job only keeps the catalog
+            # and current prices fresh (card_prices_current is a fixed-size upsert table).
             async with SessionLocal() as session:
                 await _upsert_sets(session, [mappers.set_to_values(s)])
                 await _upsert_cards(session, [mappers.card_to_values(c) for c in cards])
                 await _upsert_prices(session, price_rows)
-                await _upsert_price_history(session, history_rows)
                 await session.commit()
 
             logger.info(
-                "[%d/%d] %s %s - %d cards, %d price rows, %d history rows",
+                "[%d/%d] %s %s - %d cards, %d price rows",
                 i,
                 total_n,
                 set_id,
                 s.get("name"),
                 len(cards),
                 len(price_rows),
-                len(history_rows),
             )
 
         # Process each set independently. The pokemontcg.io API intermittently returns

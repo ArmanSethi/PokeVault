@@ -16,7 +16,9 @@ from app.core import security
 from app.core.config import settings
 from app.ingest.snapshot_prices import _snapshot_statement
 from app.models.card import Card, Set
+from app.models.collection import CollectionEntry
 from app.models.price import CardPriceCurrent, PriceHistory
+from app.models.user import User
 
 _ISSUER = "https://test.supabase.co/auth/v1"
 _COLL = f"{settings.API_V1_PREFIX}/collection"
@@ -34,9 +36,7 @@ def signing_key(monkeypatch):
     monkeypatch.setattr(
         security,
         "_jwk_client",
-        SimpleNamespace(
-            get_signing_key_from_jwt=lambda _t: SimpleNamespace(key=priv.public_key())
-        ),
+        SimpleNamespace(get_signing_key_from_jwt=lambda _t: SimpleNamespace(key=priv.public_key())),
     )
     return priv
 
@@ -70,8 +70,12 @@ async def cards(db_session):
 
 def _ph(card_id, variant, day, price) -> PriceHistory:
     return PriceHistory(
-        card_id=card_id, source="tcgplayer", variant=variant,
-        market_price=Decimal(price), currency="USD", snapshot_date=day,
+        card_id=card_id,
+        source="tcgplayer",
+        variant=variant,
+        market_price=Decimal(price),
+        currency="USD",
+        snapshot_date=day,
     )
 
 
@@ -94,37 +98,67 @@ async def history_rows(db_session, cards):
     await db_session.flush()
 
 
-async def test_snapshot_job_idempotent(db_session, cards):
+async def test_snapshot_job_owned_only_and_idempotent(db_session, cards):
+    # tst1-1 is OWNED (in a collection); tst1-2 is priced but NOT owned.
+    uid = uuid.uuid4()
+    db_session.add(User(id=uid, email="owner@pokevault.dev"))
+    await db_session.flush()
+    db_session.add(CollectionEntry(user_id=uid, card_id="tst1-1", quantity=1))
     db_session.add_all(
         [
-            CardPriceCurrent(card_id="tst1-1", source="tcgplayer", variant="normal",
-                             market=Decimal("1.00"), currency="USD"),
-            CardPriceCurrent(card_id="tst1-1", source="tcgplayer", variant="holofoil",
-                             market=Decimal("10.00"), currency="USD"),
-            # Null market must be excluded from the snapshot.
-            CardPriceCurrent(card_id="tst1-2", source="tcgplayer", variant="normal",
-                             market=None, currency="USD"),
+            CardPriceCurrent(
+                card_id="tst1-1",
+                source="tcgplayer",
+                variant="normal",
+                market=Decimal("1.00"),
+                currency="USD",
+            ),
+            CardPriceCurrent(
+                card_id="tst1-1",
+                source="tcgplayer",
+                variant="holofoil",
+                market=Decimal("10.00"),
+                currency="USD",
+            ),
+            # Null market must be excluded even for an owned card.
+            CardPriceCurrent(
+                card_id="tst1-1",
+                source="tcgplayer",
+                variant="reverseHolofoil",
+                market=None,
+                currency="USD",
+            ),
+            # tst1-2 is priced but un-owned → must NOT be snapshotted (owned-only).
+            CardPriceCurrent(
+                card_id="tst1-2",
+                source="tcgplayer",
+                variant="normal",
+                market=Decimal("5.00"),
+                currency="USD",
+            ),
         ]
     )
     await db_session.flush()
 
-    # Scope to the seeded cards; the shared DB also holds committed sv3 rows.
-    async def _today_count() -> int:
+    async def _today_count(card_id: str) -> int:
         return await db_session.scalar(
             select(func.count())
             .select_from(PriceHistory)
             .where(
                 PriceHistory.snapshot_date == func.current_date(),
-                PriceHistory.card_id.in_(["tst1-1", "tst1-2"]),
+                PriceHistory.card_id == card_id,
             )
         )
 
     await db_session.execute(_snapshot_statement())
-    assert await _today_count() == 2  # the two priced rows, not the null one
+    # Owned card: 2 priced rows (normal + holofoil), not the null one.
+    assert await _today_count("tst1-1") == 2
+    # Un-owned card is excluded despite having a price.
+    assert await _today_count("tst1-2") == 0
 
     # Re-running the same day updates in place — no duplicate rows.
     await db_session.execute(_snapshot_statement())
-    assert await _today_count() == 2
+    assert await _today_count("tst1-1") == 2
 
     # The snapshot copied the current market price into today's history.
     price = await db_session.scalar(

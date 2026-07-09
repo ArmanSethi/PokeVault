@@ -57,7 +57,12 @@ class Settings(BaseSettings):
 
     # CORS. NoDecode stops pydantic-settings from JSON-parsing the env value so the
     # validator below can accept a plain comma-separated string (e.g. "a,b,c").
-    BACKEND_CORS_ORIGINS: Annotated[list[str], NoDecode] = ["http://localhost:5173"]
+    # localhost and 127.0.0.1 are distinct CORS origins — allow both so the Vite
+    # dev server works regardless of which host it binds to.
+    BACKEND_CORS_ORIGINS: Annotated[list[str], NoDecode] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod

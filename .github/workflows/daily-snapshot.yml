@@ -18,28 +18,64 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # Secrets are injected once at the job level so every step (preflight + run) sees them.
+    # Set them under Settings -> Secrets and variables -> Actions. Never commit them.
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      POKEMONTCG_API_KEY: ${{ secrets.POKEMONTCG_API_KEY }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
     defaults:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        # v8 publishes only immutable tags (no floating @v8) — pin an exact version.
+        uses: astral-sh/setup-uv@v8.3.2
         with:
           python-version: "3.11"
+
+      - name: Preflight — required secrets and DATABASE_URL shape
+        shell: bash
+        run: |
+          set -uo pipefail
+          fail=0
+          [ -z "${DATABASE_URL:-}" ] && { echo "::error::Required secret DATABASE_URL is not set. Add it under Settings → Secrets and variables → Actions."; fail=1; }
+          [ -z "${POKEMONTCG_API_KEY:-}" ] && { echo "::error::Required secret POKEMONTCG_API_KEY is not set."; fail=1; }
+          [ -z "${SUPABASE_URL:-}" ] && { echo "::error::Required secret SUPABASE_URL is not set."; fail=1; }
+          # DATABASE_URL must be the asyncpg Supabase *session pooler* URL — never a bare
+          # postgresql://, the transaction pooler (6543), or the IPv6 direct host.
+          # (Checks avoid printing the value; GitHub also masks registered secrets.)
+          case "${DATABASE_URL:-}" in
+            postgresql+asyncpg://*) ;;
+            "") ;;  # already reported as missing above
+            *) echo "::error::DATABASE_URL must start with 'postgresql+asyncpg://' (got a different driver/scheme)."; fail=1 ;;
+          esac
+          case "${DATABASE_URL:-}" in
+            *pooler.supabase.com*) ;;
+            "") ;;
+            *) echo "::error::DATABASE_URL must use the Supabase session-pooler host (…pooler.supabase.com)."; fail=1 ;;
+          esac
+          case "${DATABASE_URL:-}" in
+            *db.*.supabase.co*) echo "::error::DATABASE_URL points at the IPv6 direct host (db.<ref>.supabase.co); use the session pooler."; fail=1 ;;
+          esac
+          case "${DATABASE_URL:-}" in
+            *:6543/*) echo "::error::DATABASE_URL uses the transaction pooler (port 6543); use the session pooler (port 5432)."; fail=1 ;;
+          esac
+          if [ "$fail" -ne 0 ]; then
+            echo "Preflight failed — see the ::error:: annotations above."
+            exit 1
+          fi
+          echo "Preflight OK: required secrets present and DATABASE_URL is the asyncpg session-pooler URL."
 
       - name: Install dependencies
         run: uv sync --frozen
 
       - name: Refresh current prices from pokemontcg.io + snapshot today's history
-        env:
-          # Set these as repository Actions secrets (Settings -> Secrets and variables ->
-          # Actions). Never commit them. DATABASE_URL uses the +asyncpg session-pooler URL.
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          POKEMONTCG_API_KEY: ${{ secrets.POKEMONTCG_API_KEY }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        shell: bash
         run: |
+          set -euo pipefail
           # sync_catalog refreshes card_prices_current AND writes today's price_history
           # inline; snapshot_prices then guarantees every priced row has today's history row.
           uv run python -m app.ingest.sync_catalog

@@ -8,6 +8,9 @@ import type {
   CollectionEntryCreate,
   CollectionEntryUpdate,
   CollectionSummary,
+  ImportConfirmResult,
+  ImportConfirmRow,
+  ImportPreview,
   PortfolioValueSeries,
   ScanResult,
   User,
@@ -128,5 +131,27 @@ export const api = {
       { method: "POST", body: form },
       { auth: true },
     );
+  },
+
+  // ---- import / export ----
+  importPreview: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<ImportPreview>(
+      "/collection/import",
+      { method: "POST", body: form },
+      { auth: true },
+    );
+  },
+  importConfirm: (rows: ImportConfirmRow[]) =>
+    request<ImportConfirmResult>(
+      "/collection/import/confirm",
+      { method: "POST", body: JSON.stringify({ rows }) },
+      { auth: true },
+    ),
+  exportCollection: async (): Promise<Blob> => {
+    const resp = await fetch(`${API_URL}/collection/export`, { headers: await authHeader() });
+    if (!resp.ok) throw new ApiError(resp.status, `Export failed (${resp.status})`);
+    return resp.blob();
   },
 };

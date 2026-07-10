@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     API_V1_PREFIX: str = "/api/v1"
 
+    # Public origin of the web app (Vercel), used to build absolute URLs in the sitemap so
+    # they point at the indexable SPA pages rather than the API host. No trailing slash.
+    PUBLIC_WEB_ORIGIN: str = "http://localhost:5173"
+
     # Database (Supabase-managed Postgres)
     DATABASE_URL: str = Field(
         default="postgresql+asyncpg://postgres:postgres@localhost:5432/postgres",

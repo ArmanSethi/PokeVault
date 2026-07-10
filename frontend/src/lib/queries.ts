@@ -12,6 +12,7 @@ import type {
   CollectionEntry,
   CollectionEntryCreate,
   CollectionEntryUpdate,
+  ImportConfirmRow,
 } from "../types";
 
 interface CardsParams {
@@ -151,6 +152,18 @@ export function useUpdateEntry() {
       if (ctx?.prev) qc.setQueryData(qk.collection, ctx.prev);
     },
     onSettled: () => invalidateCollection(qc),
+  });
+}
+
+export function useImportPreview() {
+  return useMutation({ mutationFn: (file: File) => api.importPreview(file) });
+}
+
+export function useConfirmImport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (rows: ImportConfirmRow[]) => api.importConfirm(rows),
+    onSuccess: () => invalidateCollection(qc),
   });
 }
 

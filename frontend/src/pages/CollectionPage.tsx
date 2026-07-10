@@ -5,6 +5,7 @@ import { money } from "../lib/format";
 import { EmptyState, ErrorState } from "../components/States";
 import { TableSkeleton } from "../components/Skeleton";
 import { useToast } from "../components/Toast";
+import { ImportExportPanel } from "../components/ImportExportPanel";
 import type { CollectionEntry } from "../types";
 
 type SortKey = "name" | "value" | "quantity";
@@ -18,6 +19,7 @@ export function CollectionPage() {
   const toast = useToast();
 
   const [editing, setEditing] = useState<CollectionEntry | null>(null);
+  const [showImport, setShowImport] = useState(false);
   const [sort, setSort] = useState<SortKey>("value");
   const [setFilter, setSetFilter] = useState("");
   const [foilOnly, setFoilOnly] = useState(false);
@@ -51,8 +53,20 @@ export function CollectionPage() {
   if (rows.length === 0) {
     return (
       <>
-        <h1 className="mb-4 text-2xl font-bold">Collection</h1>
-        <EmptyState title="No cards yet" hint="Add cards from the catalog or the scan page." />
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold">Collection</h1>
+          <button
+            onClick={() => setShowImport(true)}
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+          >
+            Import / Export
+          </button>
+        </div>
+        <EmptyState
+          title="No cards yet"
+          hint="Add cards from the catalog or scan page — or import a CSV from another tracker."
+        />
+        {showImport && <ImportExportPanel onClose={() => setShowImport(false)} />}
       </>
     );
   }
@@ -76,6 +90,12 @@ export function CollectionPage() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Collection</h1>
         <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setShowImport(true)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+          >
+            Import / Export
+          </button>
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
@@ -189,6 +209,8 @@ export function CollectionPage() {
           }}
         />
       )}
+
+      {showImport && <ImportExportPanel onClose={() => setShowImport(false)} />}
     </>
   );
 }

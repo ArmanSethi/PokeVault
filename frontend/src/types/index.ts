@@ -134,4 +134,55 @@ export interface ScanResult {
 export interface User {
   id: string;
   email: string | null;
+  handle?: string | null;
+  is_public?: boolean;
+}
+
+// ---- import / export ----
+
+export type ImportRowStatus = "matched" | "ambiguous" | "unmatched";
+
+export interface ImportCandidate {
+  card_id: string;
+  name: string;
+  set_id: string;
+  number: string;
+  image_url: string | null;
+  confidence: number;
+}
+
+export interface ImportRow {
+  row_index: number;
+  name: string | null;
+  number: string | null;
+  set_name: string | null;
+  quantity: number;
+  condition: string | null;
+  is_foil: boolean;
+  acquired_price: string | null;
+  status: ImportRowStatus;
+  candidates: ImportCandidate[];
+  selected_card_id: string | null;
+}
+
+export interface ImportPreview {
+  rows: ImportRow[];
+  matched: number;
+  ambiguous: number;
+  unmatched: number;
+  total: number;
+}
+
+export interface ImportConfirmRow {
+  card_id: string;
+  quantity?: number;
+  condition?: string | null;
+  is_foil?: boolean;
+  acquired_price?: number | null;
+  notes?: string | null;
+}
+
+export interface ImportConfirmResult {
+  added: number;
+  skipped: number;
 }

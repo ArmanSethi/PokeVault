@@ -140,7 +140,10 @@ async def test_update_and_delete(auth_client, seed, signing_key) -> None:
     assert body["quantity"] == 4
     assert body["condition"] == "NM"
     assert body["grade"] == "PSA 9"
-    assert _money(body["market_value"]) == 20.00  # 5.00 * 4
+    # Grade-aware valuation: PSA 9 is worth 2x the raw price (see app/services/grading.py).
+    assert body["grade_multiplier"] == 2.0
+    assert _money(body["market_price"]) == 10.00  # 5.00 raw * 2.0 (PSA 9)
+    assert _money(body["market_value"]) == 40.00  # 10.00 * 4 copies
 
     assert (
         await auth_client.patch(f"{_ME}/999999", json={"quantity": 1}, headers=a)

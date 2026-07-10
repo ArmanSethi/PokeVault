@@ -14,11 +14,14 @@ from sqlalchemy.orm import selectinload
 from app.models.card import Card
 from app.models.collection import CollectionEntry
 from app.schemas.collection import CollectionEntryRead, CollectionSummary, SetHolding
-from app.services.cards import market_price_for_entry
+from app.services.grading import grade_multiplier, graded_unit_price
 
 
 def _to_entry_read(entry: CollectionEntry) -> CollectionEntryRead:
-    unit = market_price_for_entry(entry.card.prices_current, is_foil=entry.is_foil)
+    # Grade-aware: PSA-graded copies are worth a multiple of the raw price (see grading.py).
+    unit = graded_unit_price(
+        entry.card.prices_current, is_foil=entry.is_foil, grade=entry.grade
+    )
     value = unit * entry.quantity if unit is not None else None
     return CollectionEntryRead(
         id=entry.id,
@@ -33,6 +36,7 @@ def _to_entry_read(entry: CollectionEntry) -> CollectionEntryRead:
         updated_at=entry.updated_at,
         market_price=unit,
         market_value=value,
+        grade_multiplier=float(grade_multiplier(entry.grade)),
     )
 
 
@@ -83,7 +87,7 @@ async def collection_summary(
 
     for entry in entries:
         card = entry.card
-        unit = market_price_for_entry(card.prices_current, is_foil=entry.is_foil)
+        unit = graded_unit_price(card.prices_current, is_foil=entry.is_foil, grade=entry.grade)
         line_value = unit * entry.quantity if unit is not None else Decimal("0")
 
         total_quantity += entry.quantity

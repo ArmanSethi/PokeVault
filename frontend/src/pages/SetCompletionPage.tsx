@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useCards, useCollection, useSummary } from "../lib/queries";
+import { useAllSetCards, useCollection, useSummary } from "../lib/queries";
 import { money, pct } from "../lib/format";
 import { EmptyState, ErrorState } from "../components/States";
 import { TableSkeleton } from "../components/Skeleton";
@@ -89,7 +89,7 @@ export function SetCompletionPage() {
 
 /** Lazily loads a set's cards and lists the cheapest cards still missing, with a total. */
 function CostToComplete({ setId, ownedIds }: { setId: string; ownedIds: Set<string> }) {
-  const cards = useCards({ set_id: setId, sort: "number", limit: 300 });
+  const cards = useAllSetCards(setId);
 
   const missing = useMemo(() => {
     const all = cards.data ?? [];

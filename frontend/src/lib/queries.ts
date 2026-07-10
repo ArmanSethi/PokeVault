@@ -75,6 +75,33 @@ export function useCards(params: CardsParams) {
   });
 }
 
+// Backend caps `limit` at 250 per request; some sets exceed that (e.g. swshp has 304 cards),
+// so fetch a whole set by paging through with the max allowed page size.
+const SET_PAGE = 250;
+
+/** Load *all* cards in a set (paged within the server's per-request cap). */
+export function useAllSetCards(setId: string) {
+  return useQuery({
+    queryKey: ["allSetCards", setId],
+    enabled: Boolean(setId),
+    staleTime: 5 * 60 * 1000, // catalog is effectively static
+    queryFn: async () => {
+      const all: Awaited<ReturnType<typeof api.listCards>> = [];
+      for (let offset = 0; ; offset += SET_PAGE) {
+        const page = await api.listCards({
+          set_id: setId,
+          sort: "number",
+          limit: SET_PAGE,
+          offset,
+        });
+        all.push(...page);
+        if (page.length < SET_PAGE) break; // last (short) page reached
+      }
+      return all;
+    },
+  });
+}
+
 const CATALOG_PAGE = 24;
 
 /** Paginated catalog browse with "load more" (offset-based). */

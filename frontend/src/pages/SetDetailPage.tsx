@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import { useCards, useSet } from "../lib/queries";
+import { useAllSetCards, useSet } from "../lib/queries";
 import { CardTile } from "../components/CardTile";
 import { EmptyState, ErrorState } from "../components/States";
 import { CardGridSkeleton } from "../components/Skeleton";
@@ -9,7 +9,7 @@ import { Meta } from "../components/Meta";
 export function SetDetailPage() {
   const { id = "" } = useParams();
   const set = useSet(id);
-  const cards = useCards({ set_id: id, sort: "number", limit: 300 });
+  const cards = useAllSetCards(id);
 
   if (set.isPending) return <CardGridSkeleton />;
   if (set.isError)

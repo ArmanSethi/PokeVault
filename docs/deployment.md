@@ -34,6 +34,8 @@ frontend).
    - `DATABASE_URL` — the `postgresql+asyncpg://…pooler.supabase.com:5432/postgres` URL.
    - `POKEMONTCG_API_KEY`, `SUPABASE_URL`.
    - `BACKEND_CORS_ORIGINS` — set **after** step 3 to your Vercel URL (comma-separated if more).
+   - `PUBLIC_WEB_ORIGIN` — your Vercel URL, no trailing slash (used to build absolute
+     `/api/v1/sitemap.xml` URLs; set **after** step 3, same value as the CORS origin).
 3. Deploy. Health check: `https://<your-api>.onrender.com/api/v1/health` → `{"status":"ok"}`.
    (Free web services sleep when idle; the first request after a while cold-starts.)
 

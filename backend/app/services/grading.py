@@ -19,16 +19,16 @@ from app.services.cards import market_price_for_entry
 # PSA grade (1-10) -> multiplier applied to the raw market price. PSA 10 (Gem Mint) carries
 # the largest premium; low grades sit near or slightly below raw. Tune these freely.
 PSA_MULTIPLIERS: dict[int, Decimal] = {
-    10: Decimal("4.0"),
+    10: Decimal("5.0"),
     9: Decimal("2.0"),
-    8: Decimal("1.5"),
-    7: Decimal("1.2"),
+    8: Decimal("1.35"),
+    7: Decimal("1.1"),
     6: Decimal("1.0"),
-    5: Decimal("0.95"),
-    4: Decimal("0.9"),
-    3: Decimal("0.85"),
-    2: Decimal("0.8"),
-    1: Decimal("0.75"),
+    5: Decimal("0.9"),
+    4: Decimal("0.8"),
+    3: Decimal("0.7"),
+    2: Decimal("0.6"),
+    1: Decimal("0.5"),
 }
 RAW_MULTIPLIER = Decimal("1.0")
 

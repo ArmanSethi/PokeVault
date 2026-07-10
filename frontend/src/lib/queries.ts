@@ -12,6 +12,9 @@ import type {
   CollectionEntry,
   CollectionEntryCreate,
   CollectionEntryUpdate,
+  ImportConfirmRow,
+  ProfileUpdate,
+  WishlistItemCreate,
 } from "../types";
 
 interface CardsParams {
@@ -33,12 +36,27 @@ export const qk = {
   collection: ["collection"] as const,
   summary: ["summary"] as const,
   portfolioHistory: ["portfolioHistory"] as const,
+  me: ["me"] as const,
+  achievements: ["achievements"] as const,
+  wishlist: ["wishlist"] as const,
+  alerts: ["alerts"] as const,
+  publicProfile: (handle: string) => ["publicProfile", handle] as const,
+  publicCollection: (handle: string) => ["publicCollection", handle] as const,
 };
 
 // ---- catalog (long-lived cache) ----
 
 export function useSets() {
   return useQuery({ queryKey: qk.sets, queryFn: () => api.listSets({ limit: 500 }) });
+}
+
+export function useSet(id: string) {
+  return useQuery({
+    queryKey: ["set", id],
+    queryFn: () => api.getSet(id),
+    enabled: Boolean(id),
+    staleTime: 5 * 60 * 1000,
+  });
 }
 
 export function useRarities() {
@@ -118,6 +136,11 @@ function invalidateCollection(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: qk.collection });
   qc.invalidateQueries({ queryKey: qk.summary });
   qc.invalidateQueries({ queryKey: qk.portfolioHistory });
+  qc.invalidateQueries({ queryKey: qk.achievements }); // badges/level derive from holdings
+}
+
+export function useAchievements() {
+  return useQuery({ queryKey: qk.achievements, queryFn: () => api.achievements(), staleTime: 0 });
 }
 
 export function useAddEntry() {
@@ -151,6 +174,76 @@ export function useUpdateEntry() {
       if (ctx?.prev) qc.setQueryData(qk.collection, ctx.prev);
     },
     onSettled: () => invalidateCollection(qc),
+  });
+}
+
+// ---- profile + public showcases ----
+
+export function useMe() {
+  return useQuery({ queryKey: qk.me, queryFn: () => api.me() });
+}
+
+export function useUpdateProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: ProfileUpdate) => api.updateProfile(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.me }),
+  });
+}
+
+export function usePublicProfile(handle: string) {
+  return useQuery({
+    queryKey: qk.publicProfile(handle),
+    queryFn: () => api.publicProfile(handle),
+    enabled: Boolean(handle),
+    retry: false,
+  });
+}
+
+export function usePublicCollection(handle: string) {
+  return useQuery({
+    queryKey: qk.publicCollection(handle),
+    queryFn: () => api.publicCollection(handle),
+    enabled: Boolean(handle),
+    retry: false,
+  });
+}
+
+// ---- wishlist + alerts ----
+
+export function useWishlist() {
+  return useQuery({ queryKey: qk.wishlist, queryFn: () => api.listWishlist(), staleTime: 0 });
+}
+
+export function useAlerts() {
+  return useQuery({ queryKey: qk.alerts, queryFn: () => api.listAlerts() });
+}
+
+export function useAddWishlist() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: WishlistItemCreate) => api.addWishlist(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.wishlist }),
+  });
+}
+
+export function useDeleteWishlist() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.deleteWishlist(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.wishlist }),
+  });
+}
+
+export function useImportPreview() {
+  return useMutation({ mutationFn: (file: File) => api.importPreview(file) });
+}
+
+export function useConfirmImport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (rows: ImportConfirmRow[]) => api.importConfirm(rows),
+    onSuccess: () => invalidateCollection(qc),
   });
 }
 

@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_session
+from app.schemas.achievements import AchievementsRead
 from app.schemas.collection import (
     CollectionEntryCreate,
     CollectionEntryRead,
@@ -18,6 +19,7 @@ from app.schemas.collection import (
     CollectionSummary,
 )
 from app.schemas.history import PortfolioValueSeries
+from app.services import achievements as achievements_service
 from app.services import collection as collection_service
 from app.services import history as history_service
 from app.services import valuation as valuation_service
@@ -50,6 +52,12 @@ async def add_entry(
 async def collection_summary(user: CurrentUser, session: SessionDep) -> CollectionSummary:
     """Portfolio value, cost basis, and per-set breakdown with completion (USD)."""
     return await valuation_service.collection_summary(session, user.id)
+
+
+@router.get("/achievements", response_model=AchievementsRead)
+async def achievements(user: CurrentUser, session: SessionDep) -> AchievementsRead:
+    """Collector level, XP progress, earned badges, and activity streak."""
+    return await achievements_service.compute_achievements(session, user.id)
 
 
 @router.get("/history", response_model=PortfolioValueSeries)

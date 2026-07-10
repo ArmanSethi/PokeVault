@@ -15,14 +15,13 @@ import re
 
 import pytesseract
 from PIL import Image, ImageOps
-from rapidfuzz import fuzz, process
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.card import Card
 from app.models.price import CardPriceCurrent
 from app.schemas.scan import ScanCandidate, ScanResult
 from app.services.cards import select_primary_price
+from app.services.matching import match_card
 
 # Collector number like "125/198" (number / set total) or a bare leading number.
 _NUMBER_RE = re.compile(r"\b(\d{1,3})\s*/\s*(\d{1,4})\b")
@@ -126,51 +125,23 @@ async def propose_candidates(
     if not name and not number:
         return ScanResult(detected_name=None, detected_number=None, candidates=[])
 
-    # Lightweight columns only — scoring 15k names must not load ORM rows + prices.
-    cols = select(Card.id, Card.name, Card.number, Card.set_id, Card.image_small)
-    if number:
-        # A collector number narrows the pool to ~one card per set: high precision.
-        pool = (await session.execute(cols.where(Card.number == number))).all()
-    else:
-        pool = []
-    if not pool:
-        pool = (await session.execute(cols)).all()
+    # Fuzzy-match the OCR read-out against the catalog (shared with CSV import).
+    matches = await match_card(
+        session, name, number, limit=limit, min_confidence=min_confidence
+    )
 
-    scored: list[tuple[float, tuple]] = []
-    if name:
-        names = [row.name for row in pool]
-        # process.extract is fast over the full name list; map results back to rows.
-        matches = process.extract(name, names, scorer=fuzz.WRatio, limit=max(limit * 4, 20))
-        idx_by_pos = {i: pool[i] for i in range(len(pool))}
-        for _matched_name, score, pos in matches:
-            row = idx_by_pos[pos]
-            name_score = score / 100.0
-            num_match = bool(number and row.number == number)
-            if number:
-                confidence = 0.6 * name_score + 0.4 * (1.0 if num_match else 0.0)
-            else:
-                confidence = name_score
-            scored.append((confidence, row))
-    else:
-        # Number only: every pooled row shares the number; rank by set recency-agnostic id.
-        for row in pool:
-            scored.append((0.5, row))
-
-    scored.sort(key=lambda t: t[0], reverse=True)
-    top = [(conf, row) for conf, row in scored if conf >= min_confidence][:limit]
-
-    prices = await _prices_for(session, [row.id for _c, row in top])
+    prices = await _prices_for(session, [m.card_id for m in matches])
     candidates = [
         ScanCandidate(
-            card_id=row.id,
-            name=row.name,
-            set_id=row.set_id,
-            number=row.number,
-            image_url=row.image_small,
-            market_price=(prices[row.id].market if row.id in prices else None),
-            currency=(prices[row.id].currency if row.id in prices else None),
-            confidence=round(float(conf), 3),
+            card_id=m.card_id,
+            name=m.name,
+            set_id=m.set_id,
+            number=m.number,
+            image_url=m.image_url,
+            market_price=(prices[m.card_id].market if m.card_id in prices else None),
+            currency=(prices[m.card_id].currency if m.card_id in prices else None),
+            confidence=m.confidence,
         )
-        for conf, row in top
+        for m in matches
     ]
     return ScanResult(detected_name=name, detected_number=number, candidates=candidates)

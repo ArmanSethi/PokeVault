@@ -1,5 +1,7 @@
 import { supabase } from "./supabase";
 import type {
+  Achievements,
+  Alert,
   Card,
   CardPriceHistory,
   CardSet,
@@ -8,9 +10,17 @@ import type {
   CollectionEntryCreate,
   CollectionEntryUpdate,
   CollectionSummary,
+  ImportConfirmResult,
+  ImportConfirmRow,
+  ImportPreview,
   PortfolioValueSeries,
+  ProfileUpdate,
+  PublicCollection,
+  PublicProfile,
   ScanResult,
   User,
+  WishlistItem,
+  WishlistItemCreate,
 } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1";
@@ -96,8 +106,16 @@ export const api = {
   cardHistory: (id: string, params: { variant?: string; days?: number } = {}) =>
     request<CardPriceHistory>(`/cards/${encodeURIComponent(id)}/history${qs(params)}`),
 
-  // ---- auth ----
+  // ---- auth / profile ----
   me: () => request<User>("/me", {}, { auth: true }),
+  updateProfile: (data: ProfileUpdate) =>
+    request<User>("/me", { method: "PATCH", body: JSON.stringify(data) }, { auth: true }),
+
+  // ---- public showcases (no auth) ----
+  publicProfile: (handle: string) =>
+    request<PublicProfile>(`/public/u/${encodeURIComponent(handle)}`),
+  publicCollection: (handle: string) =>
+    request<PublicCollection>(`/public/u/${encodeURIComponent(handle)}/collection`),
 
   // ---- collection (auth) ----
   listCollection: () => request<CollectionEntry[]>("/collection", {}, { auth: true }),
@@ -116,8 +134,21 @@ export const api = {
   deleteEntry: (id: number) =>
     request<void>(`/collection/${id}`, { method: "DELETE" }, { auth: true }),
   summary: () => request<CollectionSummary>("/collection/summary", {}, { auth: true }),
+  achievements: () => request<Achievements>("/collection/achievements", {}, { auth: true }),
   portfolioHistory: (params: { days?: number } = {}) =>
     request<PortfolioValueSeries>(`/collection/history${qs(params)}`, {}, { auth: true }),
+
+  // ---- wishlist + alerts (auth) ----
+  listWishlist: () => request<WishlistItem[]>("/wishlist", {}, { auth: true }),
+  addWishlist: (data: WishlistItemCreate) =>
+    request<WishlistItem>(
+      "/wishlist",
+      { method: "POST", body: JSON.stringify(data) },
+      { auth: true },
+    ),
+  deleteWishlist: (id: number) =>
+    request<void>(`/wishlist/${id}`, { method: "DELETE" }, { auth: true }),
+  listAlerts: () => request<Alert[]>("/wishlist/alerts", {}, { auth: true }),
 
   // ---- scan ----
   scan: (file: File, limit = 5) => {
@@ -128,5 +159,27 @@ export const api = {
       { method: "POST", body: form },
       { auth: true },
     );
+  },
+
+  // ---- import / export ----
+  importPreview: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<ImportPreview>(
+      "/collection/import",
+      { method: "POST", body: form },
+      { auth: true },
+    );
+  },
+  importConfirm: (rows: ImportConfirmRow[]) =>
+    request<ImportConfirmResult>(
+      "/collection/import/confirm",
+      { method: "POST", body: JSON.stringify({ rows }) },
+      { auth: true },
+    ),
+  exportCollection: async (): Promise<Blob> => {
+    const resp = await fetch(`${API_URL}/collection/export`, { headers: await authHeader() });
+    if (!resp.ok) throw new ApiError(resp.status, `Export failed (${resp.status})`);
+    return resp.blob();
   },
 };

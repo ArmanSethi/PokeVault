@@ -2,9 +2,24 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from typing import Annotated
 
-from app.api.v1.endpoints import auth, cards, collection, scan, sets
+from fastapi import APIRouter, Depends
+from fastapi.responses import Response
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.deps import get_session
+from app.api.v1.endpoints import (
+    auth,
+    cards,
+    collection,
+    importer,
+    public,
+    scan,
+    sets,
+    wishlist,
+)
+from app.services import public as public_service
 
 api_router = APIRouter()
 
@@ -15,8 +30,20 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@api_router.get("/sitemap.xml", include_in_schema=False)
+async def sitemap(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> Response:
+    """XML sitemap of sets, cards, and public showcases (served behind a Vercel rewrite)."""
+    body = await public_service.build_sitemap(session)
+    return Response(content=body, media_type="application/xml")
+
+
 api_router.include_router(auth.router, prefix="/me", tags=["auth"])
 api_router.include_router(sets.router, prefix="/sets", tags=["sets"])
 api_router.include_router(cards.router, prefix="/cards", tags=["cards"])
 api_router.include_router(collection.router, prefix="/collection", tags=["collection"])
+api_router.include_router(importer.router, prefix="/collection", tags=["collection"])
 api_router.include_router(scan.router, prefix="/scan", tags=["scan"])
+api_router.include_router(wishlist.router, prefix="/wishlist", tags=["wishlist"])
+api_router.include_router(public.router, prefix="/public", tags=["public"])

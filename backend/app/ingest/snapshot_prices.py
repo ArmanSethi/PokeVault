@@ -16,7 +16,7 @@ import argparse
 import asyncio
 import logging
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, union
 from sqlalchemy.dialects.postgresql import insert
 
 # Import the full model registry so SQLAlchemy can resolve inter-model relationships
@@ -25,13 +25,20 @@ import app.db.base  # noqa: F401
 from app.db.session import SessionLocal
 from app.models.collection import CollectionEntry
 from app.models.price import CardPriceCurrent, PriceHistory
+from app.models.wishlist import WishlistItem
+from app.services.alerts import detect_and_log_alerts
 
 logger = logging.getLogger("app.ingest.snapshot_prices")
 
-# Only cards that at least one user owns get a daily history row. price_history is only
-# consumed for owned cards (portfolio-value series + owned-card charts), so snapshotting the
-# whole ~52k-card catalog daily would just burn the Supabase free-tier quota (~30 MB/day).
-_owned_card_ids = select(CollectionEntry.card_id).distinct()
+# Snapshot only cards someone owns OR wishlists. price_history is consumed for owned-card
+# charts + the portfolio series, and now also to detect wishlist price drops; snapshotting
+# the whole ~52k-card catalog daily would just burn the Supabase free-tier quota (~30 MB/day).
+# Wishlisted cards add negligible volume and keep alert prices fresh.
+_tracked = union(
+    select(CollectionEntry.card_id.label("card_id")),
+    select(WishlistItem.card_id.label("card_id")),
+).subquery()
+_owned_card_ids = select(_tracked.c.card_id)
 
 
 def _snapshot_statement():
@@ -80,6 +87,9 @@ async def snapshot(*, dry_run: bool = False) -> int:
         await session.execute(_snapshot_statement())
         await session.commit()
         logger.info("Snapshot complete: %d price_history rows for today.", eligible)
+
+        # With fresh prices + today's snapshot in place, fire wishlist price alerts.
+        await detect_and_log_alerts(session)
         return eligible
 
 

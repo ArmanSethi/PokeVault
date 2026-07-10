@@ -134,4 +134,146 @@ export interface ScanResult {
 export interface User {
   id: string;
   email: string | null;
+  handle?: string | null;
+  is_public?: boolean;
+}
+
+// ---- import / export ----
+
+export type ImportRowStatus = "matched" | "ambiguous" | "unmatched";
+
+export interface ImportCandidate {
+  card_id: string;
+  name: string;
+  set_id: string;
+  number: string;
+  image_url: string | null;
+  confidence: number;
+}
+
+export interface ImportRow {
+  row_index: number;
+  name: string | null;
+  number: string | null;
+  set_name: string | null;
+  quantity: number;
+  condition: string | null;
+  is_foil: boolean;
+  acquired_price: string | null;
+  status: ImportRowStatus;
+  candidates: ImportCandidate[];
+  selected_card_id: string | null;
+}
+
+export interface ImportPreview {
+  rows: ImportRow[];
+  matched: number;
+  ambiguous: number;
+  unmatched: number;
+  total: number;
+}
+
+export interface ImportConfirmRow {
+  card_id: string;
+  quantity?: number;
+  condition?: string | null;
+  is_foil?: boolean;
+  acquired_price?: number | null;
+  notes?: string | null;
+}
+
+export interface ImportConfirmResult {
+  added: number;
+  skipped: number;
+}
+
+// ---- public showcases ----
+
+export interface PublicProfile {
+  handle: string;
+  level: number;
+  total_distinct_cards: number;
+  total_quantity: number;
+  total_market_value: string;
+  currency: string;
+  sets_completed: number;
+  sets: SetHolding[];
+}
+
+export interface PublicEntry {
+  card_id: string;
+  name: string;
+  set_id: string;
+  number: string;
+  image_url: string | null;
+  rarity: string | null;
+  is_foil: boolean;
+  quantity: number;
+  market_price: string | null;
+  market_value: string | null;
+}
+
+export interface PublicCollection {
+  handle: string;
+  entries: PublicEntry[];
+}
+
+export interface ProfileUpdate {
+  handle?: string | null;
+  is_public?: boolean | null;
+}
+
+// ---- gamification ----
+
+export interface Badge {
+  id: string;
+  label: string;
+  description: string;
+  icon: string;
+  earned: boolean;
+}
+
+export interface Streak {
+  current_streak: number;
+  longest_streak: number;
+  last_active_date: string | null;
+}
+
+export interface Achievements {
+  level: number;
+  xp: number;
+  xp_into_level: number;
+  xp_for_next: number;
+  badges: Badge[];
+  streak: Streak;
+}
+
+// ---- wishlist + alerts ----
+
+export interface WishlistItem {
+  id: number;
+  card_id: string;
+  target_price: string | null;
+  created_at: string;
+  name: string;
+  set_id: string;
+  number: string;
+  image_url: string | null;
+  market_price: string | null;
+  currency: string | null;
+}
+
+export interface WishlistItemCreate {
+  card_id: string;
+  target_price?: number | null;
+}
+
+export interface Alert {
+  id: number;
+  card_id: string;
+  kind: "target_hit" | "drop";
+  triggered_price: string | null;
+  target_price: string | null;
+  snapshot_date: string;
+  name: string | null;
 }

@@ -3,9 +3,12 @@ import { Link, useParams } from "react-router-dom";
 import { ApiError } from "../lib/api";
 import { useAddEntry, useCard, useCardHistory } from "../lib/queries";
 import { money } from "../lib/format";
+import { useAuth } from "../context/AuthContext";
 import { PriceChart } from "../components/PriceChart";
 import { ErrorState } from "../components/States";
 import { DetailSkeleton } from "../components/Skeleton";
+import { Meta } from "../components/Meta";
+import { WishlistButton } from "../components/WishlistButton";
 import { useToast } from "../components/Toast";
 import type { CollectionEntryCreate } from "../types";
 
@@ -19,6 +22,7 @@ export function CardDetailPage() {
   const history = useCardHistory(id);
   const addEntry = useAddEntry();
   const toast = useToast();
+  const { session } = useAuth();
 
   const [form, setForm] = useState<CollectionEntryCreate>({
     card_id: id,
@@ -41,8 +45,17 @@ export function CardDetailPage() {
     }
   }
 
+  const priceText = c.market_price ? ` — ${money(c.market_price, c.currency ?? "USD")}` : "";
+
   return (
     <>
+      <Meta
+        title={`${c.name} · ${c.set_id} #${c.number}${priceText} | PokéVault`}
+        description={`Live market price and price history for ${c.name} (${c.set_id} #${c.number})${
+          c.rarity ? `, ${c.rarity}` : ""
+        }. Track it free in your PokéVault collection.`}
+        image={c.image_url}
+      />
       <Link to="/catalog" className="text-sm text-brand-600 hover:underline">
         ← Back to catalog
       </Link>
@@ -91,79 +104,89 @@ export function CardDetailPage() {
             </table>
           )}
 
-          <form
-            onSubmit={add}
-            className="mt-6 space-y-3 rounded-xl border border-slate-200 p-4 dark:border-slate-800"
-          >
-            <p className="font-semibold">Add to collection</p>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="text-sm">
-                <span className="mb-1 block">Quantity</span>
-                <input
-                  type="number"
-                  min={1}
-                  value={form.quantity}
-                  onChange={(e) =>
-                    setForm({ ...form, quantity: Math.max(1, Number(e.target.value)) })
-                  }
-                  className={inputClass}
-                />
-              </label>
-              <label className="text-sm">
-                <span className="mb-1 block">Condition</span>
-                <select
-                  value={form.condition ?? ""}
-                  onChange={(e) => setForm({ ...form, condition: e.target.value || null })}
-                  className={inputClass}
-                >
-                  <option value="">—</option>
-                  {CONDITIONS.map((x) => (
-                    <option key={x}>{x}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-sm">
-                <span className="mb-1 block">Grade (optional)</span>
-                <input
-                  placeholder="e.g. PSA 10"
-                  value={form.grade ?? ""}
-                  onChange={(e) => setForm({ ...form, grade: e.target.value || null })}
-                  className={inputClass}
-                />
-              </label>
-              <label className="text-sm">
-                <span className="mb-1 block">Acquired price (optional)</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min={0}
-                  value={form.acquired_price ?? ""}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      acquired_price: e.target.value ? Number(e.target.value) : null,
-                    })
-                  }
-                  className={inputClass}
-                />
-              </label>
+          {!session ? (
+            <div className="mt-6 rounded-xl border border-slate-200 p-4 text-sm dark:border-slate-800">
+              <Link to="/login" className="font-medium text-brand-600 hover:underline">
+                Log in
+              </Link>{" "}
+              to track this card, see price history, and build your collection — free.
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.is_foil ?? false}
-                onChange={(e) => setForm({ ...form, is_foil: e.target.checked })}
-              />
-              Foil / holo copy
-            </label>
-            <button
-              type="submit"
-              disabled={addEntry.isPending}
-              className="w-full rounded-lg bg-brand-600 py-2 font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+          ) : (
+            <form
+              onSubmit={add}
+              className="mt-6 space-y-3 rounded-xl border border-slate-200 p-4 dark:border-slate-800"
             >
-              {addEntry.isPending ? "Adding…" : "Add to collection"}
-            </button>
-          </form>
+              <p className="font-semibold">Add to collection</p>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="text-sm">
+                  <span className="mb-1 block">Quantity</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={form.quantity}
+                    onChange={(e) =>
+                      setForm({ ...form, quantity: Math.max(1, Number(e.target.value)) })
+                    }
+                    className={inputClass}
+                  />
+                </label>
+                <label className="text-sm">
+                  <span className="mb-1 block">Condition</span>
+                  <select
+                    value={form.condition ?? ""}
+                    onChange={(e) => setForm({ ...form, condition: e.target.value || null })}
+                    className={inputClass}
+                  >
+                    <option value="">—</option>
+                    {CONDITIONS.map((x) => (
+                      <option key={x}>{x}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-sm">
+                  <span className="mb-1 block">Grade (optional)</span>
+                  <input
+                    placeholder="e.g. PSA 10"
+                    value={form.grade ?? ""}
+                    onChange={(e) => setForm({ ...form, grade: e.target.value || null })}
+                    className={inputClass}
+                  />
+                </label>
+                <label className="text-sm">
+                  <span className="mb-1 block">Acquired price (optional)</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    value={form.acquired_price ?? ""}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        acquired_price: e.target.value ? Number(e.target.value) : null,
+                      })
+                    }
+                    className={inputClass}
+                  />
+                </label>
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.is_foil ?? false}
+                  onChange={(e) => setForm({ ...form, is_foil: e.target.checked })}
+                />
+                Foil / holo copy
+              </label>
+              <button
+                type="submit"
+                disabled={addEntry.isPending}
+                className="w-full rounded-lg bg-brand-600 py-2 font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+              >
+                {addEntry.isPending ? "Adding…" : "Add to collection"}
+              </button>
+            </form>
+          )}
+          {session && <WishlistButton cardId={id} />}
         </div>
       </div>
 

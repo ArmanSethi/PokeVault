@@ -40,7 +40,12 @@ export function ShowcasePage() {
       />
 
       <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-        <h1 className="text-2xl font-bold">@{p.handle}</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold">@{p.handle}</h1>
+          <span className="rounded-full bg-brand-100 px-2.5 py-0.5 text-sm font-semibold text-brand-700 dark:bg-brand-900/40 dark:text-brand-300">
+            Level {p.level}
+          </span>
+        </div>
         <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Stat label="Unique cards" value={String(p.total_distinct_cards)} />
           <Stat label="Total copies" value={String(p.total_quantity)} />

@@ -18,6 +18,7 @@ from app.models.card import Card, Set
 from app.models.collection import CollectionEntry
 from app.models.user import User
 from app.schemas.public import PublicCollection, PublicEntry, PublicProfile
+from app.services.achievements import CollectorStats, compute_xp, level_for_xp
 from app.services.cards import market_price_for_entry
 from app.services.valuation import collection_summary
 
@@ -35,8 +36,21 @@ async def public_profile(session: AsyncSession, handle: str) -> PublicProfile | 
         return None
     summary = await collection_summary(session, user.id)
     sets_completed = sum(1 for s in summary.sets if s.completion_pct >= 1.0)
+    # Collector level uses the public-safe subset of the same XP formula (no cost basis).
+    xp = compute_xp(
+        CollectorStats(
+            distinct_cards=summary.total_distinct_cards,
+            total_quantity=summary.total_quantity,
+            total_value=float(summary.total_market_value),
+            sets_completed=sets_completed,
+            has_foil=False,
+            has_graded=False,
+        )
+    )
+    level, _into, _need = level_for_xp(xp)
     return PublicProfile(
         handle=handle,
+        level=level,
         total_distinct_cards=summary.total_distinct_cards,
         total_quantity=summary.total_quantity,
         total_market_value=summary.total_market_value,

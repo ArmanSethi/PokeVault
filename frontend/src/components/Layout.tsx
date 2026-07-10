@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import { StreakChip } from "./StreakChip";
 
 const NAV = [
   { to: "/", label: "Dashboard", end: true },
@@ -54,6 +55,7 @@ export function Layout() {
             </button>
             {session ? (
               <>
+                <StreakChip />
                 <span className="hidden max-w-[12rem] truncate text-sm text-slate-500 lg:inline dark:text-slate-400">
                   {session.user.email}
                 </span>

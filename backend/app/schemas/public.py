@@ -17,6 +17,7 @@ class PublicProfile(BaseModel):
     """Headline, public-safe stats for a user's showcase."""
 
     handle: str
+    level: int = 1
     total_distinct_cards: int
     total_quantity: int
     total_market_value: Decimal

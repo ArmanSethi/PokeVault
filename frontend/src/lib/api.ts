@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import type {
+  Achievements,
   Card,
   CardPriceHistory,
   CardSet,
@@ -130,6 +131,7 @@ export const api = {
   deleteEntry: (id: number) =>
     request<void>(`/collection/${id}`, { method: "DELETE" }, { auth: true }),
   summary: () => request<CollectionSummary>("/collection/summary", {}, { auth: true }),
+  achievements: () => request<Achievements>("/collection/achievements", {}, { auth: true }),
   portfolioHistory: (params: { days?: number } = {}) =>
     request<PortfolioValueSeries>(`/collection/history${qs(params)}`, {}, { auth: true }),
 

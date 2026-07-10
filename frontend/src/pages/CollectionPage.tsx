@@ -12,6 +12,10 @@ type SortKey = "name" | "value" | "quantity";
 const selectClass =
   "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800";
 
+// PSA grades, best first. Stored as the string "PSA <n>" (parsed server-side for valuation).
+const PSA_GRADES = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1] as const;
+const PSA_VALUES = new Set(PSA_GRADES.map((g) => `PSA ${g}`));
+
 export function CollectionPage() {
   const entries = useCollection();
   const del = useDeleteEntry();
@@ -175,7 +179,25 @@ export function CollectionPage() {
                   </div>
                 </td>
                 <td className="px-4 py-2">{e.condition ?? "—"}</td>
-                <td className="px-4 py-2">{e.grade ?? "—"}</td>
+                <td className="px-4 py-2">
+                  {e.grade ? (
+                    <span className="inline-flex items-center gap-1">
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium dark:bg-slate-800">
+                        {e.grade}
+                      </span>
+                      {e.grade_multiplier > 1 && (
+                        <span
+                          title={`Graded copy valued at ${e.grade_multiplier}× the raw price`}
+                          className="rounded bg-success-500/15 px-1.5 py-0.5 text-xs font-semibold text-success-600 dark:text-success-500"
+                        >
+                          ×{e.grade_multiplier}
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    "—"
+                  )}
+                </td>
                 <td className="px-4 py-2 text-right">{money(e.market_price)}</td>
                 <td className="px-4 py-2 text-right font-medium">{money(e.market_value)}</td>
                 <td className="px-4 py-2 text-right whitespace-nowrap">
@@ -306,12 +328,18 @@ function EditModal({
             />
           </label>
           <label>
-            <span className="mb-1 block">Grade</span>
-            <input
-              value={grade}
-              onChange={(e) => setGrade(e.target.value)}
-              className={inputClass}
-            />
+            <span className="mb-1 block">Grade (PSA)</span>
+            <select value={grade} onChange={(e) => setGrade(e.target.value)} className={inputClass}>
+              <option value="">Raw / ungraded</option>
+              {PSA_GRADES.map((g) => (
+                <option key={g} value={`PSA ${g}`}>
+                  PSA {g}
+                  {g === 10 ? " (Gem Mint)" : ""}
+                </option>
+              ))}
+              {/* Preserve any pre-existing non-PSA grade rather than silently dropping it. */}
+              {grade && !PSA_VALUES.has(grade) && <option value={grade}>{grade}</option>}
+            </select>
           </label>
           <label>
             <span className="mb-1 block">Acquired price</span>

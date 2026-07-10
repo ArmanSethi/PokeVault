@@ -50,8 +50,9 @@ export interface CollectionEntry {
   notes: string | null;
   created_at: string;
   updated_at: string;
-  market_price: string | null;
+  market_price: string | null; // grade-adjusted unit value
   market_value: string | null;
+  grade_multiplier: number; // 1.0 = raw; e.g. 4.0 for PSA 10
 }
 
 export interface CollectionEntryCreate {

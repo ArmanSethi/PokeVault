@@ -1,0 +1,7 @@
+# PokéVault — allow indexing of public catalog + showcase pages.
+User-agent: *
+Allow: /
+
+# Replace the host with your deployed web origin. The /sitemap.xml path is proxied to the
+# backend sitemap by the Vercel rewrite in vercel.json.
+Sitemap: https://YOUR-DOMAIN.vercel.app/sitemap.xml

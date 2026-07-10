@@ -12,6 +12,9 @@ import type {
   ImportConfirmRow,
   ImportPreview,
   PortfolioValueSeries,
+  ProfileUpdate,
+  PublicCollection,
+  PublicProfile,
   ScanResult,
   User,
 } from "../types";
@@ -99,8 +102,16 @@ export const api = {
   cardHistory: (id: string, params: { variant?: string; days?: number } = {}) =>
     request<CardPriceHistory>(`/cards/${encodeURIComponent(id)}/history${qs(params)}`),
 
-  // ---- auth ----
+  // ---- auth / profile ----
   me: () => request<User>("/me", {}, { auth: true }),
+  updateProfile: (data: ProfileUpdate) =>
+    request<User>("/me", { method: "PATCH", body: JSON.stringify(data) }, { auth: true }),
+
+  // ---- public showcases (no auth) ----
+  publicProfile: (handle: string) =>
+    request<PublicProfile>(`/public/u/${encodeURIComponent(handle)}`),
+  publicCollection: (handle: string) =>
+    request<PublicCollection>(`/public/u/${encodeURIComponent(handle)}/collection`),
 
   // ---- collection (auth) ----
   listCollection: () => request<CollectionEntry[]>("/collection", {}, { auth: true }),

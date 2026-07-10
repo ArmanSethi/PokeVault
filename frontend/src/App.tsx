@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { PageSkeleton } from "./components/Skeleton";
@@ -15,11 +15,23 @@ const CatalogPage = lazy(() =>
 const CardDetailPage = lazy(() =>
   import("./pages/CardDetailPage").then((m) => ({ default: m.CardDetailPage })),
 );
+const SetDetailPage = lazy(() =>
+  import("./pages/SetDetailPage").then((m) => ({ default: m.SetDetailPage })),
+);
+const ShowcasePage = lazy(() =>
+  import("./pages/ShowcasePage").then((m) => ({ default: m.ShowcasePage })),
+);
 const CollectionPage = lazy(() =>
   import("./pages/CollectionPage").then((m) => ({ default: m.CollectionPage })),
 );
 const SetCompletionPage = lazy(() =>
   import("./pages/SetCompletionPage").then((m) => ({ default: m.SetCompletionPage })),
+);
+const WishlistPage = lazy(() =>
+  import("./pages/WishlistPage").then((m) => ({ default: m.WishlistPage })),
+);
+const SettingsPage = lazy(() =>
+  import("./pages/SettingsPage").then((m) => ({ default: m.SettingsPage })),
 );
 const ScanPage = lazy(() => import("./pages/ScanPage").then((m) => ({ default: m.ScanPage })));
 
@@ -34,19 +46,29 @@ export default function App() {
     >
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route
-          element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<DashboardPage />} />
-          <Route path="catalog" element={<CatalogPage />} />
+        {/* The shell renders for everyone; its nav adapts to auth state. */}
+        <Route element={<Layout />}>
+          {/* Public, indexable pages — no auth required. */}
           <Route path="cards/:id" element={<CardDetailPage />} />
-          <Route path="collection" element={<CollectionPage />} />
-          <Route path="sets" element={<SetCompletionPage />} />
-          <Route path="scan" element={<ScanPage />} />
+          <Route path="sets/:id" element={<SetDetailPage />} />
+          <Route path="u/:handle" element={<ShowcasePage />} />
+
+          {/* Authenticated pages. */}
+          <Route
+            element={
+              <ProtectedRoute>
+                <Outlet />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<DashboardPage />} />
+            <Route path="catalog" element={<CatalogPage />} />
+            <Route path="collection" element={<CollectionPage />} />
+            <Route path="sets" element={<SetCompletionPage />} />
+            <Route path="wishlist" element={<WishlistPage />} />
+            <Route path="scan" element={<ScanPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

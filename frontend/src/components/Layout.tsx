@@ -7,6 +7,7 @@ const NAV = [
   { to: "/", label: "Dashboard", end: true },
   { to: "/catalog", label: "Catalog" },
   { to: "/collection", label: "Collection" },
+  { to: "/wishlist", label: "Wishlist" },
   { to: "/sets", label: "Set completion" },
   { to: "/scan", label: "Scan" },
 ];
@@ -33,13 +34,15 @@ export function Layout() {
             <span aria-hidden>🃏</span> PokéVault
           </NavLink>
 
-          <nav className="hidden flex-1 flex-wrap gap-1 md:flex">
-            {NAV.map((item) => (
-              <NavLink key={item.to} to={item.to} end={item.end} className={navClass}>
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
+          {session && (
+            <nav className="hidden flex-1 flex-wrap gap-1 md:flex">
+              {NAV.map((item) => (
+                <NavLink key={item.to} to={item.to} end={item.end} className={navClass}>
+                  {item.label}
+                </NavLink>
+              ))}
+            </nav>
+          )}
 
           <div className="ml-auto flex items-center gap-2">
             <button
@@ -49,31 +52,49 @@ export function Layout() {
             >
               <span aria-hidden>{theme === "dark" ? "☀️" : "🌙"}</span>
             </button>
-            <span className="hidden max-w-[12rem] truncate text-sm text-slate-500 lg:inline dark:text-slate-400">
-              {session?.user.email}
-            </span>
-            <button
-              onClick={async () => {
-                await signOut();
-                navigate("/login");
-              }}
-              className="hidden rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-100 sm:inline dark:border-slate-700 dark:hover:bg-slate-800"
-            >
-              Sign out
-            </button>
-            <button
-              onClick={() => setMenuOpen((o) => !o)}
-              aria-label="Toggle menu"
-              aria-expanded={menuOpen}
-              className="rounded-lg border border-slate-300 p-2 md:hidden dark:border-slate-700"
-            >
-              <span aria-hidden>{menuOpen ? "✕" : "☰"}</span>
-            </button>
+            {session ? (
+              <>
+                <span className="hidden max-w-[12rem] truncate text-sm text-slate-500 lg:inline dark:text-slate-400">
+                  {session.user.email}
+                </span>
+                <NavLink
+                  to="/settings"
+                  aria-label="Settings"
+                  className="hidden rounded-lg border border-slate-300 p-2 text-sm hover:bg-slate-100 sm:inline dark:border-slate-700 dark:hover:bg-slate-800"
+                >
+                  <span aria-hidden>⚙️</span>
+                </NavLink>
+                <button
+                  onClick={async () => {
+                    await signOut();
+                    navigate("/login");
+                  }}
+                  className="hidden rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-100 sm:inline dark:border-slate-700 dark:hover:bg-slate-800"
+                >
+                  Sign out
+                </button>
+                <button
+                  onClick={() => setMenuOpen((o) => !o)}
+                  aria-label="Toggle menu"
+                  aria-expanded={menuOpen}
+                  className="rounded-lg border border-slate-300 p-2 md:hidden dark:border-slate-700"
+                >
+                  <span aria-hidden>{menuOpen ? "✕" : "☰"}</span>
+                </button>
+              </>
+            ) : (
+              <NavLink
+                to="/login"
+                className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+              >
+                Log in
+              </NavLink>
+            )}
           </div>
         </div>
 
         {/* Mobile menu */}
-        {menuOpen && (
+        {session && menuOpen && (
           <nav className="flex flex-col gap-1 border-t border-slate-200 px-4 py-3 md:hidden dark:border-slate-800">
             {NAV.map((item) => (
               <NavLink
@@ -86,6 +107,9 @@ export function Layout() {
                 {item.label}
               </NavLink>
             ))}
+            <NavLink to="/settings" onClick={() => setMenuOpen(false)} className={navClass}>
+              Settings
+            </NavLink>
             <button
               onClick={async () => {
                 setMenuOpen(false);

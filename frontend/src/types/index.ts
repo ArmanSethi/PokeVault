@@ -186,3 +186,38 @@ export interface ImportConfirmResult {
   added: number;
   skipped: number;
 }
+
+// ---- public showcases ----
+
+export interface PublicProfile {
+  handle: string;
+  total_distinct_cards: number;
+  total_quantity: number;
+  total_market_value: string;
+  currency: string;
+  sets_completed: number;
+  sets: SetHolding[];
+}
+
+export interface PublicEntry {
+  card_id: string;
+  name: string;
+  set_id: string;
+  number: string;
+  image_url: string | null;
+  rarity: string | null;
+  is_foil: boolean;
+  quantity: number;
+  market_price: string | null;
+  market_value: string | null;
+}
+
+export interface PublicCollection {
+  handle: string;
+  entries: PublicEntry[];
+}
+
+export interface ProfileUpdate {
+  handle?: string | null;
+  is_public?: boolean | null;
+}

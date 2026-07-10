@@ -13,6 +13,7 @@ import type {
   CollectionEntryCreate,
   CollectionEntryUpdate,
   ImportConfirmRow,
+  ProfileUpdate,
 } from "../types";
 
 interface CardsParams {
@@ -34,12 +35,24 @@ export const qk = {
   collection: ["collection"] as const,
   summary: ["summary"] as const,
   portfolioHistory: ["portfolioHistory"] as const,
+  me: ["me"] as const,
+  publicProfile: (handle: string) => ["publicProfile", handle] as const,
+  publicCollection: (handle: string) => ["publicCollection", handle] as const,
 };
 
 // ---- catalog (long-lived cache) ----
 
 export function useSets() {
   return useQuery({ queryKey: qk.sets, queryFn: () => api.listSets({ limit: 500 }) });
+}
+
+export function useSet(id: string) {
+  return useQuery({
+    queryKey: ["set", id],
+    queryFn: () => api.getSet(id),
+    enabled: Boolean(id),
+    staleTime: 5 * 60 * 1000,
+  });
 }
 
 export function useRarities() {
@@ -152,6 +165,38 @@ export function useUpdateEntry() {
       if (ctx?.prev) qc.setQueryData(qk.collection, ctx.prev);
     },
     onSettled: () => invalidateCollection(qc),
+  });
+}
+
+// ---- profile + public showcases ----
+
+export function useMe() {
+  return useQuery({ queryKey: qk.me, queryFn: () => api.me() });
+}
+
+export function useUpdateProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: ProfileUpdate) => api.updateProfile(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.me }),
+  });
+}
+
+export function usePublicProfile(handle: string) {
+  return useQuery({
+    queryKey: qk.publicProfile(handle),
+    queryFn: () => api.publicProfile(handle),
+    enabled: Boolean(handle),
+    retry: false,
+  });
+}
+
+export function usePublicCollection(handle: string) {
+  return useQuery({
+    queryKey: qk.publicCollection(handle),
+    queryFn: () => api.publicCollection(handle),
+    enabled: Boolean(handle),
+    retry: false,
   });
 }
 

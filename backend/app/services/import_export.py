@@ -70,6 +70,7 @@ _COLUMN_SYNONYMS: dict[str, str] = {
 # Confidence thresholds for auto-classifying a matched row.
 _STRONG = 0.9  # top candidate at/above this → "matched"
 _LEAD = 0.1  # …and clearly ahead of the runner-up
+_VIABLE = 0.6  # below this even the best candidate is too weak to be a real match → "unmatched"
 
 
 @dataclass
@@ -191,6 +192,10 @@ def _classify(candidates: list[ImportCandidate]) -> tuple[str, str | None]:
     if not candidates:
         return "unmatched", None
     top = candidates[0]
+    # A best candidate below the viability floor means the fuzzy matcher only found weak,
+    # coincidental name overlaps (e.g. a junk row) — surface it as unmatched, not a suggestion.
+    if top.confidence < _VIABLE:
+        return "unmatched", None
     runner = candidates[1].confidence if len(candidates) > 1 else 0.0
     if top.confidence >= _STRONG and (top.confidence - runner) >= _LEAD:
         return "matched", top.card_id

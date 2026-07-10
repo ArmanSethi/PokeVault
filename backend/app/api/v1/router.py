@@ -9,7 +9,16 @@ from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_session
-from app.api.v1.endpoints import auth, cards, collection, importer, public, scan, sets
+from app.api.v1.endpoints import (
+    auth,
+    cards,
+    collection,
+    importer,
+    public,
+    scan,
+    sets,
+    wishlist,
+)
 from app.services import public as public_service
 
 api_router = APIRouter()
@@ -36,4 +45,5 @@ api_router.include_router(cards.router, prefix="/cards", tags=["cards"])
 api_router.include_router(collection.router, prefix="/collection", tags=["collection"])
 api_router.include_router(importer.router, prefix="/collection", tags=["collection"])
 api_router.include_router(scan.router, prefix="/scan", tags=["scan"])
+api_router.include_router(wishlist.router, prefix="/wishlist", tags=["wishlist"])
 api_router.include_router(public.router, prefix="/public", tags=["public"])

@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
 import type {
   Achievements,
+  Alert,
   Card,
   CardPriceHistory,
   CardSet,
@@ -18,6 +19,8 @@ import type {
   PublicProfile,
   ScanResult,
   User,
+  WishlistItem,
+  WishlistItemCreate,
 } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1";
@@ -134,6 +137,18 @@ export const api = {
   achievements: () => request<Achievements>("/collection/achievements", {}, { auth: true }),
   portfolioHistory: (params: { days?: number } = {}) =>
     request<PortfolioValueSeries>(`/collection/history${qs(params)}`, {}, { auth: true }),
+
+  // ---- wishlist + alerts (auth) ----
+  listWishlist: () => request<WishlistItem[]>("/wishlist", {}, { auth: true }),
+  addWishlist: (data: WishlistItemCreate) =>
+    request<WishlistItem>(
+      "/wishlist",
+      { method: "POST", body: JSON.stringify(data) },
+      { auth: true },
+    ),
+  deleteWishlist: (id: number) =>
+    request<void>(`/wishlist/${id}`, { method: "DELETE" }, { auth: true }),
+  listAlerts: () => request<Alert[]>("/wishlist/alerts", {}, { auth: true }),
 
   // ---- scan ----
   scan: (file: File, limit = 5) => {

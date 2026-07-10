@@ -247,3 +247,33 @@ export interface Achievements {
   badges: Badge[];
   streak: Streak;
 }
+
+// ---- wishlist + alerts ----
+
+export interface WishlistItem {
+  id: number;
+  card_id: string;
+  target_price: string | null;
+  created_at: string;
+  name: string;
+  set_id: string;
+  number: string;
+  image_url: string | null;
+  market_price: string | null;
+  currency: string | null;
+}
+
+export interface WishlistItemCreate {
+  card_id: string;
+  target_price?: number | null;
+}
+
+export interface Alert {
+  id: number;
+  card_id: string;
+  kind: "target_hit" | "drop";
+  triggered_price: string | null;
+  target_price: string | null;
+  snapshot_date: string;
+  name: string | null;
+}

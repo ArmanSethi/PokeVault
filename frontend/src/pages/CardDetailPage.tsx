@@ -8,6 +8,7 @@ import { PriceChart } from "../components/PriceChart";
 import { ErrorState } from "../components/States";
 import { DetailSkeleton } from "../components/Skeleton";
 import { Meta } from "../components/Meta";
+import { WishlistButton } from "../components/WishlistButton";
 import { useToast } from "../components/Toast";
 import type { CollectionEntryCreate } from "../types";
 
@@ -185,6 +186,7 @@ export function CardDetailPage() {
               </button>
             </form>
           )}
+          {session && <WishlistButton cardId={id} />}
         </div>
       </div>
 

@@ -14,6 +14,7 @@ import type {
   CollectionEntryUpdate,
   ImportConfirmRow,
   ProfileUpdate,
+  WishlistItemCreate,
 } from "../types";
 
 interface CardsParams {
@@ -37,6 +38,8 @@ export const qk = {
   portfolioHistory: ["portfolioHistory"] as const,
   me: ["me"] as const,
   achievements: ["achievements"] as const,
+  wishlist: ["wishlist"] as const,
+  alerts: ["alerts"] as const,
   publicProfile: (handle: string) => ["publicProfile", handle] as const,
   publicCollection: (handle: string) => ["publicCollection", handle] as const,
 };
@@ -203,6 +206,32 @@ export function usePublicCollection(handle: string) {
     queryFn: () => api.publicCollection(handle),
     enabled: Boolean(handle),
     retry: false,
+  });
+}
+
+// ---- wishlist + alerts ----
+
+export function useWishlist() {
+  return useQuery({ queryKey: qk.wishlist, queryFn: () => api.listWishlist(), staleTime: 0 });
+}
+
+export function useAlerts() {
+  return useQuery({ queryKey: qk.alerts, queryFn: () => api.listAlerts() });
+}
+
+export function useAddWishlist() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: WishlistItemCreate) => api.addWishlist(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.wishlist }),
+  });
+}
+
+export function useDeleteWishlist() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.deleteWishlist(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.wishlist }),
   });
 }
 

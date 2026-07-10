@@ -36,7 +36,7 @@ def test_parse_psa_grade(text: str | None, expected: int | None) -> None:
 
 
 def test_grade_multiplier_psa10_is_highest() -> None:
-    assert grade_multiplier("PSA 10") == Decimal("4.0")
+    assert grade_multiplier("PSA 10") == Decimal("5.0")
     # PSA 10 must be the top multiplier of the table.
     assert PSA_MULTIPLIERS[10] == max(PSA_MULTIPLIERS.values())
 
@@ -45,7 +45,7 @@ def test_grade_multiplier_raw_and_unknown_are_1() -> None:
     assert grade_multiplier(None) == Decimal("1.0")
     assert grade_multiplier("") == Decimal("1.0")
     assert grade_multiplier("BGS 9.5") == Decimal("1.0")
-    assert grade_multiplier("PSA 5") == Decimal("0.95")
+    assert grade_multiplier("PSA 5") == Decimal("0.9")
 
 
 def _price(market: str, variant: str = "normal") -> CardPriceCurrent:
@@ -56,8 +56,8 @@ def _price(market: str, variant: str = "normal") -> CardPriceCurrent:
 
 def test_graded_unit_price_scales_raw() -> None:
     prices = [_price("10.00")]
-    # PSA 10 → 4× raw.
-    assert graded_unit_price(prices, is_foil=False, grade="PSA 10") == Decimal("40.00")
+    # PSA 10 → 5× raw.
+    assert graded_unit_price(prices, is_foil=False, grade="PSA 10") == Decimal("50.00")
     # PSA 9 → 2× raw.
     assert graded_unit_price(prices, is_foil=False, grade="PSA 9") == Decimal("20.00")
     # Raw/ungraded → unchanged.
@@ -65,8 +65,8 @@ def test_graded_unit_price_scales_raw() -> None:
 
 
 def test_graded_unit_price_rounds_to_cents() -> None:
-    # 3.33 * 4.0 = 13.32 exactly; 3.335 would need rounding — use a value that exercises quantize.
-    assert graded_unit_price([_price("2.51")], is_foil=False, grade="PSA 10") == Decimal("10.04")
+    # 2.51 * 5.0 = 12.55 — a fractional-cent raw price scaled and quantized to cents.
+    assert graded_unit_price([_price("2.51")], is_foil=False, grade="PSA 10") == Decimal("12.55")
 
 
 def test_graded_unit_price_none_without_price() -> None:

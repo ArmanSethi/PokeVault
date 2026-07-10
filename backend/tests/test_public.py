@@ -94,9 +94,11 @@ async def test_handle_validation_rejected(auth_client, seed, signing_key) -> Non
 async def test_handle_conflict(auth_client, seed, signing_key) -> None:
     a1 = _headers(signing_key, uuid.uuid4())
     a2 = _headers(signing_key, uuid.uuid4())
-    first = await auth_client.patch(f"{_API}/me", json={"handle": "ash"}, headers=a1)
+    # Unique per run so it can't collide with a real user's claimed handle.
+    handle = f"t{uuid.uuid4().hex[:12]}"
+    first = await auth_client.patch(f"{_API}/me", json={"handle": handle}, headers=a1)
     assert first.status_code == 200
-    r = await auth_client.patch(f"{_API}/me", json={"handle": "ash"}, headers=a2)
+    r = await auth_client.patch(f"{_API}/me", json={"handle": handle}, headers=a2)
     assert r.status_code == 409
 
 
@@ -108,16 +110,17 @@ async def test_showcase_private_by_default_then_public(auth_client, seed, signin
         headers=a,
     )
     # Claim a handle but stay private → showcase is 404 to the public.
-    await auth_client.patch(f"{_API}/me", json={"handle": "redteam"}, headers=a)
-    assert (await auth_client.get(f"{_API}/public/u/redteam")).status_code == 404
+    handle = f"t{uuid.uuid4().hex[:12]}"  # unique per run; avoids colliding with real handles
+    await auth_client.patch(f"{_API}/me", json={"handle": handle}, headers=a)
+    assert (await auth_client.get(f"{_API}/public/u/{handle}")).status_code == 404
 
     # Go public → profile + collection are visible…
     await auth_client.patch(f"{_API}/me", json={"is_public": True}, headers=a)
-    prof = await auth_client.get(f"{_API}/public/u/redteam")
+    prof = await auth_client.get(f"{_API}/public/u/{handle}")
     assert prof.status_code == 200
     assert prof.json()["total_distinct_cards"] == 1
 
-    coll = await auth_client.get(f"{_API}/public/u/redteam/collection")
+    coll = await auth_client.get(f"{_API}/public/u/{handle}/collection")
     assert coll.status_code == 200
     body = coll.json()
     assert body["entries"][0]["card_id"] == "tst1-1"

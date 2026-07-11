@@ -4,12 +4,5 @@
   "outputDirectory": "dist",
   "installCommand": "pnpm install",
   "framework": "vite",
-  "rewrites": [
-    {
-      "//": "Serve the backend-generated sitemap from the web origin so its URLs and the pages they list share one domain (Google indexes the SPA host, not the API). Replace the destination host with your deployed backend URL.",
-      "source": "/sitemap.xml",
-      "destination": "https://YOUR-BACKEND.onrender.com/api/v1/sitemap.xml"
-    },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

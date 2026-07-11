@@ -60,7 +60,16 @@ export function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-lg">
-      <h1 className="mb-1 text-2xl font-bold">Settings</h1>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <h1 className="text-2xl font-bold">Settings</h1>
+        <button
+          onClick={() => navigate(-1)}
+          aria-label="Close settings"
+          className="rounded-lg border border-slate-300 p-2 text-sm hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+        >
+          <span aria-hidden>✕</span>
+        </button>
+      </div>
       <p className="mb-6 text-sm text-slate-500 dark:text-slate-400">
         Claim a handle to get a shareable public showcase of your collection. Prices and set
         completion are shown — what you paid and your notes are never public.

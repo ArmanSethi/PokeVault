@@ -40,8 +40,8 @@ export function PriceChart({
     const hasValue = latest !== "—";
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-        📈 Price history shows up here for the cards in your collection — give it a few days to
-        build.
+        📈 Price history shows up here for the cards in your collection and wishlist — give it a
+        few days to build.
         {hasValue && ` Today: ${latest}.`}
       </div>
     );

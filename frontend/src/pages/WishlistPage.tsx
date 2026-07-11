@@ -1,16 +1,16 @@
 import { Link } from "react-router-dom";
 import { useAlerts, useDeleteWishlist, useWishlist } from "../lib/queries";
-import { money } from "../lib/format";
+import { useCurrency } from "../context/CurrencyContext";
 import { EmptyState, ErrorState } from "../components/States";
 import { TableSkeleton } from "../components/Skeleton";
 import { useToast } from "../components/Toast";
 import type { Alert } from "../types";
 
-function alertText(a: Alert): string {
-  const price = money(a.triggered_price);
+function alertText(a: Alert, fmt: (v: string | number | null | undefined) => string): string {
+  const price = fmt(a.triggered_price);
   if (a.kind === "target_hit")
     return `${a.name ?? a.card_id} hit your target — now ${price}${
-      a.target_price ? ` (target ${money(a.target_price)})` : ""
+      a.target_price ? ` (target ${fmt(a.target_price)})` : ""
     }`;
   return `${a.name ?? a.card_id} dropped to ${price}`;
 }
@@ -20,6 +20,7 @@ export function WishlistPage() {
   const alerts = useAlerts();
   const del = useDeleteWishlist();
   const toast = useToast();
+  const { format } = useCurrency();
 
   if (wishlist.isPending) return <TableSkeleton rows={6} />;
   if (wishlist.isError)
@@ -55,7 +56,7 @@ export function WishlistPage() {
             {recentAlerts.slice(0, 8).map((a) => (
               <li key={a.id}>
                 <Link to={`/cards/${encodeURIComponent(a.card_id)}`} className="hover:underline">
-                  {alertText(a)}
+                  {alertText(a, format)}
                 </Link>{" "}
                 <span className="text-amber-600 dark:text-amber-400">· {a.snapshot_date}</span>
               </li>
@@ -100,9 +101,9 @@ export function WishlistPage() {
                         · {w.set_id} #{w.number}
                       </span>
                     </td>
-                    <td className="px-4 py-2 text-right">{money(w.market_price)}</td>
+                    <td className="px-4 py-2 text-right">{format(w.market_price)}</td>
                     <td className="px-4 py-2 text-right">
-                      {target !== null ? money(target) : "—"}
+                      {target !== null ? format(target) : "—"}
                     </td>
                     <td className="px-4 py-2 text-right">
                       {target === null ? (

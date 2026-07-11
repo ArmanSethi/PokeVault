@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useSummary, usePortfolioHistory } from "../lib/queries";
-import { money, pct } from "../lib/format";
+import { pct } from "../lib/format";
+import { useCurrency } from "../context/CurrencyContext";
 import { PriceChart } from "../components/PriceChart";
 import { AchievementsPanel } from "../components/AchievementsPanel";
 import { EmptyState, ErrorState } from "../components/States";
@@ -34,6 +35,7 @@ function Stat({
 export function DashboardPage() {
   const summary = useSummary();
   const history = usePortfolioHistory();
+  const { format } = useCurrency();
 
   return (
     <>
@@ -67,11 +69,7 @@ export function DashboardPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <Stat
-              label="Portfolio value"
-              value={money(summary.data.total_market_value, summary.data.currency)}
-              accent
-            />
+            <Stat label="Portfolio value" value={format(summary.data.total_market_value)} accent />
             <Stat label="Distinct cards" value={String(summary.data.total_distinct_cards)} />
             <Stat label="Total cards" value={String(summary.data.total_quantity)} />
           </div>
@@ -86,7 +84,6 @@ export function DashboardPage() {
             />
           ) : (
             <PriceChart
-              currency={summary.data.currency}
               label="Portfolio"
               data={(history.data?.points ?? []).map((p) => ({
                 date: p.date,
@@ -122,9 +119,7 @@ export function DashboardPage() {
                       {h.set_size ? ` / ${h.set_size}` : ""}
                     </td>
                     <td className="px-4 py-2">{h.set_size ? pct(h.completion_pct) : "—"}</td>
-                    <td className="px-4 py-2 text-right">
-                      {money(h.market_value, summary.data.currency)}
-                    </td>
+                    <td className="px-4 py-2 text-right">{format(h.market_value)}</td>
                   </tr>
                 ))}
               </tbody>

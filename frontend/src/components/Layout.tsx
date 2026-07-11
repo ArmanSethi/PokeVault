@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import { useMe } from "../lib/queries";
 import { StreakChip } from "./StreakChip";
 
 const NAV = [
@@ -21,11 +22,33 @@ function navClass({ isActive }: { isActive: boolean }): string {
   }`;
 }
 
+/** Shows the user's handle (u/ash) when set, else their email. Fetches /me only when
+ * rendered (i.e. only for signed-in users), so logged-out public pages make no /me call. */
+function HeaderIdentity() {
+  const { session } = useAuth();
+  const me = useMe();
+  const label = me.data?.handle ? `u/${me.data.handle}` : session?.user.email;
+  return (
+    <span className="hidden max-w-[12rem] truncate text-sm text-slate-500 lg:inline dark:text-slate-400">
+      {label}
+    </span>
+  );
+}
+
 export function Layout() {
-  const { session, signOut } = useAuth();
+  const { session } = useAuth();
   const { theme, toggle } = useTheme();
-  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const themeToggle = (
+    <button
+      onClick={toggle}
+      aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+      className="rounded-lg border border-slate-300 p-2 text-sm hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+    >
+      <span aria-hidden>{theme === "dark" ? "☀️" : "🌙"}</span>
+    </button>
+  );
 
   return (
     <div className="min-h-screen">
@@ -46,19 +69,12 @@ export function Layout() {
           )}
 
           <div className="ml-auto flex items-center gap-2">
-            <button
-              onClick={toggle}
-              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-              className="rounded-lg border border-slate-300 p-2 text-sm hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
-            >
-              <span aria-hidden>{theme === "dark" ? "☀️" : "🌙"}</span>
-            </button>
             {session ? (
               <>
+                {/* Order: daily streak → handle → dark/light → settings */}
                 <StreakChip />
-                <span className="hidden max-w-[12rem] truncate text-sm text-slate-500 lg:inline dark:text-slate-400">
-                  {session.user.email}
-                </span>
+                <HeaderIdentity />
+                {themeToggle}
                 <NavLink
                   to="/settings"
                   aria-label="Settings"
@@ -66,15 +82,6 @@ export function Layout() {
                 >
                   <span aria-hidden>⚙️</span>
                 </NavLink>
-                <button
-                  onClick={async () => {
-                    await signOut();
-                    navigate("/login");
-                  }}
-                  className="hidden rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-100 sm:inline dark:border-slate-700 dark:hover:bg-slate-800"
-                >
-                  Sign out
-                </button>
                 <button
                   onClick={() => setMenuOpen((o) => !o)}
                   aria-label="Toggle menu"
@@ -85,12 +92,15 @@ export function Layout() {
                 </button>
               </>
             ) : (
-              <NavLink
-                to="/login"
-                className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
-              >
-                Log in
-              </NavLink>
+              <>
+                {themeToggle}
+                <NavLink
+                  to="/login"
+                  className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+                >
+                  Log in
+                </NavLink>
+              </>
             )}
           </div>
         </div>
@@ -112,16 +122,6 @@ export function Layout() {
             <NavLink to="/settings" onClick={() => setMenuOpen(false)} className={navClass}>
               Settings
             </NavLink>
-            <button
-              onClick={async () => {
-                setMenuOpen(false);
-                await signOut();
-                navigate("/login");
-              }}
-              className="mt-1 rounded-lg border border-slate-300 px-3 py-1.5 text-left text-sm font-medium dark:border-slate-700"
-            >
-              Sign out
-            </button>
           </nav>
         )}
       </header>

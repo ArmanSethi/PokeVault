@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ApiError } from "../lib/api";
 import { useMe, useUpdateProfile } from "../lib/queries";
+import { useAuth } from "../context/AuthContext";
+import { useCurrency, CURRENCIES } from "../context/CurrencyContext";
 import { ErrorState } from "../components/States";
 import { PageSkeleton } from "../components/Skeleton";
 import { useToast } from "../components/Toast";
@@ -14,6 +16,9 @@ export function SettingsPage() {
   const me = useMe();
   const update = useUpdateProfile();
   const toast = useToast();
+  const { currency, setCurrency } = useCurrency();
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
   const [handle, setHandle] = useState("");
   const [isPublic, setIsPublic] = useState(false);
 
@@ -95,6 +100,26 @@ export function SettingsPage() {
         </button>
       </div>
 
+      <div className="mt-4 rounded-xl border border-slate-200 p-5 dark:border-slate-800">
+        <label className="block text-sm">
+          <span className="mb-1 block font-medium">Display currency</span>
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            className={inputClass}
+          >
+            {CURRENCIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+          Prices across PokéVault are converted from USD at daily exchange rates (approximate).
+        </p>
+      </div>
+
       {showcaseUrl && (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 p-4 text-sm dark:border-slate-800">
           <div>
@@ -111,6 +136,18 @@ export function SettingsPage() {
           </button>
         </div>
       )}
+
+      <div className="mt-8 border-t border-slate-200 pt-6 dark:border-slate-800">
+        <button
+          onClick={async () => {
+            await signOut();
+            navigate("/login");
+          }}
+          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+        >
+          Sign out
+        </button>
+      </div>
     </div>
   );
 }

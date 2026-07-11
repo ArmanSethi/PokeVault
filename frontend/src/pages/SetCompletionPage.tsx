@@ -1,13 +1,15 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAllSetCards, useCollection, useSummary } from "../lib/queries";
-import { money, pct } from "../lib/format";
+import { pct } from "../lib/format";
+import { useCurrency } from "../context/CurrencyContext";
 import { EmptyState, ErrorState } from "../components/States";
 import { TableSkeleton } from "../components/Skeleton";
 
 export function SetCompletionPage() {
   const summary = useSummary();
   const collection = useCollection();
+  const { format } = useCurrency();
   const [openSet, setOpenSet] = useState<string | null>(null);
 
   // card_ids owned per set, e.g. "sv3-125" → set "sv3".
@@ -57,7 +59,7 @@ export function SetCompletionPage() {
                 <span className="text-sm text-slate-500 dark:text-slate-400">
                   {s.distinct_cards_owned}
                   {s.set_size ? ` / ${s.set_size} (${pct(s.completion_pct)})` : " cards"} ·{" "}
-                  {money(s.market_value)}
+                  {format(s.market_value)}
                 </span>
               </div>
               <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
@@ -90,6 +92,7 @@ export function SetCompletionPage() {
 /** Lazily loads a set's cards and lists the cheapest cards still missing, with a total. */
 function CostToComplete({ setId, ownedIds }: { setId: string; ownedIds: Set<string> }) {
   const cards = useAllSetCards(setId);
+  const { format } = useCurrency();
 
   const missing = useMemo(() => {
     const all = cards.data ?? [];
@@ -109,7 +112,7 @@ function CostToComplete({ setId, ownedIds }: { setId: string; ownedIds: Set<stri
     <div className="mt-3 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-800">
       <p className="mb-2">
         <span className="font-semibold">{missing.length}</span> cards missing · estimated{" "}
-        <span className="font-semibold">{money(total)}</span> to complete (cheapest priced first)
+        <span className="font-semibold">{format(total)}</span> to complete (cheapest priced first)
       </p>
       <ul className="max-h-60 space-y-1 overflow-y-auto">
         {missing.slice(0, 30).map((c) => (
@@ -121,7 +124,7 @@ function CostToComplete({ setId, ownedIds }: { setId: string; ownedIds: Set<stri
               {c.name} #{c.number}
             </Link>
             <span className="shrink-0 text-slate-500">
-              {c.price === null ? "—" : money(c.price)}
+              {c.price === null ? "—" : format(c.price)}
             </span>
           </li>
         ))}

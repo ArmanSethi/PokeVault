@@ -1,12 +1,11 @@
 import { useAchievements } from "../lib/queries";
 
-/** Collector level, XP progress bar, and the badge grid — shown on the dashboard. */
+/** Badge grid + daily-streak summary — shown on the dashboard. */
 export function AchievementsPanel() {
   const ach = useAchievements();
   if (!ach.data) return null;
 
-  const { level, xp_into_level, xp_for_next, badges, streak } = ach.data;
-  const progress = Math.min(100, Math.round((xp_into_level / xp_for_next) * 100));
+  const { badges, streak } = ach.data;
   const earned = badges.filter((b) => b.earned).length;
 
   return (
@@ -17,18 +16,6 @@ export function AchievementsPanel() {
           {earned}/{badges.length} badges
           {streak.current_streak > 0 && <> · 🔥 {streak.current_streak}-day streak</>}
         </span>
-      </div>
-
-      <div className="mb-4 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-        <div className="mb-1 flex items-center justify-between text-sm">
-          <span className="font-semibold">Level {level}</span>
-          <span className="text-slate-500 dark:text-slate-400">
-            {xp_into_level} / {xp_for_next} XP
-          </span>
-        </div>
-        <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-          <div className="h-full rounded-full bg-brand-600" style={{ width: `${progress}%` }} />
-        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">

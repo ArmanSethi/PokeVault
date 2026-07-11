@@ -4,6 +4,7 @@ import { ApiError } from "../lib/api";
 import { useAddEntry, useCard, useCardHistory } from "../lib/queries";
 import { money } from "../lib/format";
 import { useAuth } from "../context/AuthContext";
+import { useCurrency } from "../context/CurrencyContext";
 import { PriceChart } from "../components/PriceChart";
 import { ErrorState } from "../components/States";
 import { DetailSkeleton } from "../components/Skeleton";
@@ -23,6 +24,7 @@ export function CardDetailPage() {
   const addEntry = useAddEntry();
   const toast = useToast();
   const { session } = useAuth();
+  const { format } = useCurrency();
 
   const [form, setForm] = useState<CollectionEntryCreate>({
     card_id: id,
@@ -45,7 +47,7 @@ export function CardDetailPage() {
     }
   }
 
-  const priceText = c.market_price ? ` — ${money(c.market_price, c.currency ?? "USD")}` : "";
+  const priceText = c.market_price ? ` — ${format(c.market_price)}` : "";
 
   return (
     <>
@@ -83,7 +85,7 @@ export function CardDetailPage() {
             {c.rarity ? ` · ${c.rarity}` : ""}
           </p>
           <p className="mt-3 text-3xl font-bold text-brand-600 dark:text-brand-400">
-            {money(c.market_price, c.currency ?? "USD")}
+            {format(c.market_price)}
           </p>
 
           {c.prices.length > 0 && (
@@ -97,6 +99,7 @@ export function CardDetailPage() {
                     <td className="py-1 text-slate-500">
                       {p.source} · {p.variant}
                     </td>
+                    {/* Raw per-source reference prices, shown in each source's native currency. */}
                     <td className="py-1 text-right">{money(p.market, p.currency)}</td>
                   </tr>
                 ))}
@@ -197,7 +200,6 @@ export function CardDetailPage() {
         <ErrorState message={(history.error as Error).message} onRetry={() => history.refetch()} />
       ) : (
         <PriceChart
-          currency={history.data?.currency ?? "USD"}
           label="Market"
           data={(history.data?.points ?? []).map((p) => ({
             date: p.date,

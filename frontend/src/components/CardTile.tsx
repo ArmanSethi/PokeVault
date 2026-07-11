@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import type { Card } from "../types";
-import { money } from "../lib/format";
+import { useCurrency } from "../context/CurrencyContext";
 
 export function CardTile({ card }: { card: Card }) {
+  const { format } = useCurrency();
   return (
     <Link
       to={`/cards/${encodeURIComponent(card.id)}`}
@@ -34,7 +35,7 @@ export function CardTile({ card }: { card: Card }) {
           {card.set_id} · #{card.number}
         </p>
         <p className="mt-1 font-semibold text-brand-600 dark:text-brand-400">
-          {money(card.market_price, card.currency ?? "USD")}
+          {format(card.market_price)}
         </p>
       </div>
     </Link>

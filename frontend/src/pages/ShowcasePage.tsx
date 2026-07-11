@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { usePublicCollection, usePublicProfile } from "../lib/queries";
-import { money } from "../lib/format";
+import { useCurrency } from "../context/CurrencyContext";
 import { ErrorState } from "../components/States";
 import { CardGridSkeleton } from "../components/Skeleton";
 import { Meta } from "../components/Meta";
@@ -10,6 +10,7 @@ export function ShowcasePage() {
   const { handle = "" } = useParams();
   const profile = usePublicProfile(handle);
   const collection = usePublicCollection(handle);
+  const { format } = useCurrency();
 
   if (profile.isPending) return <CardGridSkeleton />;
   if (profile.isError)
@@ -33,24 +34,20 @@ export function ShowcasePage() {
     <>
       <Meta
         title={`@${p.handle}’s Pokémon collection | PokéVault`}
-        description={`${p.total_distinct_cards} unique cards · ${p.sets_completed} sets completed · ${money(
+        description={`${p.total_distinct_cards} unique cards · ${p.sets_completed} sets completed · ${format(
           p.total_market_value,
-          p.currency,
         )} tracked. See the full collection on PokéVault.`}
       />
 
       <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">@{p.handle}</h1>
-          <span className="rounded-full bg-brand-100 px-2.5 py-0.5 text-sm font-semibold text-brand-700 dark:bg-brand-900/40 dark:text-brand-300">
-            Level {p.level}
-          </span>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Stat label="Unique cards" value={String(p.total_distinct_cards)} />
           <Stat label="Total copies" value={String(p.total_quantity)} />
           <Stat label="Sets completed" value={String(p.sets_completed)} />
-          <Stat label="Collection value" value={money(p.total_market_value, p.currency)} />
+          <Stat label="Collection value" value={format(p.total_market_value)} />
         </div>
       </div>
 
@@ -97,7 +94,7 @@ export function ShowcasePage() {
                   {e.set_id} · #{e.number}
                 </p>
                 <p className="mt-1 text-sm font-semibold text-brand-600 dark:text-brand-400">
-                  {money(e.market_value, p.currency)}
+                  {format(e.market_value)}
                 </p>
               </div>
             </Link>

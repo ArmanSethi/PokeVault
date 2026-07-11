@@ -7,7 +7,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { money, shortDate } from "../lib/format";
+import { shortDate } from "../lib/format";
+import { useCurrency } from "../context/CurrencyContext";
 
 interface Point {
   date: string;
@@ -21,27 +22,20 @@ const FULL_HISTORY = 7;
  * Market-price / portfolio-value area chart. PokéVault self-snapshots prices daily, so early
  * on there may be only a point or two — we show a "history still building" note then.
  */
-export function PriceChart({
-  data,
-  currency = "USD",
-  label = "Value",
-}: {
-  data: Point[];
-  currency?: string;
-  label?: string;
-}) {
+export function PriceChart({ data, label = "Value" }: { data: Point[]; label?: string }) {
+  const { format } = useCurrency();
   const points = data.filter((p) => p.value !== null);
 
   // 0–1 points: not enough to draw a line — show a short note (plus today's value if we have
-  // one). money() formats with grouping and returns "—" for null/NaN, so we only append the
+  // one). format() converts + formats and returns "—" for null/NaN, so we only append the
   // value when it's a real figure — never a bare "$…" or "—".
   if (points.length < 2) {
-    const latest = money(points.length ? points[points.length - 1].value : null, currency);
+    const latest = format(points.length ? points[points.length - 1].value : null);
     const hasValue = latest !== "—";
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-        📈 Price history shows up here for the cards in your collection and wishlist — give it a
-        few days to build.
+        📈 Price history shows up here for the cards in your collection and wishlist — give it a few
+        days to build.
         {hasValue && ` Today: ${latest}.`}
       </div>
     );
@@ -72,7 +66,7 @@ export function PriceChart({
               tickLine={false}
             />
             <YAxis
-              tickFormatter={(v) => money(v, currency)}
+              tickFormatter={(v) => format(v)}
               width={72}
               fontSize={12}
               stroke="currentColor"
@@ -81,7 +75,7 @@ export function PriceChart({
               axisLine={false}
             />
             <Tooltip
-              formatter={(v) => [money(Number(v), currency), label]}
+              formatter={(v) => [format(Number(v)), label]}
               labelFormatter={(l) => shortDate(String(l))}
               contentStyle={{ borderRadius: 12, border: "1px solid #cbd5e1", fontSize: 13 }}
             />

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCardNames, useCollection, useDeleteEntry, useUpdateEntry } from "../lib/queries";
-import { money } from "../lib/format";
+import { useCurrency } from "../context/CurrencyContext";
 import { EmptyState, ErrorState } from "../components/States";
 import { TableSkeleton } from "../components/Skeleton";
 import { useToast } from "../components/Toast";
@@ -21,6 +21,7 @@ export function CollectionPage() {
   const del = useDeleteEntry();
   const update = useUpdateEntry();
   const toast = useToast();
+  const { format } = useCurrency();
 
   const [editing, setEditing] = useState<CollectionEntry | null>(null);
   const [showImport, setShowImport] = useState(false);
@@ -198,8 +199,8 @@ export function CollectionPage() {
                     "—"
                   )}
                 </td>
-                <td className="px-4 py-2 text-right">{money(e.market_price)}</td>
-                <td className="px-4 py-2 text-right font-medium">{money(e.market_value)}</td>
+                <td className="px-4 py-2 text-right">{format(e.market_price)}</td>
+                <td className="px-4 py-2 text-right font-medium">{format(e.market_value)}</td>
                 <td className="px-4 py-2 text-right whitespace-nowrap">
                   <button
                     onClick={() => setEditing(e)}

@@ -1,5 +1,6 @@
 import type { ScanCandidate, ScanResult } from "../types";
-import { money, pct } from "../lib/format";
+import { pct } from "../lib/format";
+import { useCurrency } from "../context/CurrencyContext";
 
 interface Props {
   result: ScanResult;
@@ -20,15 +21,23 @@ function ConfidenceBar({ value, width = "w-24" }: { value: number; width?: strin
 
 function CardImage({ c, className }: { c: ScanCandidate; className: string }) {
   return c.image_url ? (
-    <img src={c.image_url} alt={c.name} loading="lazy" className={`${className} rounded object-contain`} />
+    <img
+      src={c.image_url}
+      alt={c.name}
+      loading="lazy"
+      className={`${className} rounded object-contain`}
+    />
   ) : (
-    <div className={`${className} flex items-center justify-center rounded bg-slate-100 dark:bg-slate-800`}>
+    <div
+      className={`${className} flex items-center justify-center rounded bg-slate-100 dark:bg-slate-800`}
+    >
       🃏
     </div>
   );
 }
 
 export function ScanResults({ result, added, onAdd }: Props) {
+  const { format } = useCurrency();
   const [hero, ...rest] = result.candidates;
 
   return (
@@ -54,7 +63,7 @@ export function ScanResults({ result, added, onAdd }: Props) {
               </p>
               <p className="text-lg font-semibold">{hero.name}</p>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                {hero.set_id} · #{hero.number} · {money(hero.market_price, hero.currency ?? "USD")}
+                {hero.set_id} · #{hero.number} · {format(hero.market_price)}
               </p>
               <div className="mt-2 flex items-center gap-3">
                 <span className="text-2xl font-bold text-brand-600 dark:text-brand-400">
@@ -88,7 +97,7 @@ export function ScanResults({ result, added, onAdd }: Props) {
                     <div className="flex-1">
                       <p className="font-medium">{c.name}</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        {c.set_id} · #{c.number} · {money(c.market_price, c.currency ?? "USD")}
+                        {c.set_id} · #{c.number} · {format(c.market_price)}
                       </p>
                       <div className="mt-1">
                         <ConfidenceBar value={c.confidence} />

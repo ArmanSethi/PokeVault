@@ -66,15 +66,11 @@ export function DashboardPage() {
         </>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Stat
               label="Portfolio value"
               value={money(summary.data.total_market_value, summary.data.currency)}
               accent
-            />
-            <Stat
-              label="Total cost"
-              value={money(summary.data.total_cost, summary.data.currency)}
             />
             <Stat label="Distinct cards" value={String(summary.data.total_distinct_cards)} />
             <Stat label="Total cards" value={String(summary.data.total_quantity)} />

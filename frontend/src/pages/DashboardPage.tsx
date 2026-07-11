@@ -80,9 +80,13 @@ export function DashboardPage() {
               label="Portfolio value"
               value={format(summary.data.total_market_value)}
               accent
+              to="/collection?view=grid"
+            />
+            <Stat
+              label="Total cards"
+              value={String(summary.data.total_quantity)}
               to="/collection?view=table"
             />
-            <Stat label="Total cards" value={String(summary.data.total_quantity)} />
           </div>
 
           <h2 className="mb-2 mt-8 text-lg font-semibold">Portfolio value over time</h2>

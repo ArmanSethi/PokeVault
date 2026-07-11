@@ -109,6 +109,36 @@ def test_parse_ocr_empty_on_garbage():
     assert number is None
 
 
+def test_parse_ocr_prefers_name_over_flavor_text():
+    """Regression: the long flavor/attack line must not outrank the short card name.
+
+    Previously the heuristic picked the longest alphabetic line, so a real card scan
+    returned e.g. "Evolves from Charmeleon..." instead of "Charizard".
+    """
+    text = (
+        "Charizard\n"
+        "Evolves from Charmeleon. It spits fire hot enough to melt boulders "
+        "and is known to cause forest fires."
+    )
+    name, _ = parse_ocr(text)
+    assert name is not None and "charizard" in name.lower()
+    assert "evolves" not in name.lower()
+
+
+def test_parse_ocr_name_hint_disambiguates_top_lines():
+    """The title-band OCR hint wins when a non-name top line (e.g. "Basic Pokemon")
+    would otherwise outrank the card name."""
+    text = (
+        "Basic Pokemon\nPikachu\n"
+        "When several of these Pokemon gather, their electricity could cause "
+        "lightning storms."
+    )
+    # Without the hint the top "Basic Pokemon" line wins (the failure mode);
+    # the title-band hint corrects it.
+    name, _ = parse_ocr(text, "Pikachu 40 HP")
+    assert name is not None and "pikachu" in name.lower()
+
+
 # ---- integration: OCR + match (needs Tesseract) --------------------------
 
 

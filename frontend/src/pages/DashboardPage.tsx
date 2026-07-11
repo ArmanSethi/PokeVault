@@ -67,9 +67,8 @@ export function DashboardPage() {
         </>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3">
             <Stat label="Portfolio value" value={format(summary.data.total_market_value)} accent />
-            <Stat label="Distinct cards" value={String(summary.data.total_distinct_cards)} />
             <Stat label="Total cards" value={String(summary.data.total_quantity)} />
           </div>
 

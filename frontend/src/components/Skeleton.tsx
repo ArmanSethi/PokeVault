@@ -32,9 +32,9 @@ export function TableSkeleton({ rows = 6 }: { rows?: number }) {
   );
 }
 
-export function StatTilesSkeleton({ count = 3 }: { count?: number }) {
+export function StatTilesSkeleton({ count = 2 }: { count?: number }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+    <div className="grid grid-cols-2 gap-3">
       {Array.from({ length: count }).map((_, i) => (
         <Block key={i} className="h-20 w-full" />
       ))}

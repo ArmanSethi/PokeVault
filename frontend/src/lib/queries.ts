@@ -266,6 +266,14 @@ export function usePublicCollection(handle: string) {
   });
 }
 
+export function useLeaderboard() {
+  return useQuery({
+    queryKey: ["leaderboard"],
+    queryFn: () => api.leaderboard(),
+    staleTime: 60 * 1000,
+  });
+}
+
 // ---- wishlist + alerts ----
 
 export function useWishlist() {

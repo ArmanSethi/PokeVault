@@ -13,6 +13,7 @@ import type {
   ImportConfirmResult,
   ImportConfirmRow,
   ImportPreview,
+  LeaderboardEntry,
   PortfolioValueSeries,
   ProfileUpdate,
   PublicCollection,
@@ -116,6 +117,7 @@ export const api = {
     request<PublicProfile>(`/public/u/${encodeURIComponent(handle)}`),
   publicCollection: (handle: string) =>
     request<PublicCollection>(`/public/u/${encodeURIComponent(handle)}/collection`),
+  leaderboard: () => request<LeaderboardEntry[]>("/public/leaderboard"),
 
   // ---- collection (auth) ----
   listCollection: () => request<CollectionEntry[]>("/collection", {}, { auth: true }),

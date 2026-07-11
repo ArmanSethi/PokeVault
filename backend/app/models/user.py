@@ -28,5 +28,10 @@ class User(Base):
     # touched by the per-request upsert in api/deps.py, so they survive normal auth traffic.
     handle: Mapped[str | None] = mapped_column(String(30), unique=True, index=True, default=None)
     is_public: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    # Opt-in to displaying the exact portfolio value on the public leaderboard. Default hidden
+    # (safest): the user still ranks by true value, but the number shows as "hidden".
+    show_value_on_leaderboard: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())

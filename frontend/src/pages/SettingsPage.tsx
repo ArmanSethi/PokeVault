@@ -21,11 +21,13 @@ export function SettingsPage() {
   const navigate = useNavigate();
   const [handle, setHandle] = useState("");
   const [isPublic, setIsPublic] = useState(false);
+  const [showValue, setShowValue] = useState(false);
 
   useEffect(() => {
     if (me.data) {
       setHandle(me.data.handle ?? "");
       setIsPublic(Boolean(me.data.is_public));
+      setShowValue(Boolean(me.data.show_value_on_leaderboard));
     }
   }, [me.data]);
 
@@ -42,6 +44,7 @@ export function SettingsPage() {
       await update.mutateAsync({
         handle: handle || null,
         is_public: isPublic,
+        show_value_on_leaderboard: showValue,
       });
       toast.success("Profile saved.");
     } catch (e) {
@@ -89,6 +92,22 @@ export function SettingsPage() {
             onChange={(e) => setIsPublic(e.target.checked)}
           />
           Make my collection showcase public
+        </label>
+
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={showValue}
+            onChange={(e) => setShowValue(e.target.checked)}
+            className="mt-1"
+          />
+          <span>
+            Show my portfolio value on the leaderboard
+            <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
+              Off by default. You still rank by value; when off it shows as “Hidden”. Applies only
+              while your profile is public.
+            </span>
+          </span>
         </label>
 
         <button

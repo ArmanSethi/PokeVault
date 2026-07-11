@@ -12,6 +12,7 @@ const NAV = [
   { to: "/wishlist", label: "Wishlist" },
   { to: "/sets", label: "Set completion" },
   { to: "/scan", label: "Scan" },
+  { to: "/leaderboard", label: "Leaderboard" },
 ];
 
 function navClass({ isActive }: { isActive: boolean }): string {

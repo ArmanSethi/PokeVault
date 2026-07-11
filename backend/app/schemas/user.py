@@ -15,6 +15,7 @@ class UserRead(BaseModel):
     email: str | None = None
     handle: str | None = None
     is_public: bool = False
+    show_value_on_leaderboard: bool = False
     created_at: datetime
 
 
@@ -24,3 +25,4 @@ class UserProfileUpdate(BaseModel):
     # Lowercase slug used in the showcase URL (/u/{handle}); 3–30 chars, url-safe.
     handle: str | None = Field(default=None, pattern=r"^[a-z0-9_-]{3,30}$")
     is_public: bool | None = None
+    show_value_on_leaderboard: bool | None = None

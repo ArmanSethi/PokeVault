@@ -34,6 +34,9 @@ const SettingsPage = lazy(() =>
   import("./pages/SettingsPage").then((m) => ({ default: m.SettingsPage })),
 );
 const ScanPage = lazy(() => import("./pages/ScanPage").then((m) => ({ default: m.ScanPage })));
+const LeaderboardPage = lazy(() =>
+  import("./pages/LeaderboardPage").then((m) => ({ default: m.LeaderboardPage })),
+);
 
 export default function App() {
   return (
@@ -52,6 +55,7 @@ export default function App() {
           <Route path="cards/:id" element={<CardDetailPage />} />
           <Route path="sets/:id" element={<SetDetailPage />} />
           <Route path="u/:handle" element={<ShowcasePage />} />
+          <Route path="leaderboard" element={<LeaderboardPage />} />
 
           {/* Authenticated pages. */}
           <Route

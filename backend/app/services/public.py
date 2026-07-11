@@ -34,7 +34,9 @@ async def public_profile(session: AsyncSession, handle: str) -> PublicProfile | 
     user = await _public_user(session, handle)
     if user is None:
         return None
-    summary = await collection_summary(session, user.id)
+    # graded=False: public values (headline total, per-set, per-card) all use raw prices,
+    # so the profile total agrees with the sum of the publicly shown cards.
+    summary = await collection_summary(session, user.id, graded=False)
     sets_completed = sum(1 for s in summary.sets if s.completion_pct >= 1.0)
     # Collector level uses the public-safe subset of the same XP formula (no cost basis).
     xp = compute_xp(
@@ -106,9 +108,7 @@ async def build_sitemap(session: AsyncSession) -> str:
     set_ids = (await session.execute(select(Set.id))).scalars().all()
     card_ids = (await session.execute(select(Card.id))).scalars().all()
     handles = (
-        (await session.execute(select(User.handle).where(User.is_public.is_(True))))
-        .scalars()
-        .all()
+        (await session.execute(select(User.handle).where(User.is_public.is_(True)))).scalars().all()
     )
 
     parts: list[str] = [

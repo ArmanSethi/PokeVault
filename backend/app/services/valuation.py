@@ -14,14 +14,13 @@ from sqlalchemy.orm import selectinload
 from app.models.card import Card
 from app.models.collection import CollectionEntry
 from app.schemas.collection import CollectionEntryRead, CollectionSummary, SetHolding
+from app.services.cards import market_price_for_entry
 from app.services.grading import grade_multiplier, graded_unit_price
 
 
 def _to_entry_read(entry: CollectionEntry) -> CollectionEntryRead:
     # Grade-aware: PSA-graded copies are worth a multiple of the raw price (see grading.py).
-    unit = graded_unit_price(
-        entry.card.prices_current, is_foil=entry.is_foil, grade=entry.grade
-    )
+    unit = graded_unit_price(entry.card.prices_current, is_foil=entry.is_foil, grade=entry.grade)
     value = unit * entry.quantity if unit is not None else None
     return CollectionEntryRead(
         id=entry.id,
@@ -40,9 +39,7 @@ def _to_entry_read(entry: CollectionEntry) -> CollectionEntryRead:
     )
 
 
-async def _load_entries(
-    session: AsyncSession, user_id: uuid.UUID
-) -> Sequence[CollectionEntry]:
+async def _load_entries(session: AsyncSession, user_id: uuid.UUID) -> Sequence[CollectionEntry]:
     # Eager-load each entry's card, its prices, and its set so valuation + the per-set
     # breakdown need no per-entry queries.
     stmt = (
@@ -74,9 +71,15 @@ class _SetAgg:
 
 
 async def collection_summary(
-    session: AsyncSession, user_id: uuid.UUID
+    session: AsyncSession, user_id: uuid.UUID, *, graded: bool = True
 ) -> CollectionSummary:
-    """Portfolio totals plus a per-set breakdown with completion (TCGPlayer USD)."""
+    """Portfolio totals plus a per-set breakdown with completion (TCGPlayer USD).
+
+    ``graded=True`` (the owner's view) applies the PSA grade multiplier to values.
+    ``graded=False`` (the public showcase) uses raw prices so the headline total, the
+    per-set values, and the per-card values shown publicly all agree — grading is not
+    revealed publicly.
+    """
     entries = await _load_entries(session, user_id)
 
     total_quantity = 0
@@ -87,7 +90,10 @@ async def collection_summary(
 
     for entry in entries:
         card = entry.card
-        unit = graded_unit_price(card.prices_current, is_foil=entry.is_foil, grade=entry.grade)
+        if graded:
+            unit = graded_unit_price(card.prices_current, is_foil=entry.is_foil, grade=entry.grade)
+        else:
+            unit = market_price_for_entry(card.prices_current, is_foil=entry.is_foil)
         line_value = unit * entry.quantity if unit is not None else Decimal("0")
 
         total_quantity += entry.quantity

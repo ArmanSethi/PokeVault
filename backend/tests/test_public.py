@@ -131,6 +131,28 @@ async def test_showcase_private_by_default_then_public(auth_client, seed, signin
     assert "notes" not in raw
 
 
+async def test_public_profile_total_matches_raw_card_values(auth_client, seed, signing_key) -> None:
+    """Regression (m1): the public profile's headline total must equal the sum of the
+    publicly shown per-card values — both use RAW price. The PSA grade premium (owner-only)
+    must not inflate the public total."""
+    a = _headers(signing_key, uuid.uuid4())
+    # A PSA 10 copy: raw price $2.00; the owner's grade-adjusted value would be $10.00 (x5).
+    await auth_client.post(
+        f"{_API}/collection",
+        json={"card_id": "tst1-1", "quantity": 1, "grade": "PSA 10"},
+        headers=a,
+    )
+    handle = f"t{uuid.uuid4().hex[:12]}"
+    await auth_client.patch(f"{_API}/me", json={"handle": handle, "is_public": True}, headers=a)
+
+    prof = (await auth_client.get(f"{_API}/public/u/{handle}")).json()
+    coll = (await auth_client.get(f"{_API}/public/u/{handle}/collection")).json()
+
+    entries_sum = sum(Decimal(str(e["market_value"])) for e in coll["entries"])
+    assert Decimal(str(prof["total_market_value"])) == entries_sum  # headline == sum of cards
+    assert entries_sum == Decimal("2.00")  # raw, NOT the grade-adjusted 10.00
+
+
 async def test_sitemap_lists_cards_and_sets(auth_client, seed, signing_key, monkeypatch) -> None:
     monkeypatch.setattr(settings, "PUBLIC_WEB_ORIGIN", "https://pokevault.app")
     r = await auth_client.get(f"{_API}/sitemap.xml")

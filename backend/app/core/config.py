@@ -68,6 +68,12 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
     ]
 
+    # Regex matching every Vercel hostname for this project: stable aliases
+    # (poke-vault-eta, poke-vault-ace67), branch aliases (poke-vault-git-main-ace67), and
+    # per-deploy / preview hosts (poke-vault-<hash>-ace67). Vercel mints a new hostname per
+    # deploy, so an exact allow-list can't cover them — the regex does. Env-overridable.
+    BACKEND_CORS_ORIGIN_REGEX: str | None = r"https://poke-vault-[a-z0-9-]+\.vercel\.app"
+
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:

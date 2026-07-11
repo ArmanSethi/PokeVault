@@ -17,6 +17,12 @@ const CONDITIONS = ["NM", "LP", "MP", "HP", "DMG"];
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800";
 
+// Friendly names for the raw price-source keys shown in the per-source reference table.
+const SOURCE_LABELS: Record<string, string> = {
+  tcgplayer: "TCGplayer",
+  cardmarket: "CardMarket",
+};
+
 export function CardDetailPage() {
   const { id = "" } = useParams();
   const card = useCard(id);
@@ -97,10 +103,22 @@ export function CardDetailPage() {
                     className="border-t border-slate-100 dark:border-slate-800"
                   >
                     <td className="py-1 text-slate-500">
-                      {p.source} · {p.variant}
+                      <span className="font-medium text-slate-600 dark:text-slate-300">
+                        {SOURCE_LABELS[p.source] ?? p.source}
+                      </span>{" "}
+                      · {p.variant}
                     </td>
-                    {/* Raw per-source reference prices, shown in each source's native currency. */}
-                    <td className="py-1 text-right">{money(p.market, p.currency)}</td>
+                    {/* Each marketplace's own quote, in its native currency (symbol + ISO code). */}
+                    <td className="py-1 text-right">
+                      {p.market != null ? (
+                        <>
+                          {money(p.market, p.currency)}{" "}
+                          <span className="text-xs text-slate-400">{p.currency}</span>
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

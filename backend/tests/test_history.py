@@ -216,3 +216,15 @@ async def test_portfolio_history_and_isolation(auth_client, history_rows, signin
 
     # A different user's portfolio history is empty (ownership scoping).
     assert (await auth_client.get(f"{_COLL}/history", headers=b)).json()["points"] == []
+
+
+async def test_portfolio_history_applies_grade_multiplier(auth_client, history_rows, signing_key):
+    """A PSA 10 card's over-time value = raw price × 5.0 (matches the graded portfolio tile)."""
+    a = _headers(signing_key, uuid.uuid4())
+    await auth_client.post(
+        _COLL, json={"card_id": "tst1-1", "quantity": 1, "grade": "PSA 10"}, headers=a
+    )
+    series = (await auth_client.get(f"{_COLL}/history", headers=a)).json()
+    got = {p["date"]: float(p["total_value"]) for p in series["points"]}
+    # normal prices 1/2/3 × PSA 10 multiplier (5.0)
+    assert got == {"2026-06-01": 5.0, "2026-06-02": 10.0, "2026-06-03": 15.0}

@@ -17,6 +17,7 @@ from app.schemas.history import (
     PriceHistoryPoint,
 )
 from app.services.cards import _VARIANT_PRIORITY
+from app.services.grading import grade_multiplier
 
 
 def _pick_variant(available: set[str], *, prefer: str | None = None) -> str | None:
@@ -80,7 +81,10 @@ async def portfolio_value_series(
     entries = (
         await session.execute(
             select(
-                CollectionEntry.card_id, CollectionEntry.quantity, CollectionEntry.is_foil
+                CollectionEntry.card_id,
+                CollectionEntry.quantity,
+                CollectionEntry.is_foil,
+                CollectionEntry.grade,
             ).where(CollectionEntry.user_id == user_id)
         )
     ).all()
@@ -117,8 +121,10 @@ async def portfolio_value_series(
         chosen = _pick_variant(set(variants), prefer="holofoil" if entry.is_foil else "normal")
         if chosen is None:
             continue
+        # Grade-adjust so the over-time chart matches the (graded) "Portfolio value" tile.
+        mult = grade_multiplier(entry.grade)
         for day, price in variants[chosen].items():
-            totals[day] = totals.get(day, Decimal("0")) + price * entry.quantity
+            totals[day] = totals.get(day, Decimal("0")) + price * entry.quantity * mult
 
     points = [PortfolioValuePoint(date=day, total_value=totals[day]) for day in sorted(totals)]
     return PortfolioValueSeries(currency="USD", points=points)

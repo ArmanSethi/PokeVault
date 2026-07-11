@@ -206,8 +206,19 @@ export function CollectionPage() {
                   <td className="px-4 py-2 text-right">{format(e.market_price)}</td>
                   <td className="px-4 py-2 text-right font-medium">{format(e.market_value)}</td>
                   <td className="px-4 py-2 text-right whitespace-nowrap">
-                    <button onClick={() => setEditing(e)} className="text-brand-600 hover:underline">
+                    <button
+                      onClick={() => setEditing(e)}
+                      className="mr-3 text-brand-600 hover:underline"
+                    >
                       Edit
+                    </button>
+                    <button
+                      onClick={() => remove(e)}
+                      aria-label="Delete card"
+                      title="Delete this card from your collection"
+                      className="text-slate-400 hover:text-danger-600 dark:hover:text-danger-500"
+                    >
+                      🗑
                     </button>
                   </td>
                 </tr>
@@ -271,9 +282,17 @@ export function CollectionPage() {
                     +
                   </button>
                 </div>
-                <div className="mt-1 flex gap-3 text-sm">
+                <div className="mt-1 flex items-center gap-3 text-sm">
                   <button onClick={() => setEditing(e)} className="text-brand-600 hover:underline">
                     Edit
+                  </button>
+                  <button
+                    onClick={() => remove(e)}
+                    aria-label="Delete card"
+                    title="Delete this card from your collection"
+                    className="ml-auto text-slate-400 hover:text-danger-600 dark:hover:text-danger-500"
+                  >
+                    🗑
                   </button>
                 </div>
               </div>

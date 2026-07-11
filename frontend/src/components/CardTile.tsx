@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { Card } from "../types";
+import { hasPrice } from "../lib/format";
 import { useCurrency } from "../context/CurrencyContext";
 
 export function CardTile({ card }: { card: Card }) {
@@ -34,9 +35,13 @@ export function CardTile({ card }: { card: Card }) {
         <p className="text-xs text-slate-500 dark:text-slate-400">
           {card.set_id} · #{card.number}
         </p>
-        <p className="mt-1 font-semibold text-brand-600 dark:text-brand-400">
-          {format(card.market_price)}
-        </p>
+        {hasPrice(card.market_price) ? (
+          <p className="mt-1 font-semibold text-brand-600 dark:text-brand-400">
+            {format(card.market_price)}
+          </p>
+        ) : (
+          <p className="mt-1 text-sm text-slate-400 dark:text-slate-500">No price yet</p>
+        )}
       </div>
     </Link>
   );

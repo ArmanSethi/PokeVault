@@ -106,13 +106,23 @@ function CostToComplete({ setId, ownedIds }: { setId: string; ownedIds: Set<stri
   if (cards.isError)
     return <p className="mt-2 text-sm text-danger-600">Could not load set cards.</p>;
 
+  const pricedCount = missing.filter((c) => c.price !== null).length;
+  const unpricedCount = missing.length - pricedCount;
   const total = missing.reduce((sum, c) => sum + (c.price ?? 0), 0);
 
   return (
     <div className="mt-3 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-800">
       <p className="mb-2">
-        <span className="font-semibold">{missing.length}</span> cards missing · estimated{" "}
-        <span className="font-semibold">{format(total)}</span> to complete (cheapest priced first)
+        <span className="font-semibold">{missing.length}</span> cards missing ·{" "}
+        {pricedCount === 0 ? (
+          <>cost estimate unavailable — these cards aren&apos;t priced yet</>
+        ) : (
+          <>
+            estimated <span className="font-semibold">{format(total)}</span> for the{" "}
+            {pricedCount} priced {pricedCount === 1 ? "card" : "cards"} (cheapest first)
+            {unpricedCount > 0 && <> · {unpricedCount} not yet priced</>}
+          </>
+        )}
       </p>
       <ul className="max-h-60 space-y-1 overflow-y-auto">
         {missing.slice(0, 30).map((c) => (

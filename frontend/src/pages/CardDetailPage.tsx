@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ApiError } from "../lib/api";
 import { useAddEntry, useCard, useCardHistory } from "../lib/queries";
-import { money } from "../lib/format";
+import { hasPrice, money } from "../lib/format";
 import { useAuth } from "../context/AuthContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { PriceChart } from "../components/PriceChart";
@@ -90,9 +90,15 @@ export function CardDetailPage() {
             {c.set_id} · #{c.number}
             {c.rarity ? ` · ${c.rarity}` : ""}
           </p>
-          <p className="mt-3 text-3xl font-bold text-brand-600 dark:text-brand-400">
-            {format(c.market_price)}
-          </p>
+          {hasPrice(c.market_price) ? (
+            <p className="mt-3 text-3xl font-bold text-brand-600 dark:text-brand-400">
+              {format(c.market_price)}
+            </p>
+          ) : (
+            <p className="mt-3 text-base text-slate-500 dark:text-slate-400">
+              No market price yet — our price sources haven&apos;t published one for this card.
+            </p>
+          )}
 
           {c.prices.length > 0 && (
             <table className="mt-4 w-full text-sm">

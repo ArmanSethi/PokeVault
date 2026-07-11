@@ -6,6 +6,14 @@ export function money(value: string | number | null | undefined, currency = "USD
   return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(n);
 }
 
+/** True when a price value from the API is a real, usable number (not null/blank/NaN).
+ * Used to show a "no market price yet" state instead of a bare/dash placeholder. */
+export function hasPrice(value: string | number | null | undefined): boolean {
+  if (value === null || value === undefined || value === "") return false;
+  const n = typeof value === "number" ? value : Number(value);
+  return !Number.isNaN(n);
+}
+
 /** Short date for chart axes / labels. */
 export function shortDate(iso: string): string {
   const d = new Date(iso);

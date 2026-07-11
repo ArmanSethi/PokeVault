@@ -3,7 +3,6 @@ import { useSummary, usePortfolioHistory } from "../lib/queries";
 import { pct } from "../lib/format";
 import { useCurrency } from "../context/CurrencyContext";
 import { PriceChart } from "../components/PriceChart";
-import { AchievementsPanel } from "../components/AchievementsPanel";
 import { EmptyState, ErrorState } from "../components/States";
 import { StatTilesSkeleton, TableSkeleton } from "../components/Skeleton";
 
@@ -125,8 +124,6 @@ export function DashboardPage() {
               </tbody>
             </table>
           </div>
-
-          <AchievementsPanel />
         </>
       )}
       {summary.isPending && (

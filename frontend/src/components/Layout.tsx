@@ -3,7 +3,6 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { useMe } from "../lib/queries";
-import { StreakChip } from "./StreakChip";
 
 const NAV = [
   { to: "/", label: "Dashboard", end: true },
@@ -72,8 +71,7 @@ export function Layout() {
           <div className="ml-auto flex items-center gap-2">
             {session ? (
               <>
-                {/* Order: daily streak → handle → dark/light → settings */}
-                <StreakChip />
+                {/* Order: handle → dark/light → settings */}
                 <HeaderIdentity />
                 {themeToggle}
                 <NavLink

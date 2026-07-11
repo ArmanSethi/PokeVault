@@ -1,17 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { useCardNames, useCollection, useDeleteEntry, useUpdateEntry } from "../lib/queries";
+import {
+  useCardImages,
+  useCardNames,
+  useCollection,
+  useDeleteEntry,
+  useUpdateEntry,
+} from "../lib/queries";
 import { useCurrency } from "../context/CurrencyContext";
 import { EmptyState, ErrorState } from "../components/States";
 import { TableSkeleton } from "../components/Skeleton";
 import { useToast } from "../components/Toast";
 import { ImportExportPanel } from "../components/ImportExportPanel";
 import { GradingFields } from "../components/GradingFields";
+import { CollectionFilters, type SortKey } from "../components/CollectionFilters";
 import type { CollectionEntry } from "../types";
 
-type SortKey = "name" | "value" | "quantity";
-const selectClass =
-  "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800";
+const LAYOUT_KEY = "pv-collection-view";
 
 export function CollectionPage() {
   const entries = useCollection();
@@ -25,10 +30,17 @@ export function CollectionPage() {
   const [sort, setSort] = useState<SortKey>("value");
   const [setFilter, setSetFilter] = useState("");
   const [foilOnly, setFoilOnly] = useState(false);
+  const [layout, setLayout] = useState<"table" | "grid">(() =>
+    localStorage.getItem(LAYOUT_KEY) === "grid" ? "grid" : "table",
+  );
+  useEffect(() => {
+    localStorage.setItem(LAYOUT_KEY, layout);
+  }, [layout]);
 
   const rows = useMemo(() => entries.data ?? [], [entries.data]);
   const ids = useMemo(() => [...new Set(rows.map((e) => e.card_id))], [rows]);
   const names = useCardNames(ids);
+  const images = useCardImages(ids);
   const setIds = useMemo(
     () => [...new Set(rows.map((e) => e.card_id.split("-")[0]))].sort(),
     [rows],
@@ -91,118 +103,188 @@ export function CollectionPage() {
     <>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Collection</h1>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setShowImport(true)}
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
           >
             Import / Export
           </button>
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value as SortKey)}
-            aria-label="Sort collection"
-            className={selectClass}
-          >
-            <option value="value">Sort: value</option>
-            <option value="name">Sort: name</option>
-            <option value="quantity">Sort: quantity</option>
-          </select>
-          <select
-            value={setFilter}
-            onChange={(e) => setSetFilter(e.target.value)}
-            aria-label="Filter by set"
-            className={selectClass}
-          >
-            <option value="">All sets</option>
-            {setIds.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
+          {/* Table / grid view toggle (persisted in localStorage) */}
+          <div className="flex overflow-hidden rounded-lg border border-slate-300 dark:border-slate-700">
+            {(["table", "grid"] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setLayout(v)}
+                aria-pressed={layout === v}
+                aria-label={`${v} view`}
+                className={`px-3 py-2 text-sm font-medium ${
+                  layout === v
+                    ? "bg-brand-600 text-white"
+                    : "hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+              >
+                {v === "table" ? "▤ Table" : "▦ Grid"}
+              </button>
             ))}
-          </select>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={foilOnly}
-              onChange={(e) => setFoilOnly(e.target.checked)}
-            />
-            Foil only
-          </label>
+          </div>
+          <CollectionFilters
+            sort={sort}
+            onSort={setSort}
+            setId={setFilter}
+            onSet={setSetFilter}
+            foilOnly={foilOnly}
+            onFoil={setFoilOnly}
+            sets={setIds}
+          />
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-100 text-left dark:bg-slate-800">
-            <tr>
-              <th className="px-4 py-2">Card</th>
-              <th className="px-4 py-2">Qty</th>
-              <th className="px-4 py-2">Condition</th>
-              <th className="px-4 py-2">Grade</th>
-              <th className="px-4 py-2 text-right">Unit</th>
-              <th className="px-4 py-2 text-right">Value</th>
-              <th className="px-4 py-2" />
-            </tr>
-          </thead>
-          <tbody>
-            {view.map((e) => (
-              <tr key={e.id} className="border-t border-slate-100 dark:border-slate-800">
-                <td className="px-4 py-2">
-                  <Link
-                    to={`/cards/${encodeURIComponent(e.card_id)}`}
-                    className="font-medium text-brand-600 hover:underline"
-                  >
-                    {names[e.card_id] ?? e.card_id}
-                  </Link>
-                  {e.is_foil && <span className="ml-2 text-xs text-accent-500">✦ foil</span>}
-                </td>
-                <td className="px-4 py-2">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => changeQty(e, -1)}
-                      aria-label="Decrease quantity"
-                      className="h-6 w-6 rounded border border-slate-300 dark:border-slate-700"
+      {layout === "table" ? (
+        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-100 text-left dark:bg-slate-800">
+              <tr>
+                <th className="px-4 py-2">Card</th>
+                <th className="px-4 py-2">Qty</th>
+                <th className="px-4 py-2">Condition</th>
+                <th className="px-4 py-2">Grade</th>
+                <th className="px-4 py-2 text-right">Unit</th>
+                <th className="px-4 py-2 text-right">Value</th>
+                <th className="px-4 py-2" />
+              </tr>
+            </thead>
+            <tbody>
+              {view.map((e) => (
+                <tr key={e.id} className="border-t border-slate-100 dark:border-slate-800">
+                  <td className="px-4 py-2">
+                    <Link
+                      to={`/cards/${encodeURIComponent(e.card_id)}`}
+                      className="font-medium text-brand-600 hover:underline"
                     >
-                      −
-                    </button>
-                    <span className="w-6 text-center">{e.quantity}</span>
-                    <button
-                      onClick={() => changeQty(e, 1)}
-                      aria-label="Increase quantity"
-                      className="h-6 w-6 rounded border border-slate-300 dark:border-slate-700"
-                    >
-                      +
-                    </button>
-                  </div>
-                </td>
-                <td className="px-4 py-2">{e.condition ?? "—"}</td>
-                <td className="px-4 py-2">
-                  {e.grade ? (
-                    <span className="inline-flex items-center gap-1">
-                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium dark:bg-slate-800">
-                        {e.grade}
-                      </span>
-                      {e.grade_multiplier > 1 && (
-                        <span
-                          title={`Graded copy valued at ${e.grade_multiplier}× the raw price`}
-                          className="rounded bg-success-500/15 px-1.5 py-0.5 text-xs font-semibold text-success-600 dark:text-success-500"
-                        >
-                          ×{e.grade_multiplier}
+                      {names[e.card_id] ?? e.card_id}
+                    </Link>
+                    {e.is_foil && <span className="ml-2 text-xs text-accent-500">✦ foil</span>}
+                  </td>
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => changeQty(e, -1)}
+                        aria-label="Decrease quantity"
+                        className="h-6 w-6 rounded border border-slate-300 dark:border-slate-700"
+                      >
+                        −
+                      </button>
+                      <span className="w-6 text-center">{e.quantity}</span>
+                      <button
+                        onClick={() => changeQty(e, 1)}
+                        aria-label="Increase quantity"
+                        className="h-6 w-6 rounded border border-slate-300 dark:border-slate-700"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </td>
+                  <td className="px-4 py-2">{e.condition ?? "—"}</td>
+                  <td className="px-4 py-2">
+                    {e.grade ? (
+                      <span className="inline-flex items-center gap-1">
+                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium dark:bg-slate-800">
+                          {e.grade}
                         </span>
-                      )}
-                    </span>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td className="px-4 py-2 text-right">{format(e.market_price)}</td>
-                <td className="px-4 py-2 text-right font-medium">{format(e.market_value)}</td>
-                <td className="px-4 py-2 text-right whitespace-nowrap">
+                        {e.grade_multiplier > 1 && (
+                          <span
+                            title={`Graded copy valued at ${e.grade_multiplier}× the raw price`}
+                            className="rounded bg-success-500/15 px-1.5 py-0.5 text-xs font-semibold text-success-600 dark:text-success-500"
+                          >
+                            ×{e.grade_multiplier}
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-right">{format(e.market_price)}</td>
+                  <td className="px-4 py-2 text-right font-medium">{format(e.market_value)}</td>
+                  <td className="px-4 py-2 text-right whitespace-nowrap">
+                    <button
+                      onClick={() => setEditing(e)}
+                      className="mr-2 text-brand-600 hover:underline"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => remove(e)}
+                      className="text-danger-600 hover:underline dark:text-danger-500"
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          {view.map((e) => (
+            <div
+              key={e.id}
+              className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+            >
+              <Link
+                to={`/cards/${encodeURIComponent(e.card_id)}`}
+                className="relative flex aspect-[3/4] items-center justify-center bg-slate-100 dark:bg-slate-800"
+              >
+                {images[e.card_id] ? (
+                  <img
+                    src={images[e.card_id]!}
+                    alt={names[e.card_id] ?? e.card_id}
+                    loading="lazy"
+                    className="h-full w-full object-contain"
+                  />
+                ) : (
+                  <span className="text-4xl opacity-30">🃏</span>
+                )}
+                {e.is_foil && (
+                  <span className="absolute left-1.5 top-1.5 text-xs text-accent-400">✦</span>
+                )}
+                {e.grade && (
+                  <span className="absolute right-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                    {e.grade}
+                    {e.grade_multiplier > 1 ? ` ×${e.grade_multiplier}` : ""}
+                  </span>
+                )}
+              </Link>
+              <div className="flex flex-1 flex-col gap-1 p-3">
+                <Link
+                  to={`/cards/${encodeURIComponent(e.card_id)}`}
+                  title={names[e.card_id] ?? e.card_id}
+                  className="truncate text-sm font-medium text-brand-600 hover:underline"
+                >
+                  {names[e.card_id] ?? e.card_id}
+                </Link>
+                <p className="text-sm font-semibold">{format(e.market_value)}</p>
+                <div className="mt-1 flex items-center gap-2">
                   <button
-                    onClick={() => setEditing(e)}
-                    className="mr-2 text-brand-600 hover:underline"
+                    onClick={() => changeQty(e, -1)}
+                    aria-label="Decrease quantity"
+                    className="h-6 w-6 rounded border border-slate-300 dark:border-slate-700"
                   >
+                    −
+                  </button>
+                  <span className="w-6 text-center text-sm">{e.quantity}</span>
+                  <button
+                    onClick={() => changeQty(e, 1)}
+                    aria-label="Increase quantity"
+                    className="h-6 w-6 rounded border border-slate-300 dark:border-slate-700"
+                  >
+                    +
+                  </button>
+                </div>
+                <div className="mt-1 flex gap-3 text-sm">
+                  <button onClick={() => setEditing(e)} className="text-brand-600 hover:underline">
                     Edit
                   </button>
                   <button
@@ -211,12 +293,12 @@ export function CollectionPage() {
                   >
                     Remove
                   </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {editing && (
         <EditModal

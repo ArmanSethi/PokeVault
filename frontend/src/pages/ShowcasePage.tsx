@@ -1,16 +1,39 @@
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { usePublicCollection, usePublicProfile } from "../lib/queries";
 import { useCurrency } from "../context/CurrencyContext";
+import { CollectionFilters, type SortKey } from "../components/CollectionFilters";
 import { ErrorState } from "../components/States";
 import { CardGridSkeleton } from "../components/Skeleton";
 import { Meta } from "../components/Meta";
 
-/** Public, shareable collection showcase at /u/:handle (no private fields exposed). */
+/** Public, shareable collection showcase at /u/:handle. Read-only: it renders ONLY the owner's
+ * public collection (usePublicCollection) with no write/edit/export actions. Sort + filters are
+ * display-only client-side operations over the already-fetched public data. */
 export function ShowcasePage() {
   const { handle = "" } = useParams();
   const profile = usePublicProfile(handle);
   const collection = usePublicCollection(handle);
   const { format } = useCurrency();
+
+  // Display-only controls (client-side; never fetch or mutate).
+  const [sort, setSort] = useState<SortKey>("value");
+  const [setId, setSetId] = useState("");
+  const [foilOnly, setFoilOnly] = useState(false);
+
+  const allEntries = useMemo(() => collection.data?.entries ?? [], [collection.data]);
+  const sets = useMemo(() => [...new Set(allEntries.map((e) => e.set_id))].sort(), [allEntries]);
+  const displayed = useMemo(() => {
+    let r = allEntries;
+    if (setId) r = r.filter((e) => e.set_id === setId);
+    if (foilOnly) r = r.filter((e) => e.is_foil);
+    const val = (e: (typeof allEntries)[number]) => Number(e.market_value ?? 0);
+    return [...r].sort((a, b) => {
+      if (sort === "value") return val(b) - val(a);
+      if (sort === "quantity") return b.quantity - a.quantity;
+      return a.name.localeCompare(b.name);
+    });
+  }, [allEntries, setId, foilOnly, sort]);
 
   if (profile.isPending) return <CardGridSkeleton />;
   if (profile.isError)
@@ -28,7 +51,6 @@ export function ShowcasePage() {
     );
 
   const p = profile.data;
-  const entries = collection.data?.entries ?? [];
 
   return (
     <>
@@ -59,47 +81,60 @@ export function ShowcasePage() {
           onRetry={() => collection.refetch()}
         />
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-          {entries.map((e) => (
-            <Link
-              key={e.card_id}
-              to={`/cards/${encodeURIComponent(e.card_id)}`}
-              className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition-all hover:-translate-y-1 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900"
-            >
-              <div className="relative flex aspect-[3/4] items-center justify-center bg-slate-100 dark:bg-slate-800">
-                {e.image_url ? (
-                  <img
-                    src={e.image_url}
-                    alt={e.name}
-                    loading="lazy"
-                    className="h-full w-full object-contain"
-                  />
-                ) : (
-                  <span className="text-4xl opacity-30">🃏</span>
-                )}
-                {e.quantity > 1 && (
-                  <span className="absolute right-1.5 top-1.5 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium text-white">
-                    ×{e.quantity}
-                  </span>
-                )}
-                {e.is_foil && (
-                  <span className="absolute left-1.5 top-1.5 text-xs text-accent-400">✦</span>
-                )}
-              </div>
-              <div className="flex flex-1 flex-col gap-0.5 p-3">
-                <p className="truncate text-sm font-medium" title={e.name}>
-                  {e.name}
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {e.set_id} · #{e.number}
-                </p>
-                <p className="mt-1 text-sm font-semibold text-brand-600 dark:text-brand-400">
-                  {format(e.market_value)}
-                </p>
-              </div>
-            </Link>
-          ))}
-        </div>
+        <>
+          <div className="mb-4">
+            <CollectionFilters
+              sort={sort}
+              onSort={setSort}
+              setId={setId}
+              onSet={setSetId}
+              foilOnly={foilOnly}
+              onFoil={setFoilOnly}
+              sets={sets}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            {displayed.map((e) => (
+              <Link
+                key={e.card_id}
+                to={`/cards/${encodeURIComponent(e.card_id)}`}
+                className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition-all hover:-translate-y-1 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900"
+              >
+                <div className="relative flex aspect-[3/4] items-center justify-center bg-slate-100 dark:bg-slate-800">
+                  {e.image_url ? (
+                    <img
+                      src={e.image_url}
+                      alt={e.name}
+                      loading="lazy"
+                      className="h-full w-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-4xl opacity-30">🃏</span>
+                  )}
+                  {e.quantity > 1 && (
+                    <span className="absolute right-1.5 top-1.5 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium text-white">
+                      ×{e.quantity}
+                    </span>
+                  )}
+                  {e.is_foil && (
+                    <span className="absolute left-1.5 top-1.5 text-xs text-accent-400">✦</span>
+                  )}
+                </div>
+                <div className="flex flex-1 flex-col gap-0.5 p-3">
+                  <p className="truncate text-sm font-medium" title={e.name}>
+                    {e.name}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {e.set_id} · #{e.number}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-brand-600 dark:text-brand-400">
+                    {format(e.market_value)}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </>
       )}
     </>
   );

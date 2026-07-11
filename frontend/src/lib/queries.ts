@@ -46,8 +46,21 @@ export const qk = {
 
 // ---- catalog (long-lived cache) ----
 
+const SETS_PAGE = 250; // backend /sets caps limit at 500; page well under it and never truncate
+
 export function useSets() {
-  return useQuery({ queryKey: qk.sets, queryFn: () => api.listSets({ limit: 500 }) });
+  return useQuery({
+    queryKey: qk.sets,
+    queryFn: async () => {
+      const all: Awaited<ReturnType<typeof api.listSets>> = [];
+      for (let offset = 0; ; offset += SETS_PAGE) {
+        const page = await api.listSets({ limit: SETS_PAGE, offset });
+        all.push(...page);
+        if (page.length < SETS_PAGE) break;
+      }
+      return all;
+    },
+  });
 }
 
 export function useSet(id: string) {
@@ -143,6 +156,23 @@ export function useCardNames(ids: string[]): Record<string, string> {
     if (r.data) names[ids[i]] = r.data.name;
   });
   return names;
+}
+
+/** Resolve card image URLs for a set of ids, reusing the same cached getCard queries as
+ * useCardNames (no extra requests). Used by the collection grid view. */
+export function useCardImages(ids: string[]): Record<string, string | null> {
+  const results = useQueries({
+    queries: ids.map((id) => ({
+      queryKey: qk.card(id),
+      queryFn: () => api.getCard(id),
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
+  const images: Record<string, string | null> = {};
+  results.forEach((r, i) => {
+    if (r.data) images[ids[i]] = r.data.image_url ?? null;
+  });
+  return images;
 }
 
 // ---- collection (fresh, auth) ----

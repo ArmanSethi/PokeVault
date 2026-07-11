@@ -192,14 +192,6 @@ export function CollectionPage() {
                         <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium dark:bg-slate-800">
                           {e.grade}
                         </span>
-                        {e.grade_multiplier > 1 && (
-                          <span
-                            title={`Graded copy valued at ${e.grade_multiplier}× the raw price`}
-                            className="rounded bg-success-500/15 px-1.5 py-0.5 text-xs font-semibold text-success-600 dark:text-success-500"
-                          >
-                            ×{e.grade_multiplier}
-                          </span>
-                        )}
                       </span>
                     ) : (
                       "—"
@@ -253,7 +245,6 @@ export function CollectionPage() {
                 {e.grade && (
                   <span className="absolute right-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
                     {e.grade}
-                    {e.grade_multiplier > 1 ? ` ×${e.grade_multiplier}` : ""}
                   </span>
                 )}
               </Link>

@@ -17,5 +17,4 @@ from app.models.card import Card, Set  # noqa: E402, F401
 from app.models.collection import CollectionEntry  # noqa: E402, F401
 from app.models.price import CardPriceCurrent, PriceHistory  # noqa: E402, F401
 from app.models.user import User  # noqa: E402, F401
-from app.models.user_stats import UserStats  # noqa: E402, F401
 from app.models.wishlist import WishlistItem  # noqa: E402, F401

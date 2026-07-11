@@ -37,7 +37,6 @@ export const qk = {
   summary: ["summary"] as const,
   portfolioHistory: ["portfolioHistory"] as const,
   me: ["me"] as const,
-  achievements: ["achievements"] as const,
   wishlist: ["wishlist"] as const,
   alerts: ["alerts"] as const,
   publicProfile: (handle: string) => ["publicProfile", handle] as const,
@@ -193,11 +192,6 @@ function invalidateCollection(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: qk.collection });
   qc.invalidateQueries({ queryKey: qk.summary });
   qc.invalidateQueries({ queryKey: qk.portfolioHistory });
-  qc.invalidateQueries({ queryKey: qk.achievements }); // badges/level derive from holdings
-}
-
-export function useAchievements() {
-  return useQuery({ queryKey: qk.achievements, queryFn: () => api.achievements(), staleTime: 0 });
 }
 
 export function useAddEntry() {

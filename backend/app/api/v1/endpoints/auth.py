@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_session
 from app.schemas.user import UserProfileUpdate, UserRead
-from app.services import achievements as achievements_service
 from app.services import profile as profile_service
 
 router = APIRouter()
@@ -18,13 +17,8 @@ SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 
 @router.get("", response_model=UserRead)
-async def read_me(user: CurrentUser, session: SessionDep) -> UserRead:
-    """Return the authenticated user, and register today's activity for the streak.
-
-    ``/me`` is fetched once per session by the app, so it's the natural place to tick the
-    daily streak (rather than every authenticated request).
-    """
-    await achievements_service.bump_streak(session, user.id)
+async def read_me(user: CurrentUser) -> UserRead:
+    """Return the authenticated user."""
     return UserRead.model_validate(user)
 
 

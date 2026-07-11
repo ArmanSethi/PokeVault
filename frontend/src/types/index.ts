@@ -201,7 +201,6 @@ export interface ImportConfirmResult {
 
 export interface PublicProfile {
   handle: string;
-  level: number;
   total_distinct_cards: number;
   total_quantity: number;
   total_market_value: string;
@@ -232,31 +231,6 @@ export interface ProfileUpdate {
   handle?: string | null;
   is_public?: boolean | null;
   show_value_on_leaderboard?: boolean | null;
-}
-
-// ---- gamification ----
-
-export interface Badge {
-  id: string;
-  label: string;
-  description: string;
-  icon: string;
-  earned: boolean;
-}
-
-export interface Streak {
-  current_streak: number;
-  longest_streak: number;
-  last_active_date: string | null;
-}
-
-export interface Achievements {
-  level: number;
-  xp: number;
-  xp_into_level: number;
-  xp_for_next: number;
-  badges: Badge[];
-  streak: Streak;
 }
 
 // ---- wishlist + alerts ----

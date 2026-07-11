@@ -42,7 +42,8 @@ export function WishlistPage() {
     <>
       <h1 className="mb-1 text-2xl font-bold">Wishlist</h1>
       <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-        Track cards you want and set a target price. We check prices daily and flag drops — free.
+        Track cards you want and set a target price. We update prices daily and surface target hits
+        here in the app.
       </p>
 
       {recentAlerts.length > 0 && (

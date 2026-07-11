@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   useCardImages,
   useCardNames,
@@ -30,9 +30,12 @@ export function CollectionPage() {
   const [sort, setSort] = useState<SortKey>("value");
   const [setFilter, setSetFilter] = useState("");
   const [foilOnly, setFoilOnly] = useState(false);
-  const [layout, setLayout] = useState<"table" | "grid">(() =>
-    localStorage.getItem(LAYOUT_KEY) === "grid" ? "grid" : "table",
-  );
+  const [params] = useSearchParams();
+  const [layout, setLayout] = useState<"table" | "grid">(() => {
+    const v = params.get("view");
+    if (v === "table" || v === "grid") return v;
+    return localStorage.getItem(LAYOUT_KEY) === "grid" ? "grid" : "table";
+  });
   useEffect(() => {
     localStorage.setItem(LAYOUT_KEY, layout);
   }, [layout]);
@@ -87,7 +90,10 @@ export function CollectionPage() {
 
   function changeQty(entry: CollectionEntry, delta: number) {
     const quantity = entry.quantity + delta;
-    if (quantity < 1) return;
+    if (quantity < 1) {
+      remove(entry);
+      return;
+    }
     update.mutate({ id: entry.id, data: { quantity } });
   }
 
@@ -200,17 +206,8 @@ export function CollectionPage() {
                   <td className="px-4 py-2 text-right">{format(e.market_price)}</td>
                   <td className="px-4 py-2 text-right font-medium">{format(e.market_value)}</td>
                   <td className="px-4 py-2 text-right whitespace-nowrap">
-                    <button
-                      onClick={() => setEditing(e)}
-                      className="mr-2 text-brand-600 hover:underline"
-                    >
+                    <button onClick={() => setEditing(e)} className="text-brand-600 hover:underline">
                       Edit
-                    </button>
-                    <button
-                      onClick={() => remove(e)}
-                      className="text-danger-600 hover:underline dark:text-danger-500"
-                    >
-                      Remove
                     </button>
                   </td>
                 </tr>
@@ -277,12 +274,6 @@ export function CollectionPage() {
                 <div className="mt-1 flex gap-3 text-sm">
                   <button onClick={() => setEditing(e)} className="text-brand-600 hover:underline">
                     Edit
-                  </button>
-                  <button
-                    onClick={() => remove(e)}
-                    className="text-danger-600 hover:underline dark:text-danger-500"
-                  >
-                    Remove
                   </button>
                 </div>
               </div>

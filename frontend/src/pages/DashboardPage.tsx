@@ -10,24 +10,32 @@ function Stat({
   label,
   value,
   accent = false,
+  to,
 }: {
   label: string;
   value: string;
   accent?: boolean;
+  to?: string;
 }) {
-  return (
-    <div
-      className={`rounded-xl border p-4 ${
-        accent
-          ? "border-transparent bg-gradient-to-br from-brand-600 to-brand-800 text-white"
-          : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
-      }`}
-    >
+  const className = `block rounded-xl border p-4 ${
+    accent
+      ? "border-transparent bg-gradient-to-br from-brand-600 to-brand-800 text-white"
+      : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+  } ${to ? "cursor-pointer transition hover:opacity-90" : ""}`;
+  const inner = (
+    <>
       <p className={`text-sm ${accent ? "text-brand-100" : "text-slate-500 dark:text-slate-400"}`}>
         {label}
       </p>
       <p className="mt-1 text-2xl font-bold">{value}</p>
-    </div>
+    </>
+  );
+  return to ? (
+    <Link to={to} className={className}>
+      {inner}
+    </Link>
+  ) : (
+    <div className={className}>{inner}</div>
   );
 }
 
@@ -68,7 +76,12 @@ export function DashboardPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3">
-            <Stat label="Portfolio value" value={format(summary.data.total_market_value)} accent />
+            <Stat
+              label="Portfolio value"
+              value={format(summary.data.total_market_value)}
+              accent
+              to="/collection?view=table"
+            />
             <Stat label="Total cards" value={String(summary.data.total_quantity)} />
           </div>
 

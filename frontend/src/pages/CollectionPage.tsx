@@ -216,7 +216,7 @@ export function CollectionPage() {
                       onClick={() => remove(e)}
                       aria-label="Delete card"
                       title="Delete this card from your collection"
-                      className="text-slate-400 hover:text-danger-600 dark:hover:text-danger-500"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-danger-100 text-danger-600 hover:bg-danger-200 dark:bg-danger-600/20 dark:text-danger-400 dark:hover:bg-danger-600/30"
                     >
                       🗑
                     </button>
@@ -290,7 +290,7 @@ export function CollectionPage() {
                     onClick={() => remove(e)}
                     aria-label="Delete card"
                     title="Delete this card from your collection"
-                    className="ml-auto text-slate-400 hover:text-danger-600 dark:hover:text-danger-500"
+                    className="ml-auto inline-flex h-7 w-7 items-center justify-center rounded-md bg-danger-100 text-danger-600 hover:bg-danger-200 dark:bg-danger-600/20 dark:text-danger-400 dark:hover:bg-danger-600/30"
                   >
                     🗑
                   </button>

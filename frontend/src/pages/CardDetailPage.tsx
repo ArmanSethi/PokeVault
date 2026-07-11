@@ -10,10 +10,10 @@ import { ErrorState } from "../components/States";
 import { DetailSkeleton } from "../components/Skeleton";
 import { Meta } from "../components/Meta";
 import { WishlistButton } from "../components/WishlistButton";
+import { GradingFields } from "../components/GradingFields";
 import { useToast } from "../components/Toast";
 import type { CollectionEntryCreate } from "../types";
 
-const CONDITIONS = ["NM", "LP", "MP", "HP", "DMG"];
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800";
 
@@ -152,28 +152,6 @@ export function CardDetailPage() {
                   />
                 </label>
                 <label className="text-sm">
-                  <span className="mb-1 block">Condition</span>
-                  <select
-                    value={form.condition ?? ""}
-                    onChange={(e) => setForm({ ...form, condition: e.target.value || null })}
-                    className={inputClass}
-                  >
-                    <option value="">—</option>
-                    {CONDITIONS.map((x) => (
-                      <option key={x}>{x}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="text-sm">
-                  <span className="mb-1 block">Grade (optional)</span>
-                  <input
-                    placeholder="e.g. PSA 10"
-                    value={form.grade ?? ""}
-                    onChange={(e) => setForm({ ...form, grade: e.target.value || null })}
-                    className={inputClass}
-                  />
-                </label>
-                <label className="text-sm">
                   <span className="mb-1 block">Acquired price (optional)</span>
                   <input
                     type="number"
@@ -189,6 +167,13 @@ export function CardDetailPage() {
                     className={inputClass}
                   />
                 </label>
+                <GradingFields
+                  condition={form.condition ?? ""}
+                  grade={form.grade ?? ""}
+                  onChange={({ condition, grade }) =>
+                    setForm({ ...form, condition: condition || null, grade: grade || null })
+                  }
+                />
               </div>
               <label className="flex items-center gap-2 text-sm">
                 <input

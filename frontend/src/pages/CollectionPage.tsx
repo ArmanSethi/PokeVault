@@ -6,15 +6,12 @@ import { EmptyState, ErrorState } from "../components/States";
 import { TableSkeleton } from "../components/Skeleton";
 import { useToast } from "../components/Toast";
 import { ImportExportPanel } from "../components/ImportExportPanel";
+import { GradingFields } from "../components/GradingFields";
 import type { CollectionEntry } from "../types";
 
 type SortKey = "name" | "value" | "quantity";
 const selectClass =
   "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800";
-
-// PSA grades, best first. Stored as the string "PSA <n>" (parsed server-side for valuation).
-const PSA_GRADES = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1] as const;
-const PSA_VALUES = new Set(PSA_GRADES.map((g) => `PSA ${g}`));
 
 export function CollectionPage() {
   const entries = useCollection();
@@ -320,28 +317,14 @@ function EditModal({
               className={inputClass}
             />
           </label>
-          <label>
-            <span className="mb-1 block">Condition</span>
-            <input
-              value={condition}
-              onChange={(e) => setCondition(e.target.value)}
-              className={inputClass}
-            />
-          </label>
-          <label>
-            <span className="mb-1 block">Grade (PSA)</span>
-            <select value={grade} onChange={(e) => setGrade(e.target.value)} className={inputClass}>
-              <option value="">Raw / ungraded</option>
-              {PSA_GRADES.map((g) => (
-                <option key={g} value={`PSA ${g}`}>
-                  PSA {g}
-                  {g === 10 ? " (Gem Mint)" : ""}
-                </option>
-              ))}
-              {/* Preserve any pre-existing non-PSA grade rather than silently dropping it. */}
-              {grade && !PSA_VALUES.has(grade) && <option value={grade}>{grade}</option>}
-            </select>
-          </label>
+          <GradingFields
+            condition={condition}
+            grade={grade}
+            onChange={(next) => {
+              setCondition(next.condition);
+              setGrade(next.grade);
+            }}
+          />
           <label>
             <span className="mb-1 block">Acquired price</span>
             <input

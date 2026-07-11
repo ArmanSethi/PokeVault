@@ -63,6 +63,12 @@ jobs:
           case "${DATABASE_URL:-}" in
             *:6543/*) echo "::error::DATABASE_URL uses the transaction pooler (port 6543); use the session pooler (port 5432)."; fail=1 ;;
           esac
+          # The session pooler requires a tenant-qualified username (postgres.<project-ref>).
+          # A bare "postgres" authenticates as the wrong role and trips Supabase's circuit
+          # breaker — fail fast here instead of hammering the DB for the whole run.
+          case "${DATABASE_URL:-}" in
+            postgresql+asyncpg://postgres:*) echo "::error::DATABASE_URL username must be tenant-qualified for the session pooler (postgres.<project-ref>), not bare 'postgres'."; fail=1 ;;
+          esac
           if [ "$fail" -ne 0 ]; then
             echo "Preflight failed — see the ::error:: annotations above."
             exit 1

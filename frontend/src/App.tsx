@@ -6,6 +6,12 @@ import { PageSkeleton } from "./components/Skeleton";
 
 // Route-level code-splitting: each page (and its deps, e.g. recharts) loads on demand.
 const LoginPage = lazy(() => import("./pages/LoginPage").then((m) => ({ default: m.LoginPage })));
+const ForgotPasswordPage = lazy(() =>
+  import("./pages/ForgotPasswordPage").then((m) => ({ default: m.ForgotPasswordPage })),
+);
+const ResetPasswordPage = lazy(() =>
+  import("./pages/ResetPasswordPage").then((m) => ({ default: m.ResetPasswordPage })),
+);
 const DashboardPage = lazy(() =>
   import("./pages/DashboardPage").then((m) => ({ default: m.DashboardPage })),
 );
@@ -47,6 +53,8 @@ export default function App() {
     >
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         {/* The shell renders for everyone; its nav adapts to auth state. */}
         <Route element={<Layout />}>
           {/* Public, indexable pages — no auth required. */}

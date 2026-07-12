@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { isSupabaseConfigured } from "../lib/supabase";
 
 export function LoginPage() {
-  const { session, signIn, signUp } = useAuth();
+  const { session, signIn, signUp, signInWithMagicLink } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? "/";
@@ -17,6 +17,24 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   if (session) return <Navigate to={from} replace />;
+
+  async function magicLink() {
+    setError(null);
+    setNotice(null);
+    if (!email) {
+      setError("Enter your email first.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await signInWithMagicLink(email);
+      setNotice("Check your inbox for a one-time sign-in link.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not send the sign-in link.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   // Same message whether the email is new or already registered — never confirm existence.
   const SIGNUP_NOTICE =
@@ -134,6 +152,25 @@ export function LoginPage() {
           >
             {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
           </button>
+
+          {mode === "signin" && (
+            <div className="space-y-2 border-t border-slate-100 pt-3 text-center text-sm dark:border-slate-800">
+              <button
+                type="button"
+                onClick={magicLink}
+                disabled={busy || !isSupabaseConfigured}
+                className="w-full rounded-lg border border-slate-300 py-2 font-medium hover:bg-slate-100 disabled:opacity-50 dark:border-slate-700 dark:hover:bg-slate-800"
+              >
+                Email me a sign-in link
+              </button>
+              <Link
+                to="/forgot-password"
+                className="inline-block text-slate-500 hover:text-brand-600 hover:underline dark:text-slate-400"
+              >
+                Forgot password?
+              </Link>
+            </div>
+          )}
         </form>
       </div>
     </div>

@@ -8,6 +8,12 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<{ needsConfirmation: boolean }>;
   signOut: () => Promise<void>;
+  /** Send a password-reset email; the link lands on /reset-password with a recovery session. */
+  resetPassword: (email: string) => Promise<void>;
+  /** Set a new password for the current (recovery) session. */
+  updatePassword: (password: string) => Promise<void>;
+  /** Send a passwordless magic-link email; the link lands on / and signs the user in. */
+  signInWithMagicLink: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
@@ -43,6 +49,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       signOut: async () => {
         await supabase.auth.signOut();
+      },
+      resetPassword: async (email) => {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw new Error(error.message);
+      },
+      updatePassword: async (password) => {
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw new Error(error.message);
+      },
+      signInWithMagicLink: async (email) => {
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: { emailRedirectTo: `${window.location.origin}/` },
+        });
+        if (error) throw new Error(error.message);
       },
     }),
     [session, loading],

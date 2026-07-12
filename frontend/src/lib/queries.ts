@@ -448,6 +448,129 @@ export function useConfirmImport() {
   });
 }
 
+// ---- friends + direct messaging (manual refresh; no polling/websockets) ----
+
+export function useFriends() {
+  return useQuery({ queryKey: ["friends"], queryFn: () => api.listFriends(), staleTime: 30_000 });
+}
+
+export function useFriendRequests() {
+  return useQuery({
+    queryKey: ["friend-requests"],
+    queryFn: () => api.listFriendRequests(),
+    staleTime: 0,
+  });
+}
+
+export function useFriendState(handle: string, enabled = true) {
+  return useQuery({
+    queryKey: ["friend-state", handle],
+    queryFn: () => api.friendState(handle),
+    enabled: enabled && Boolean(handle),
+    staleTime: 0,
+    retry: false,
+  });
+}
+
+export function useConversations() {
+  return useQuery({
+    queryKey: ["conversations"],
+    queryFn: () => api.listConversations(),
+    staleTime: 0,
+  });
+}
+
+export function useConversation(id: number | null) {
+  return useQuery({
+    queryKey: ["conversation", id],
+    queryFn: () => api.getConversation(id as number),
+    enabled: id != null,
+    staleTime: 0,
+  });
+}
+
+export function useUnreadCount() {
+  return useQuery({
+    queryKey: ["unread-count"],
+    queryFn: () => api.unreadCount(),
+    staleTime: 0,
+  });
+}
+
+function invalidateSocial(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ["friends"] });
+  qc.invalidateQueries({ queryKey: ["friend-requests"] });
+  qc.invalidateQueries({ queryKey: ["friend-state"] });
+  qc.invalidateQueries({ queryKey: ["conversations"] });
+  qc.invalidateQueries({ queryKey: ["unread-count"] });
+}
+
+export function useRequestFriend() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (handle: string) => api.requestFriend(handle),
+    onSuccess: () => invalidateSocial(qc),
+  });
+}
+
+export function useAcceptRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.acceptFriendRequest(id),
+    onSuccess: () => invalidateSocial(qc),
+  });
+}
+
+export function useDeclineRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.declineFriendRequest(id),
+    onSuccess: () => invalidateSocial(qc),
+  });
+}
+
+export function useUnfriend() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => api.unfriend(userId),
+    onSuccess: () => invalidateSocial(qc),
+  });
+}
+
+export function useBlockUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => api.blockUser(userId),
+    onSuccess: () => invalidateSocial(qc),
+  });
+}
+
+export function useUnblockUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => api.unblockUser(userId),
+    onSuccess: () => invalidateSocial(qc),
+  });
+}
+
+export function useStartConversation() {
+  return useMutation({
+    mutationFn: (friendUserId: string) => api.startConversation(friendUserId),
+  });
+}
+
+export function useSendMessage(conversationId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: string) => api.sendMessage(conversationId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conversation", conversationId] });
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["unread-count"] });
+    },
+  });
+}
+
 export function useDeleteEntry() {
   const qc = useQueryClient();
   return useMutation({

@@ -33,6 +33,12 @@ import type {
   User,
   WishlistItem,
   WishlistItemCreate,
+  FriendUser,
+  FriendRequest,
+  FriendState,
+  ConversationSummary,
+  ConversationDetail,
+  DirectMessage,
 } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1";
@@ -262,4 +268,49 @@ export const api = {
     if (!resp.ok) throw new ApiError(resp.status, `Export failed (${resp.status})`);
     return resp.blob();
   },
+
+  // ---- friends + blocks (auth) ----
+  requestFriend: (handle: string) =>
+    request<{ ok: boolean }>(
+      "/friends/request",
+      { method: "POST", body: JSON.stringify({ handle }) },
+      { auth: true },
+    ),
+  acceptFriendRequest: (id: number) =>
+    request<void>(`/friends/requests/${id}/accept`, { method: "POST" }, { auth: true }),
+  declineFriendRequest: (id: number) =>
+    request<void>(`/friends/requests/${id}/decline`, { method: "POST" }, { auth: true }),
+  listFriends: () => request<FriendUser[]>("/friends", {}, { auth: true }),
+  listFriendRequests: () => request<FriendRequest[]>("/friends/requests", {}, { auth: true }),
+  friendState: (handle: string) =>
+    request<{ state: FriendState; user_id: string | null }>(
+      `/friends/state/${encodeURIComponent(handle)}`,
+      {},
+      { auth: true },
+    ),
+  unfriend: (userId: string) =>
+    request<void>(`/friends/${userId}`, { method: "DELETE" }, { auth: true }),
+  blockUser: (userId: string) =>
+    request<void>(`/friends/${userId}/block`, { method: "POST" }, { auth: true }),
+  unblockUser: (userId: string) =>
+    request<void>(`/friends/${userId}/block`, { method: "DELETE" }, { auth: true }),
+
+  // ---- direct messages (auth); manual-refresh only ----
+  startConversation: (friendUserId: string) =>
+    request<{ conversation_id: number }>(
+      "/messages/start",
+      { method: "POST", body: JSON.stringify({ friend_user_id: friendUserId }) },
+      { auth: true },
+    ),
+  listConversations: () =>
+    request<ConversationSummary[]>("/messages/conversations", {}, { auth: true }),
+  getConversation: (id: number) =>
+    request<ConversationDetail>(`/messages/conversations/${id}`, {}, { auth: true }),
+  sendMessage: (id: number, body: string) =>
+    request<DirectMessage>(
+      `/messages/conversations/${id}`,
+      { method: "POST", body: JSON.stringify({ body }) },
+      { auth: true },
+    ),
+  unreadCount: () => request<{ unread: number }>("/messages/unread_count", {}, { auth: true }),
 };

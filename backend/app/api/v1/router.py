@@ -14,7 +14,9 @@ from app.api.v1.endpoints import (
     cards,
     collection,
     deck,
+    friends,
     importer,
+    messages,
     public,
     pulls,
     scan,
@@ -52,4 +54,6 @@ api_router.include_router(wishlist.router, prefix="/wishlist", tags=["wishlist"]
 api_router.include_router(deck.router, prefix="/decks", tags=["decks"])
 api_router.include_router(simulator.router, prefix="/simulator", tags=["simulator"])
 api_router.include_router(pulls.router, prefix="/simulator", tags=["pulls"])
+api_router.include_router(friends.router, prefix="/friends", tags=["friends"])
+api_router.include_router(messages.router, prefix="/messages", tags=["messages"])
 api_router.include_router(public.router, prefix="/public", tags=["public"])

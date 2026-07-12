@@ -21,5 +21,11 @@ from app.models.pack_open import PackOpen  # noqa: E402, F401
 from app.models.pack_pull import PackPull  # noqa: E402, F401
 from app.models.portfolio import PortfolioValueDaily  # noqa: E402, F401
 from app.models.price import CardPriceCurrent, PriceHistory  # noqa: E402, F401
+from app.models.social import (  # noqa: E402, F401
+    Block,
+    Conversation,
+    Friendship,
+    Message,
+)
 from app.models.user import User  # noqa: E402, F401
 from app.models.wishlist import WishlistItem  # noqa: E402, F401

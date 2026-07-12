@@ -364,3 +364,41 @@ export interface Alert {
   snapshot_date: string;
   name: string | null;
 }
+
+// ---- friends + direct messaging ----
+
+export type FriendState = "none" | "pending_out" | "pending_in" | "friends" | "blocked" | "self";
+
+export interface FriendUser {
+  user_id: string;
+  handle: string | null;
+  is_public: boolean;
+}
+
+export interface FriendRequest {
+  id: number;
+  user: FriendUser;
+  direction: "incoming" | "outgoing";
+  created_at: string;
+}
+
+export interface ConversationSummary {
+  id: number;
+  other: FriendUser;
+  last_message: { body: string; created_at: string; sender_is_me: boolean } | null;
+  unread_count: number;
+}
+
+export interface DirectMessage {
+  id: number;
+  sender_is_me: boolean;
+  body: string;
+  created_at: string;
+  read_at: string | null;
+}
+
+export interface ConversationDetail {
+  id: number;
+  other: FriendUser;
+  messages: DirectMessage[];
+}

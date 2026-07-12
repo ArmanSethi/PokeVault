@@ -38,6 +38,9 @@ const SettingsPage = lazy(() =>
   import("./pages/SettingsPage").then((m) => ({ default: m.SettingsPage })),
 );
 const ScanPage = lazy(() => import("./pages/ScanPage").then((m) => ({ default: m.ScanPage })));
+const MessagesPage = lazy(() =>
+  import("./pages/MessagesPage").then((m) => ({ default: m.MessagesPage })),
+);
 const SimulatorLayout = lazy(() =>
   import("./components/simulator/SimulatorLayout").then((m) => ({ default: m.SimulatorLayout })),
 );
@@ -111,6 +114,7 @@ export default function App() {
             <Route path="deck" element={<DeckPage />} />
             <Route path="wishlist" element={<WishlistPage />} />
             <Route path="scan" element={<ScanPage />} />
+            <Route path="messages" element={<MessagesPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Route>

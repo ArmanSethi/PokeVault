@@ -1,12 +1,15 @@
 import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   useAddComment,
   useComments,
   useDeleteComment,
+  useFriendState,
   usePublicCollection,
   usePublicProfile,
   useReportComment,
+  useRequestFriend,
+  useStartConversation,
 } from "../lib/queries";
 import { useAuth } from "../context/AuthContext";
 import { useCurrency } from "../context/CurrencyContext";
@@ -15,6 +18,65 @@ import { ErrorState } from "../components/States";
 import { CardGridSkeleton } from "../components/Skeleton";
 import { Meta } from "../components/Meta";
 import { useToast } from "../components/Toast";
+
+/** Add-friend control on a profile; its label reflects the real friendship/block state. Only
+ * shown to a signed-in viewer on someone else's profile. Never allows adding across a block. */
+function AddFriendButton({ handle }: { handle: string }) {
+  const { session } = useAuth();
+  const stateQ = useFriendState(handle, Boolean(session));
+  const request = useRequestFriend();
+  const startConv = useStartConversation();
+  const navigate = useNavigate();
+  const toast = useToast();
+
+  if (!session) return null;
+  const data = stateQ.data;
+  if (!data || data.state === "self") return null;
+
+  const base = "ml-auto shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium";
+  const primary = `${base} bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50`;
+  const muted = `${base} border border-slate-300 text-slate-500 dark:border-slate-700 dark:text-slate-400`;
+
+  if (data.state === "none")
+    return (
+      <button
+        onClick={() =>
+          request.mutate(handle, {
+            onSuccess: () => toast.success("Friend request sent."),
+            onError: (e) => toast.error(e instanceof Error ? e.message : "Could not send request."),
+          })
+        }
+        disabled={request.isPending}
+        className={primary}
+      >
+        Add friend
+      </button>
+    );
+  if (data.state === "pending_out") return <span className={muted}>Request sent</span>;
+  if (data.state === "pending_in")
+    return (
+      <button onClick={() => navigate("/messages")} className={primary}>
+        Respond to request
+      </button>
+    );
+  if (data.state === "friends")
+    return (
+      <button
+        onClick={() => {
+          if (!data.user_id) return;
+          startConv.mutate(data.user_id, {
+            onSuccess: () => navigate("/messages"),
+            onError: () => toast.error("Could not open the chat."),
+          });
+        }}
+        disabled={startConv.isPending}
+        className={primary}
+      >
+        Message
+      </button>
+    );
+  return <span className={muted}>Unavailable</span>; // blocked (either direction)
+}
 
 /** Public, shareable collection showcase at /u/:handle. Read-only: it renders ONLY the owner's
  * public collection (usePublicCollection) with no write/edit/export actions. Sort + filters are
@@ -73,6 +135,7 @@ export function ShowcasePage() {
       <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">@{p.handle}</h1>
+          <AddFriendButton handle={p.handle} />
         </div>
         <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Stat label="Unique cards" value={String(p.total_distinct_cards)} />

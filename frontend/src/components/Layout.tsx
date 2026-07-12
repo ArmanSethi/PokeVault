@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import { useMe } from "../lib/queries";
+import { useMe, useUnreadCount } from "../lib/queries";
 import { AmbientBackground } from "./AmbientBackground";
 
 const NAV = [
@@ -34,6 +34,45 @@ function HeaderIdentity() {
     <span className="hidden max-w-[12rem] truncate text-sm text-slate-500 lg:inline dark:text-slate-400">
       {label}
     </span>
+  );
+}
+
+function PaperPlaneIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Messages entry with an unread badge. Only mounted for signed-in users (so logged-out pages
+ * make no /unread_count call), and the badge is refreshed on every navigation. */
+function MessagesNavLink() {
+  const { data, refetch } = useUnreadCount();
+  const { pathname } = useLocation();
+  useEffect(() => {
+    refetch();
+  }, [pathname, refetch]);
+  const count = data?.unread ?? 0;
+  return (
+    <NavLink
+      to="/messages"
+      aria-label={count ? `Messages, ${count} unread` : "Messages"}
+      className="relative rounded-lg border border-slate-300 p-2 text-sm hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+    >
+      <PaperPlaneIcon />
+      {count > 0 && (
+        <span className="absolute -right-1 -top-1 min-w-[1rem] rounded-full bg-brand-600 px-1 text-center text-[10px] font-bold leading-4 text-white">
+          {count > 99 ? "99+" : count}
+        </span>
+      )}
+    </NavLink>
   );
 }
 
@@ -75,9 +114,10 @@ export function Layout() {
             <div className="ml-auto flex items-center gap-2">
               {session ? (
                 <>
-                  {/* Order: handle → dark/light → settings */}
+                  {/* Order: handle → dark/light → messages → settings */}
                   <HeaderIdentity />
                   {themeToggle}
+                  <MessagesNavLink />
                   <NavLink
                     to="/settings"
                     aria-label="Settings"

@@ -79,7 +79,6 @@ export interface SetHolding {
   owned_quantity: number;
   distinct_cards_owned: number;
   set_size: number | null;
-  completion_pct: number;
   market_value: string;
 }
 

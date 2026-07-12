@@ -46,14 +46,13 @@ class CollectionEntryRead(CollectionEntryBase):
 
 
 class SetHolding(BaseModel):
-    """A user's holdings and completion for one set (TCGPlayer USD)."""
+    """A user's holdings for one set (TCGPlayer USD)."""
 
     set_id: str
     set_name: str
     owned_quantity: int
     distinct_cards_owned: int
     set_size: int | None = None  # printed_total (fallback total); None if unknown
-    completion_pct: float  # distinct_cards_owned / set_size, 0.0 when size unknown
     market_value: Decimal
 
 

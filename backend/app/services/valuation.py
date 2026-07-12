@@ -121,7 +121,6 @@ async def collection_summary(
             owned_quantity=agg.owned_quantity,
             distinct_cards_owned=len(agg.card_ids),
             set_size=agg.set_size,
-            completion_pct=(len(agg.card_ids) / agg.set_size) if agg.set_size else 0.0,
             market_value=agg.market_value,
         )
         for set_id, agg in by_set.items()

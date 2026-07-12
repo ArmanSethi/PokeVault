@@ -39,7 +39,12 @@ async def public_profile(session: AsyncSession, handle: str) -> PublicProfile | 
     # graded=False: public values (headline total, per-set, per-card) all use raw prices,
     # so the profile total agrees with the sum of the publicly shown cards.
     summary = await collection_summary(session, user.id, graded=False)
-    sets_completed = sum(1 for s in summary.sets if s.completion_pct >= 1.0)
+    # A set is "completed" when the owner has every card in it. Computed directly from
+    # set_size/distinct_cards_owned (the completion_pct field was retired with the Set
+    # Completion page).
+    sets_completed = sum(
+        1 for s in summary.sets if s.set_size and s.distinct_cards_owned >= s.set_size
+    )
     return PublicProfile(
         handle=handle,
         total_distinct_cards=summary.total_distinct_cards,

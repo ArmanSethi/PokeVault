@@ -173,7 +173,7 @@ async def test_ownership_isolation(auth_client, seed, signing_key) -> None:
     assert len(a_list) == 1 and a_list[0]["quantity"] == 1
 
 
-async def test_portfolio_summary_and_completion(auth_client, seed, signing_key) -> None:
+async def test_portfolio_summary_and_sets(auth_client, seed, signing_key) -> None:
     a = _headers(signing_key, uuid.uuid4())
     await auth_client.post(_ME, json={"card_id": "tst1-1", "quantity": 2}, headers=a)
     await auth_client.post(_ME, json={"card_id": "tst1-2", "quantity": 1}, headers=a)
@@ -189,5 +189,4 @@ async def test_portfolio_summary_and_completion(auth_client, seed, signing_key) 
     assert s["set_name"] == "Test Set"
     assert s["distinct_cards_owned"] == 2
     assert s["set_size"] == 4
-    assert s["completion_pct"] == 0.5
     assert _money(s["market_value"]) == 9.00

@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { useSummary, usePortfolioHistory } from "../lib/queries";
-import { pct } from "../lib/format";
 import { useCurrency } from "../context/CurrencyContext";
 import { PriceChart } from "../components/PriceChart";
 import { EmptyState, ErrorState } from "../components/States";
@@ -118,7 +117,6 @@ export function DashboardPage() {
                 <tr>
                   <th className="px-4 py-2">Set</th>
                   <th className="px-4 py-2">Owned</th>
-                  <th className="px-4 py-2">Completion</th>
                   <th className="px-4 py-2 text-right">Value</th>
                 </tr>
               </thead>
@@ -137,7 +135,6 @@ export function DashboardPage() {
                       {h.distinct_cards_owned}
                       {h.set_size ? ` / ${h.set_size}` : ""}
                     </td>
-                    <td className="px-4 py-2">{h.set_size ? pct(h.completion_pct) : "—"}</td>
                     <td className="px-4 py-2 text-right">{format(h.market_value)}</td>
                   </tr>
                 ))}

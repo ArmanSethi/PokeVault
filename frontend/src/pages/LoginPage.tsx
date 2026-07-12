@@ -18,10 +18,20 @@ export function LoginPage() {
 
   if (session) return <Navigate to={from} replace />;
 
+  // Same message whether the email is new or already registered — never confirm existence.
+  const SIGNUP_NOTICE =
+    "If this email isn't already registered, we've sent a confirmation link. Check your inbox — or sign in if you already have an account.";
+
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setNotice(null);
+    // Password rule lives on sign-up only (where the password is created); sign-in accepts
+    // any input and just attempts login.
+    if (mode === "signup" && password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
     setBusy(true);
     try {
       if (mode === "signin") {
@@ -30,14 +40,26 @@ export function LoginPage() {
       } else {
         const { needsConfirmation } = await signUp(email, password);
         if (needsConfirmation) {
-          setNotice("Account created — check your email to confirm, then sign in.");
+          setNotice(SIGNUP_NOTICE);
           setMode("signin");
         } else {
           navigate(from, { replace: true });
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Authentication failed");
+      if (mode === "signin") {
+        // Generic on purpose — never reveal which field was wrong (account enumeration).
+        setError("Invalid email or password.");
+      } else {
+        const msg = err instanceof Error ? err.message : "";
+        // Never confirm an email is already registered — show the same neutral notice.
+        if (/already|registered|exists/i.test(msg)) {
+          setNotice(SIGNUP_NOTICE);
+          setMode("signin");
+        } else {
+          setError(msg || "Could not create account.");
+        }
+      }
     } finally {
       setBusy(false);
     }
@@ -93,11 +115,13 @@ export function LoginPage() {
             <input
               type="password"
               required
-              minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800"
             />
+            {mode === "signup" && (
+              <span className="mt-1 block text-xs text-slate-400">At least 6 characters.</span>
+            )}
           </label>
 
           {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}

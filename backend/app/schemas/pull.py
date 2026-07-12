@@ -44,4 +44,4 @@ class PullLeaderboardEntry(BaseModel):
 
 
 LeaderboardMode = Literal["best_single", "total_value"]
-LeaderboardWindow = Literal["all_time", "monthly"]
+LeaderboardWindow = Literal["all_time", "monthly", "daily"]

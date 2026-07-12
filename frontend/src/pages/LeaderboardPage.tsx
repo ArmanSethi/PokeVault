@@ -13,10 +13,6 @@ const MODES: { value: LeaderboardMode; label: string }[] = [
   { value: "best_single", label: "Best single pull" },
   { value: "total_value", label: "Total pulled value" },
 ];
-const WINDOWS: { value: LeaderboardWindow; label: string }[] = [
-  { value: "monthly", label: "This month" },
-  { value: "all_time", label: "All-time" },
-];
 
 function Toggle<T extends string>({
   options,
@@ -92,6 +88,15 @@ export function LeaderboardPage() {
   const board = usePullLeaderboard(mode, window);
   const { format } = useCurrency();
 
+  // Window labels are the LIVE current UTC day/month names (e.g. "Sunday", "July").
+  const dayName = new Date().toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
+  const monthName = new Date().toLocaleDateString("en-US", { month: "long", timeZone: "UTC" });
+  const windows: { value: LeaderboardWindow; label: string }[] = [
+    { value: "daily", label: dayName },
+    { value: "monthly", label: monthName },
+    { value: "all_time", label: "All-time" },
+  ];
+
   return (
     <>
       <h1 className="mb-1 text-2xl font-bold">Leaderboard</h1>
@@ -104,10 +109,10 @@ export function LeaderboardPage() {
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <Toggle options={MODES} value={mode} onChange={setMode} />
         {mode === "total_value" ? (
-          <Toggle options={WINDOWS} value={window} onChange={setWindow} />
+          <Toggle options={windows} value={window} onChange={setWindow} />
         ) : (
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Best single pull updates daily.
+            Today · {dayName} · top 10, updates daily
           </p>
         )}
       </div>
@@ -119,10 +124,12 @@ export function LeaderboardPage() {
       ) : board.data.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
           {mode === "best_single"
-            ? "No pulls yet today — open a pack to claim the top spot."
-            : window === "monthly"
-              ? "No pulls yet this month — open a pack to claim the top spot."
-              : "No pulls yet — open a pack to get on the board."}
+            ? "No top pulls yet today — open a pack to claim #1."
+            : window === "daily"
+              ? "No pulls yet today — open a pack to get on the board."
+              : window === "monthly"
+                ? "No pulls yet this month — open a pack to get on the board."
+                : "No pulls yet — open a pack to get on the board."}
         </p>
       ) : (
         <ol className="space-y-2">

@@ -196,7 +196,7 @@ export interface PackPull {
 }
 
 export type LeaderboardMode = "best_single" | "total_value";
-export type LeaderboardWindow = "all_time" | "monthly";
+export type LeaderboardWindow = "all_time" | "monthly" | "daily";
 
 export interface PullLeaderboardEntry {
   rank: number;

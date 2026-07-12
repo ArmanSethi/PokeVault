@@ -34,6 +34,7 @@ from app.schemas.pull import (
 from app.services.cards import unit_price_usd
 
 LEADERBOARD_LIMIT = 100
+BEST_SINGLE_LIMIT = 10  # best_single is a worldwide daily top-10 board
 
 
 class OpenNotFound(Exception):
@@ -194,10 +195,16 @@ async def leaderboard(
     """Top pullers. Eligibility = leaderboard opt-in + a handle + ≥1 pull; ranked by real market
     price. ``showcase_public`` tells the UI whether it may link the handle to /u/{handle}.
 
-    ``best_single`` is a DAILY board (today, UTC) and ignores ``window`` — it resets naturally at
-    UTC midnight so the top spot stays competitive. ``total_value`` honors ``window``."""
+    ``best_single`` is the worldwide DAILY top 10 (today, UTC; ignores ``window``) — it resets at
+    UTC midnight so the top spot stays competitive. ``total_value`` honors ``window`` (daily /
+    monthly / all_time)."""
     eligible = (User.leaderboard_opt_in.is_(True), User.handle.is_not(None))
-    monthly = [PackPull.pulled_at >= _month_start()] if window == "monthly" else []
+    if window == "daily":
+        window_filter = [PackPull.pulled_at >= _day_start()]
+    elif window == "monthly":
+        window_filter = [PackPull.pulled_at >= _month_start()]
+    else:  # all_time
+        window_filter = []
 
     if mode == "best_single":
         # One row per user = their highest FROZEN pull TODAY (DISTINCT ON), ranked by that score.
@@ -233,7 +240,7 @@ async def leaderboard(
                     card_id=r.cid, name=r.name, set_id=r.set_id, image_url=r.image_small
                 ),
             )
-            for i, r in enumerate(rows[:LEADERBOARD_LIMIT], start=1)
+            for i, r in enumerate(rows[:BEST_SINGLE_LIMIT], start=1)
         ]
 
     # total_value: sum the LIVE current value of each eligible user's pulls (null → 0).
@@ -241,7 +248,7 @@ async def leaderboard(
         select(PackPull, User.handle, User.is_public)
         .join(User, User.id == PackPull.user_id)
         .options(selectinload(PackPull.card).selectinload(Card.prices_current))
-        .where(*eligible, *monthly)
+        .where(*eligible, *window_filter)
     )
     rows = (await session.execute(stmt)).all()
     agg: dict[uuid.UUID, dict] = {}

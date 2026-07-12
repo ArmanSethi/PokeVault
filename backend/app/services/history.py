@@ -88,9 +88,9 @@ async def portfolio_value_series(
     a message so the endpoint can't 500 and the chart degrades gracefully.
     """
     try:
-        stmt = select(
-            PortfolioValueDaily.snapshot_date, PortfolioValueDaily.total_value_usd
-        ).where(PortfolioValueDaily.user_id == user_id)
+        stmt = select(PortfolioValueDaily.snapshot_date, PortfolioValueDaily.total_value_usd).where(
+            PortfolioValueDaily.user_id == user_id
+        )
         if days is not None:
             stmt = stmt.where(PortfolioValueDaily.snapshot_date >= func.current_date() - days)
         rows = (await session.execute(stmt)).all()
@@ -110,9 +110,7 @@ async def portfolio_value_series(
         if has_cards:
             by_day[today] = live_total
 
-        points = [
-            PortfolioValuePoint(date=day, total_value=by_day[day]) for day in sorted(by_day)
-        ]
+        points = [PortfolioValuePoint(date=day, total_value=by_day[day]) for day in sorted(by_day)]
         return PortfolioValueSeries(currency="USD", points=points)
     except Exception:  # noqa: BLE001 - the chart must never take down the dashboard
         logger.exception("portfolio_value_series failed for user %s", user_id)

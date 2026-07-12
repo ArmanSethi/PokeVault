@@ -35,9 +35,7 @@ def keypair():
 @pytest.fixture
 def stub_client(keypair):
     _, public_key = keypair
-    return SimpleNamespace(
-        get_signing_key_from_jwt=lambda _token: SimpleNamespace(key=public_key)
-    )
+    return SimpleNamespace(get_signing_key_from_jwt=lambda _token: SimpleNamespace(key=public_key))
 
 
 def _mint(private_key, **overrides) -> str:

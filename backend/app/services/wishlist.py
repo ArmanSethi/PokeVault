@@ -35,9 +35,7 @@ async def add_or_update(
         existing.target_price = data.target_price
         item_id = existing.id
     else:
-        item = WishlistItem(
-            user_id=user_id, card_id=data.card_id, target_price=data.target_price
-        )
+        item = WishlistItem(user_id=user_id, card_id=data.card_id, target_price=data.target_price)
         session.add(item)
         await session.flush()
         item_id = item.id
@@ -47,17 +45,13 @@ async def add_or_update(
 
 async def remove(session: AsyncSession, user_id: uuid.UUID, item_id: int) -> bool:
     """Delete an owned wishlist item; False if it isn't the user's or doesn't exist."""
-    stmt = delete(WishlistItem).where(
-        WishlistItem.id == item_id, WishlistItem.user_id == user_id
-    )
+    stmt = delete(WishlistItem).where(WishlistItem.id == item_id, WishlistItem.user_id == user_id)
     result = await session.execute(stmt)
     await session.commit()
     return result.rowcount > 0
 
 
-async def list_with_value(
-    session: AsyncSession, user_id: uuid.UUID
-) -> list[WishlistItemRead]:
+async def list_with_value(session: AsyncSession, user_id: uuid.UUID) -> list[WishlistItemRead]:
     """List the user's wishlist, each enriched with the card's current market price."""
     stmt = (
         select(WishlistItem)

@@ -13,6 +13,7 @@ from app.api.v1.endpoints import (
     auth,
     cards,
     collection,
+    deck,
     importer,
     public,
     scan,
@@ -46,4 +47,5 @@ api_router.include_router(collection.router, prefix="/collection", tags=["collec
 api_router.include_router(importer.router, prefix="/collection", tags=["collection"])
 api_router.include_router(scan.router, prefix="/scan", tags=["scan"])
 api_router.include_router(wishlist.router, prefix="/wishlist", tags=["wishlist"])
+api_router.include_router(deck.router, prefix="/decks", tags=["decks"])
 api_router.include_router(public.router, prefix="/public", tags=["public"])

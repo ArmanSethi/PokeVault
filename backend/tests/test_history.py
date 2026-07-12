@@ -211,17 +211,26 @@ async def current_prices(db_session, cards):
     db_session.add_all(
         [
             CardPriceCurrent(
-                card_id="tst1-1", source="tcgplayer", variant="normal",
-                market=Decimal("2.00"), currency="USD",
+                card_id="tst1-1",
+                source="tcgplayer",
+                variant="normal",
+                market=Decimal("2.00"),
+                currency="USD",
             ),
             CardPriceCurrent(
-                card_id="tst1-1", source="tcgplayer", variant="holofoil",
-                market=Decimal("12.00"), currency="USD",
+                card_id="tst1-1",
+                source="tcgplayer",
+                variant="holofoil",
+                market=Decimal("12.00"),
+                currency="USD",
             ),
             # tst1-2 has NO TCGPlayer market — only a CardMarket (EUR) price.
             CardPriceCurrent(
-                card_id="tst1-2", source="cardmarket", variant="normal",
-                market=Decimal("10.00"), currency="EUR",
+                card_id="tst1-2",
+                source="cardmarket",
+                variant="normal",
+                market=Decimal("10.00"),
+                currency="EUR",
             ),
         ]
     )
@@ -277,7 +286,9 @@ async def test_snapshot_portfolio_values_idempotent(db_session, current_prices):
 
     async def _row_count() -> int:
         return await db_session.scalar(
-            select(func.count()).select_from(PortfolioValueDaily).where(
+            select(func.count())
+            .select_from(PortfolioValueDaily)
+            .where(
                 PortfolioValueDaily.user_id == uid,
                 PortfolioValueDaily.snapshot_date == func.current_date(),
             )

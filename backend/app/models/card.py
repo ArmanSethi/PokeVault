@@ -59,9 +59,7 @@ class Card(Base):
     artist: Mapped[str | None] = mapped_column(String(255), default=None)
     image_small: Mapped[str | None] = mapped_column(String(1024), default=None)
     image_large: Mapped[str | None] = mapped_column(String(1024), default=None)
-    national_pokedex_numbers: Mapped[list[int] | None] = mapped_column(
-        ARRAY(Integer), default=None
-    )
+    national_pokedex_numbers: Mapped[list[int] | None] = mapped_column(ARRAY(Integer), default=None)
     tcgplayer_url: Mapped[str | None] = mapped_column(String(1024), default=None)
     cardmarket_url: Mapped[str | None] = mapped_column(String(1024), default=None)
     raw_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None)

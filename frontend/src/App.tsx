@@ -24,9 +24,7 @@ const ShowcasePage = lazy(() =>
 const CollectionPage = lazy(() =>
   import("./pages/CollectionPage").then((m) => ({ default: m.CollectionPage })),
 );
-const SetCompletionPage = lazy(() =>
-  import("./pages/SetCompletionPage").then((m) => ({ default: m.SetCompletionPage })),
-);
+const DeckPage = lazy(() => import("./pages/DeckPage").then((m) => ({ default: m.DeckPage })));
 const WishlistPage = lazy(() =>
   import("./pages/WishlistPage").then((m) => ({ default: m.WishlistPage })),
 );
@@ -68,7 +66,7 @@ export default function App() {
             <Route index element={<DashboardPage />} />
             <Route path="catalog" element={<CatalogPage />} />
             <Route path="collection" element={<CollectionPage />} />
-            <Route path="sets" element={<SetCompletionPage />} />
+            <Route path="deck" element={<DeckPage />} />
             <Route path="wishlist" element={<WishlistPage />} />
             <Route path="scan" element={<ScanPage />} />
             <Route path="settings" element={<SettingsPage />} />

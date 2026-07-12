@@ -28,9 +28,7 @@ async def test_me_returns_user_and_mirrors(auth_client: AsyncClient, monkeypatch
     monkeypatch.setattr(
         security,
         "_jwk_client",
-        SimpleNamespace(
-            get_signing_key_from_jwt=lambda _t: SimpleNamespace(key=priv.public_key())
-        ),
+        SimpleNamespace(get_signing_key_from_jwt=lambda _t: SimpleNamespace(key=priv.public_key())),
     )
 
     sub = uuid.uuid4()

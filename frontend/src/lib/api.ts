@@ -9,6 +9,10 @@ import type {
   CollectionEntryCreate,
   CollectionEntryUpdate,
   CollectionSummary,
+  Deck,
+  DeckCardCreate,
+  DeckCreate,
+  DeckUpdate,
   ImportConfirmResult,
   ImportConfirmRow,
   ImportPreview,
@@ -149,6 +153,32 @@ export const api = {
   deleteWishlist: (id: number) =>
     request<void>(`/wishlist/${id}`, { method: "DELETE" }, { auth: true }),
   listAlerts: () => request<Alert[]>("/wishlist/alerts", {}, { auth: true }),
+
+  // ---- decks (auth) ----
+  listDecks: () => request<Deck[]>("/decks", {}, { auth: true }),
+  createDeck: (data: DeckCreate) =>
+    request<Deck>("/decks", { method: "POST", body: JSON.stringify(data) }, { auth: true }),
+  updateDeck: (id: number, data: DeckUpdate) =>
+    request<Deck>(`/decks/${id}`, { method: "PATCH", body: JSON.stringify(data) }, { auth: true }),
+  deleteDeck: (id: number) => request<void>(`/decks/${id}`, { method: "DELETE" }, { auth: true }),
+  addDeckCard: (deckId: number, data: DeckCardCreate) =>
+    request<Deck>(
+      `/decks/${deckId}/cards`,
+      { method: "POST", body: JSON.stringify(data) },
+      { auth: true },
+    ),
+  updateDeckCard: (deckId: number, cardId: string, quantity: number) =>
+    request<Deck>(
+      `/decks/${deckId}/cards/${encodeURIComponent(cardId)}`,
+      { method: "PATCH", body: JSON.stringify({ quantity }) },
+      { auth: true },
+    ),
+  removeDeckCard: (deckId: number, cardId: string) =>
+    request<Deck>(
+      `/decks/${deckId}/cards/${encodeURIComponent(cardId)}`,
+      { method: "DELETE" },
+      { auth: true },
+    ),
 
   // ---- scan ----
   scan: (file: File, limit = 5) => {

@@ -44,9 +44,7 @@ class PokemonTcgClient:
         if key:
             headers["X-Api-Key"] = key
         else:
-            logger.warning(
-                "No POKEMONTCG_API_KEY set - proceeding keyless at reduced rate limits."
-            )
+            logger.warning("No POKEMONTCG_API_KEY set - proceeding keyless at reduced rate limits.")
 
         self._client = httpx.AsyncClient(
             base_url=base_url or settings.POKEMONTCG_API_BASE,
@@ -74,7 +72,11 @@ class PokemonTcgClient:
                     raise PokemonTcgError(f"GET {path} failed: {exc}") from exc
                 logger.warning(
                     "Transport error on %s (attempt %d/%d): %s; retrying in %.1fs",
-                    path, attempt, self.max_retries, exc, delay,
+                    path,
+                    attempt,
+                    self.max_retries,
+                    exc,
+                    delay,
                 )
                 await asyncio.sleep(delay)
                 delay = min(delay * 2, _MAX_BACKOFF_SECONDS)
@@ -86,14 +88,14 @@ class PokemonTcgClient:
                         f"GET {path} returned {resp.status_code} after {attempt} attempts"
                     )
                 retry_after = resp.headers.get("Retry-After")
-                wait = (
-                    float(retry_after)
-                    if retry_after and retry_after.isdigit()
-                    else delay
-                )
+                wait = float(retry_after) if retry_after and retry_after.isdigit() else delay
                 logger.warning(
                     "HTTP %d on %s (attempt %d/%d); backing off %.1fs",
-                    resp.status_code, path, attempt, self.max_retries, wait,
+                    resp.status_code,
+                    path,
+                    attempt,
+                    self.max_retries,
+                    wait,
                 )
                 await asyncio.sleep(wait)
                 delay = min(delay * 2, _MAX_BACKOFF_SECONDS)

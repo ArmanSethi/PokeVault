@@ -12,6 +12,9 @@ import type {
   CollectionEntry,
   CollectionEntryCreate,
   CollectionEntryUpdate,
+  DeckCardCreate,
+  DeckCreate,
+  DeckUpdate,
   ImportConfirmRow,
   ProfileUpdate,
   WishlistItemCreate,
@@ -291,6 +294,67 @@ export function useDeleteWishlist() {
   return useMutation({
     mutationFn: (id: number) => api.deleteWishlist(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.wishlist }),
+  });
+}
+
+// ---- decks (dream-deck builder) ----
+
+export function useDecks() {
+  return useQuery({ queryKey: ["decks"], queryFn: () => api.listDecks(), staleTime: 0 });
+}
+
+function invalidateDecks(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ["decks"] });
+}
+
+export function useCreateDeck() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: DeckCreate) => api.createDeck(data),
+    onSuccess: () => invalidateDecks(qc),
+  });
+}
+
+export function useUpdateDeck() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: DeckUpdate }) => api.updateDeck(id, data),
+    onSuccess: () => invalidateDecks(qc),
+  });
+}
+
+export function useDeleteDeck() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.deleteDeck(id),
+    onSuccess: () => invalidateDecks(qc),
+  });
+}
+
+export function useAddDeckCard() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ deckId, data }: { deckId: number; data: DeckCardCreate }) =>
+      api.addDeckCard(deckId, data),
+    onSuccess: () => invalidateDecks(qc),
+  });
+}
+
+export function useUpdateDeckCard() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ deckId, cardId, quantity }: { deckId: number; cardId: string; quantity: number }) =>
+      api.updateDeckCard(deckId, cardId, quantity),
+    onSuccess: () => invalidateDecks(qc),
+  });
+}
+
+export function useRemoveDeckCard() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ deckId, cardId }: { deckId: number; cardId: string }) =>
+      api.removeDeckCard(deckId, cardId),
+    onSuccess: () => invalidateDecks(qc),
   });
 }
 

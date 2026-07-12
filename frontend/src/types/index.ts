@@ -116,6 +116,45 @@ export interface PortfolioValueSeries {
   message?: string | null;
 }
 
+// ---- decks (dream-deck builder) ----
+
+export interface DeckCard {
+  card_id: string;
+  quantity: number;
+  name: string;
+  set_id: string;
+  number: string;
+  image_url: string | null;
+  market_price: string | null; // unit price in USD (EUR converted); null if unpriced
+  currency: string;
+}
+
+export interface Deck {
+  id: number;
+  name: string;
+  target_size: number;
+  created_at: string;
+  card_count: number; // sum of card quantities
+  total_value: string; // USD
+  currency: string;
+  cards: DeckCard[];
+}
+
+export interface DeckCreate {
+  name: string;
+  target_size: number;
+}
+
+export interface DeckUpdate {
+  name?: string;
+  target_size?: number;
+}
+
+export interface DeckCardCreate {
+  card_id: string;
+  quantity?: number;
+}
+
 export interface ScanCandidate {
   card_id: string;
   name: string;

@@ -23,9 +23,7 @@ async def read_me(user: CurrentUser) -> UserRead:
 
 
 @router.patch("", response_model=UserRead)
-async def update_me(
-    user: CurrentUser, session: SessionDep, data: UserProfileUpdate
-) -> UserRead:
+async def update_me(user: CurrentUser, session: SessionDep, data: UserProfileUpdate) -> UserRead:
     """Claim/change a public-showcase handle and toggle visibility."""
     try:
         updated = await profile_service.update_profile(session, user, data)

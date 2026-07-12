@@ -28,9 +28,7 @@ class CollectionEntry(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
-    card_id: Mapped[str] = mapped_column(
-        ForeignKey("cards.id", ondelete="CASCADE"), index=True
-    )
+    card_id: Mapped[str] = mapped_column(ForeignKey("cards.id", ondelete="CASCADE"), index=True)
     quantity: Mapped[int] = mapped_column(default=1)
     condition: Mapped[str | None] = mapped_column(String(32), default=None)  # e.g. NM, LP
     grade: Mapped[str | None] = mapped_column(String(32), default=None)  # e.g. "PSA 10"

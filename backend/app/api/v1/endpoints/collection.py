@@ -52,7 +52,6 @@ async def collection_summary(user: CurrentUser, session: SessionDep) -> Collecti
     return await valuation_service.collection_summary(session, user.id)
 
 
-
 @router.get("/history", response_model=PortfolioValueSeries)
 async def portfolio_history(
     user: CurrentUser,

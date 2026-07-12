@@ -1,9 +1,39 @@
 import { Link } from "react-router-dom";
 import { useSummary, usePortfolioHistory } from "../lib/queries";
 import { useCurrency } from "../context/CurrencyContext";
+import { HIDDEN_MASK, useHideValue } from "../lib/useHideValue";
 import { PriceChart } from "../components/PriceChart";
 import { EmptyState, ErrorState } from "../components/States";
 import { StatTilesSkeleton, TableSkeleton } from "../components/Skeleton";
+
+function EyeIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
+
+function EyeSlashIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.2 4.2M9.9 4.7A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a18 18 0 0 1-3.2 4M6.6 6.6A18 18 0 0 0 2 12s3.5 7 10 7a10.8 10.8 0 0 0 4.5-1"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 function Stat({
   label,
@@ -42,6 +72,7 @@ export function DashboardPage() {
   const summary = useSummary();
   const history = usePortfolioHistory();
   const { format } = useCurrency();
+  const { hidden, toggle } = useHideValue();
 
   return (
     <>
@@ -75,12 +106,24 @@ export function DashboardPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3">
-            <Stat
-              label="Portfolio value"
-              value={format(summary.data.total_market_value)}
-              accent
-              to="/collection?view=grid"
-            />
+            <div className="relative">
+              <Stat
+                label="Portfolio value"
+                value={hidden ? HIDDEN_MASK : format(summary.data.total_market_value)}
+                accent
+                to="/collection?view=grid"
+              />
+              <button
+                type="button"
+                onClick={toggle}
+                aria-label={hidden ? "Show portfolio value" : "Hide portfolio value"}
+                aria-pressed={hidden}
+                title={hidden ? "Show portfolio value" : "Hide portfolio value"}
+                className="absolute right-2 top-2 rounded-md p-1.5 text-brand-100 transition-colors hover:bg-white/20"
+              >
+                {hidden ? <EyeSlashIcon /> : <EyeIcon />}
+              </button>
+            </div>
             <Stat
               label="Total cards"
               value={String(summary.data.total_quantity)}

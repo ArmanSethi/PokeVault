@@ -135,10 +135,10 @@ export function GradingFields({ condition, grade, onChange }: Props) {
               ))}
             </select>
           </label>
-          {company !== "PSA" && (
+          {company === "Other" && (
             <p className="col-span-2 text-xs text-amber-600 dark:text-amber-400">
-              Heads up: only PSA grades carry a graded-value premium. {company} cards are valued at
-              the raw (ungraded) market price — no accurate graded pricing on the free tier.
+              Heads up: "Other" graders are valued at the raw (ungraded) market price — no premium
+              applied. PSA/BGS/CGC/SGC get an estimated graded premium.
             </p>
           )}
         </div>

@@ -44,8 +44,25 @@ def test_grade_multiplier_psa10_is_highest() -> None:
 def test_grade_multiplier_raw_and_unknown_are_1() -> None:
     assert grade_multiplier(None) == Decimal("1.0")
     assert grade_multiplier("") == Decimal("1.0")
-    assert grade_multiplier("BGS 9.5") == Decimal("1.0")
+    assert grade_multiplier("Other 10") == Decimal("1.0")  # unlisted grader → no premium
+    assert grade_multiplier("Gem Mint") == Decimal("1.0")  # free-text → no premium
     assert grade_multiplier("PSA 5") == Decimal("0.9")
+
+
+def test_bgs_cgc_sgc_premiums_vary_by_grade_and_company() -> None:
+    # BGS ×1.05, CGC ×0.90, SGC ×0.85 over the shared grade curve (half-grades supported).
+    assert grade_multiplier("BGS 10") == Decimal("5.25")
+    assert grade_multiplier("BGS 9.5") == Decimal("3.15")
+    assert grade_multiplier("BGS 9") == Decimal("2.10")
+    assert grade_multiplier("CGC 10") == Decimal("4.5")
+    assert grade_multiplier("CGC 9") == Decimal("1.8")
+    assert grade_multiplier("SGC 9.5") == Decimal("2.55")
+    assert grade_multiplier("SGC 10") == Decimal("4.25")
+    # Varies by grade and company.
+    assert grade_multiplier("BGS 10") > grade_multiplier("CGC 10") > grade_multiplier("SGC 10")
+    assert grade_multiplier("BGS 10") > grade_multiplier("BGS 9")
+    # Applied to a raw price and quantized to cents.
+    assert graded_unit_price([_price("10.00")], is_foil=False, grade="BGS 10") == Decimal("52.50")
 
 
 def _price(market: str, variant: str = "normal") -> CardPriceCurrent:

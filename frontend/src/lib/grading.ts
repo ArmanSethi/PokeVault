@@ -13,15 +13,15 @@ export function psaGrade(grade: string | null | undefined): number | null {
   return n >= 1 && n <= 10 ? n : null;
 }
 
-/** True when the stored grade earns a graded-value premium (i.e. it's a PSA 1–10 grade). */
+/** True when the stored grade earns a graded-value premium (PSA/BGS/CGC/SGC). */
 export function gradedPremiumApplied(grade: string | null | undefined): boolean {
-  return psaGrade(grade) !== null;
+  return grade != null && /(?:psa|bgs|cgc|sgc)\s*[0-9]/i.test(grade);
 }
 
-/** True when a card is graded but shown at raw value (non-PSA company). */
+/** True when a card is graded but shown at raw value (an "Other"/unlisted grader). */
 export function gradedButRaw(grade: string | null | undefined): boolean {
   return Boolean(grade) && !gradedPremiumApplied(grade);
 }
 
 export const RAW_GRADE_NOTE =
-  "Graded premium not applied — no accurate graded pricing for BGS/CGC/SGC/Other on the free tier, so this shows the ungraded (raw) market value.";
+  "Graded premium not applied — this grader isn't priced on the free tier, so it shows the ungraded (raw) market value.";

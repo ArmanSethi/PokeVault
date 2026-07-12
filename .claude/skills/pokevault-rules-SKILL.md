@@ -77,9 +77,10 @@ rule and surface the conflict to the user.
   mix currencies in a total. Native currency is shown ONLY in the per-source display
   table, never in totals.
 - Holo cards must read the **holofoil** price variant, not the base/normal variant.
-- Grading value: PSA grades get a premium multiplier that **varies by grade**
-  (10 > 9 > 8). Non-PSA (BGS/CGC/SGC/Other) show RAW value, clearly labeled as
-  "graded premium not applied" — we lack accurate graded pricing on the free tier.
+- Grading value: PSA, BGS, CGC, SGC get an **estimated** premium multiplier that **varies by
+  grade** (10 > 9.5 > 9 …) — a shared grade curve × a per-company factor (BGS ×1.05, CGC ×0.90,
+  SGC ×0.85; PSA has its own table). All estimates (no real graded-sale feed). Only **"Other"**
+  / free-text graders show RAW value, labeled "graded premium not applied".
 - Missing price → contributes 0 to a total, never NaN, and log which card lacked a price.
 
 ## Data freshness

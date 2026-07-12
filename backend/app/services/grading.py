@@ -33,7 +33,54 @@ PSA_MULTIPLIERS: dict[int, Decimal] = {
 }
 RAW_MULTIPLIER = Decimal("1.0")
 
+# BGS / CGC / SGC premium estimates. We still have no real graded-sale feed, so these are
+# heuristic like PSA's: a base premium curve keyed by numeric grade (supports the half-grades
+# BGS/CGC/SGC use, e.g. 9.5, 8.5) times a per-company factor (BGS trades at a slight premium to
+# PSA; CGC/SGC a bit below). "Other" and free-text grades still get no premium (RAW).
+_GRADE_CURVE: dict[float, Decimal] = {
+    10.0: Decimal("5.0"),
+    9.5: Decimal("3.0"),
+    9.0: Decimal("2.0"),
+    8.5: Decimal("1.6"),
+    8.0: Decimal("1.35"),
+    7.5: Decimal("1.2"),
+    7.0: Decimal("1.1"),
+    6.5: Decimal("1.05"),
+    6.0: Decimal("1.0"),
+    5.5: Decimal("0.95"),
+    5.0: Decimal("0.9"),
+    4.5: Decimal("0.85"),
+    4.0: Decimal("0.8"),
+    3.5: Decimal("0.75"),
+    3.0: Decimal("0.7"),
+    2.5: Decimal("0.65"),
+    2.0: Decimal("0.6"),
+    1.5: Decimal("0.55"),
+    1.0: Decimal("0.5"),
+}
+_COMPANY_FACTOR: dict[str, Decimal] = {
+    "BGS": Decimal("1.05"),
+    "CGC": Decimal("0.90"),
+    "SGC": Decimal("0.85"),
+}
+
 _PSA_RE = re.compile(r"psa\s*([0-9]{1,2})", re.IGNORECASE)
+_OTHER_RE = re.compile(r"(BGS|CGC|SGC)\s*([0-9]+(?:\.[0-9])?)", re.IGNORECASE)
+
+
+def _parse_graded_company(grade: str | None) -> tuple[str, float] | None:
+    """Extract (company, numeric grade) for a BGS/CGC/SGC grade like 'BGS 9.5'; else None."""
+    if not grade:
+        return None
+    m = _OTHER_RE.search(grade)
+    if not m:
+        return None
+    company = m.group(1).upper()
+    try:
+        value = float(m.group(2))
+    except ValueError:
+        return None
+    return (company, value) if 1.0 <= value <= 10.0 else None
 
 
 def parse_psa_grade(grade: str | None) -> int | None:
@@ -51,9 +98,21 @@ def parse_psa_grade(grade: str | None) -> int | None:
 
 
 def grade_multiplier(grade: str | None) -> Decimal:
-    """Valuation multiplier for a grade string; raw/unknown grades return 1.0."""
+    """Valuation multiplier for a grade string.
+
+    PSA uses its own table; BGS/CGC/SGC use the shared grade curve × a per-company factor
+    (estimates). Raw/ungraded and "Other"/unrecognized graders return 1.0 (no premium).
+    """
     psa = parse_psa_grade(grade)
-    return PSA_MULTIPLIERS[psa] if psa is not None else RAW_MULTIPLIER
+    if psa is not None:
+        return PSA_MULTIPLIERS[psa]
+    parsed = _parse_graded_company(grade)
+    if parsed is not None:
+        company, value = parsed
+        base = _GRADE_CURVE.get(value)
+        if base is not None:
+            return base * _COMPANY_FACTOR[company]
+    return RAW_MULTIPLIER
 
 
 def graded_unit_price(

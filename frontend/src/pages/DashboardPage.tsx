@@ -105,7 +105,7 @@ export function DashboardPage() {
         </>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div className="relative">
               <Stat
                 label="Portfolio value"
@@ -129,9 +129,20 @@ export function DashboardPage() {
               value={String(summary.data.total_quantity)}
               to="/collection?view=table"
             />
+            {/* Total spent = SUM(acquired_price x qty), nulls skipped; masked with the value toggle. */}
+            <Stat
+              label="Total spent"
+              value={hidden ? HIDDEN_MASK : format(summary.data.total_cost)}
+            />
           </div>
 
           <h2 className="mb-2 mt-8 text-lg font-semibold">Portfolio value over time</h2>
+          {history.data?.points.length ? (
+            <p className="-mt-1 mb-2 text-xs text-slate-400">
+              Daily tracking since {history.data.points[0]?.date ?? ""} — earlier days aren't
+              recorded.
+            </p>
+          ) : null}
           {history.isPending ? (
             <div className="h-64 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
           ) : history.isError ? (

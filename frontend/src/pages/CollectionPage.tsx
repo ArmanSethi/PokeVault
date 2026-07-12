@@ -23,7 +23,6 @@ const LAYOUT_KEY = "pv-collection-view";
 export function CollectionPage() {
   const entries = useCollection();
   const del = useDeleteEntry();
-  const update = useUpdateEntry();
   const toast = useToast();
   const { format } = useCurrency();
 
@@ -88,18 +87,6 @@ export function CollectionPage() {
         {showImport && <ImportExportPanel onClose={() => setShowImport(false)} />}
       </>
     );
-  }
-
-  function changeQty(entry: CollectionEntry, delta: number) {
-    const quantity = entry.quantity + delta;
-    if (quantity < 1) {
-      remove(entry);
-      return;
-    }
-    update.mutate({
-      id: entry.id,
-      data: { quantity: clampInt(quantity, LIMITS.cardQty.min, LIMITS.cardQty.max) },
-    });
   }
 
   function remove(entry: CollectionEntry) {
@@ -177,25 +164,7 @@ export function CollectionPage() {
                     </Link>
                     {e.is_foil && <span className="ml-2 text-xs text-accent-500">✦ foil</span>}
                   </td>
-                  <td className="px-4 py-2">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => changeQty(e, -1)}
-                        aria-label="Decrease quantity"
-                        className="h-6 w-6 rounded border border-slate-300 dark:border-slate-700"
-                      >
-                        −
-                      </button>
-                      <span className="w-6 text-center">{e.quantity}</span>
-                      <button
-                        onClick={() => changeQty(e, 1)}
-                        aria-label="Increase quantity"
-                        className="h-6 w-6 rounded border border-slate-300 dark:border-slate-700"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </td>
+                  <td className="px-4 py-2">×{e.quantity}</td>
                   <td className="px-4 py-2">{e.condition ?? "—"}</td>
                   <td className="px-4 py-2">
                     {e.grade ? (
@@ -263,14 +232,19 @@ export function CollectionPage() {
                 {e.is_foil && (
                   <span className="absolute left-1.5 top-1.5 text-xs text-accent-400">✦</span>
                 )}
-                {e.grade && (
-                  <span
-                    title={gradedButRaw(e.grade) ? RAW_GRADE_NOTE : undefined}
-                    className="absolute right-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white"
-                  >
-                    {e.grade}
+                <div className="absolute right-1.5 top-1.5 flex flex-col items-end gap-1">
+                  <span className="rounded-full bg-brand-600 px-2 py-0.5 text-xs font-bold text-white shadow">
+                    ×{e.quantity}
                   </span>
-                )}
+                  {e.grade && (
+                    <span
+                      title={gradedButRaw(e.grade) ? RAW_GRADE_NOTE : undefined}
+                      className="rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white"
+                    >
+                      {e.grade}
+                    </span>
+                  )}
+                </div>
               </Link>
               <div className="flex flex-1 flex-col gap-1 p-3">
                 <Link
@@ -281,6 +255,9 @@ export function CollectionPage() {
                   {names[e.card_id] ?? e.card_id}
                 </Link>
                 <p className="text-sm font-semibold">{format(e.market_value)}</p>
+                {e.acquired_price != null && (
+                  <p className="text-xs text-slate-400">acquired at {format(e.acquired_price)}</p>
+                )}
                 {gradedButRaw(e.grade) && (
                   <p
                     title={RAW_GRADE_NOTE}
@@ -289,24 +266,7 @@ export function CollectionPage() {
                     raw price · no graded premium
                   </p>
                 )}
-                <div className="mt-1 flex items-center gap-2">
-                  <button
-                    onClick={() => changeQty(e, -1)}
-                    aria-label="Decrease quantity"
-                    className="h-6 w-6 rounded border border-slate-300 dark:border-slate-700"
-                  >
-                    −
-                  </button>
-                  <span className="w-6 text-center text-sm">{e.quantity}</span>
-                  <button
-                    onClick={() => changeQty(e, 1)}
-                    aria-label="Increase quantity"
-                    className="h-6 w-6 rounded border border-slate-300 dark:border-slate-700"
-                  >
-                    +
-                  </button>
-                </div>
-                <div className="mt-1 flex items-center gap-3 text-sm">
+                <div className="mt-1 flex flex-col items-start gap-2 text-sm">
                   <button onClick={() => setEditing(e)} className="text-brand-600 hover:underline">
                     Edit
                   </button>
@@ -314,7 +274,7 @@ export function CollectionPage() {
                     onClick={() => remove(e)}
                     aria-label="Delete card"
                     title="Delete this card from your collection"
-                    className="ml-auto inline-flex h-7 w-7 items-center justify-center rounded-md bg-danger-100 text-danger-600 hover:bg-danger-200 dark:bg-danger-600/20 dark:text-danger-400 dark:hover:bg-danger-600/30"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-danger-100 text-danger-600 hover:bg-danger-200 dark:bg-danger-600/20 dark:text-danger-400 dark:hover:bg-danger-600/30"
                   >
                     🗑
                   </button>

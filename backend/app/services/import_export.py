@@ -274,7 +274,6 @@ _EXPORT_HEADER = [
     "acquired_price",
     "market_price",
     "market_value",
-    "notes",
 ]
 
 
@@ -306,7 +305,6 @@ async def export_csv(session: AsyncSession, user_id: uuid.UUID) -> str:
                 e.acquired_price if e.acquired_price is not None else "",
                 unit if unit is not None else "",
                 value if value is not None else "",
-                e.notes or "",
             ]
         )
     return buf.getvalue()

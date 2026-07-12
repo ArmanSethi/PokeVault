@@ -1,7 +1,7 @@
 """Schemas for public showcases.
 
 These are the *only* projections exposed without authentication. They deliberately omit
-private fields — ``acquired_price`` and ``notes`` never appear here.
+private fields — ``acquired_price`` never appears here.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ class PublicProfile(BaseModel):
 
 
 class PublicEntry(BaseModel):
-    """A single owned card as shown on a public showcase (no cost basis, no notes)."""
+    """A single owned card as shown on a public showcase (no cost basis)."""
 
     card_id: str
     name: str

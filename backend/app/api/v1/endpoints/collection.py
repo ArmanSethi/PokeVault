@@ -66,7 +66,7 @@ async def portfolio_history(
 async def update_entry(
     user: CurrentUser, session: SessionDep, entry_id: int, data: CollectionEntryUpdate
 ) -> CollectionEntryRead:
-    """Edit an owned entry (quantity, condition, grade, acquired price, notes)."""
+    """Edit an owned entry (quantity, condition, grade, acquired price)."""
     entry = await collection_service.update_entry(session, user.id, entry_id, data)
     if entry is None:
         raise HTTPException(status_code=404, detail="Entry not found")

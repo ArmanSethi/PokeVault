@@ -132,7 +132,7 @@ async def test_update_and_delete(auth_client, seed, signing_key) -> None:
 
     patched = await auth_client.patch(
         f"{_ME}/{entry_id}",
-        json={"quantity": 4, "condition": "NM", "grade": "PSA 9", "notes": "mint-ish"},
+        json={"quantity": 4, "condition": "NM", "grade": "PSA 9"},
         headers=a,
     )
     assert patched.status_code == 200

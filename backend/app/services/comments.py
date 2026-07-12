@@ -3,7 +3,7 @@
 Boundary: this service reads and writes ONLY ``showcase_comments`` rows, plus a single
 ``users`` lookup (reusing ``public._public_user``) to resolve the handle, enforce the
 public-only rule, read the owner's ``comments_enabled`` flag, and authorize deletes. It never
-touches collection / cost / notes or any other private data.
+touches collection / cost or any other private data.
 """
 
 from __future__ import annotations

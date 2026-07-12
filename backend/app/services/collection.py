@@ -64,7 +64,6 @@ async def add_or_increment(
             grade=data.grade,
             is_foil=data.is_foil,
             acquired_price=data.acquired_price,
-            notes=data.notes,
         )
         session.add(entry)
         await session.flush()

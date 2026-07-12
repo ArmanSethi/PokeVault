@@ -34,7 +34,6 @@ class CollectionEntry(Base):
     grade: Mapped[str | None] = mapped_column(String(32), default=None)  # e.g. "PSA 10"
     is_foil: Mapped[bool] = mapped_column(default=False)
     acquired_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), default=None)
-    notes: Mapped[str | None] = mapped_column(String(1024), default=None)
 
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())

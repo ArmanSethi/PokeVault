@@ -30,7 +30,6 @@ def _to_entry_read(entry: CollectionEntry) -> CollectionEntryRead:
         grade=entry.grade,
         is_foil=entry.is_foil,
         acquired_price=entry.acquired_price,
-        notes=entry.notes,
         created_at=entry.created_at,
         updated_at=entry.updated_at,
         market_price=unit,

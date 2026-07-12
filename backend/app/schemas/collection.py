@@ -17,7 +17,6 @@ class CollectionEntryBase(BaseModel):
     grade: str | None = None  # e.g. "PSA 10"
     is_foil: bool = False
     acquired_price: Decimal | None = None
-    notes: str | None = None
 
 
 class CollectionEntryCreate(CollectionEntryBase):
@@ -31,7 +30,6 @@ class CollectionEntryUpdate(BaseModel):
     condition: str | None = None
     grade: str | None = None
     acquired_price: Decimal | None = Field(default=None, ge=MIN_MONEY, le=MAX_MONEY)
-    notes: str | None = None
 
 
 class CollectionEntryRead(CollectionEntryBase):

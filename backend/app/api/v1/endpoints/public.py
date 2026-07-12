@@ -34,7 +34,7 @@ async def get_public_profile(handle: str, session: SessionDep) -> PublicProfile:
 
 @router.get("/u/{handle}/collection", response_model=PublicCollection)
 async def get_public_collection(handle: str, session: SessionDep) -> PublicCollection:
-    """A public showcase's card list — public-safe fields only (no cost basis / notes)."""
+    """A public showcase's card list — public-safe fields only (no cost basis)."""
     collection = await public_service.public_collection(session, handle)
     if collection is None:
         raise HTTPException(status_code=404, detail="Showcase not found")

@@ -69,7 +69,6 @@ async def import_confirm(
                     condition=row.condition,
                     is_foil=row.is_foil,
                     acquired_price=price,
-                    notes=row.notes,
                 ),
             )
             added += 1

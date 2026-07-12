@@ -2,7 +2,7 @@
 
 Everything here is reachable without authentication, so it must expose only public-safe
 data. Ownership stats and per-card market values are fine; cost basis (``acquired_price``)
-and private ``notes`` are never projected.
+is never projected.
 """
 
 from __future__ import annotations

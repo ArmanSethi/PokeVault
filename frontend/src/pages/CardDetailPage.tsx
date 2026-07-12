@@ -165,9 +165,6 @@ export function CardDetailPage() {
                     }
                     className={inputClass}
                   />
-                  <span className="mt-1 block text-xs text-slate-400">
-                    {LIMITS.cardQty.min}–{LIMITS.cardQty.max}
-                  </span>
                 </label>
                 <label className="text-sm">
                   <span className="mb-1 block">Acquired price (optional)</span>
@@ -185,9 +182,6 @@ export function CardDetailPage() {
                     }
                     className={inputClass}
                   />
-                  <span className="mt-1 block text-xs text-slate-400">
-                    0–{LIMITS.money.max.toLocaleString()}
-                  </span>
                 </label>
                 <GradingFields
                   condition={form.condition ?? ""}

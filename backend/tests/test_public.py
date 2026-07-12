@@ -106,7 +106,7 @@ async def test_showcase_private_by_default_then_public(auth_client, seed, signin
     a = _headers(signing_key, uuid.uuid4())
     await auth_client.post(
         f"{_API}/collection",
-        json={"card_id": "tst1-1", "quantity": 1, "acquired_price": 99.99, "notes": "secret buy"},
+        json={"card_id": "tst1-1", "quantity": 1, "acquired_price": 99.99},
         headers=a,
     )
     # Claim a handle but stay private → showcase is 404 to the public.
@@ -127,8 +127,6 @@ async def test_showcase_private_by_default_then_public(auth_client, seed, signin
     # …but private fields must never appear in the public payload.
     raw = coll.text
     assert "acquired_price" not in raw
-    assert "secret buy" not in raw
-    assert "notes" not in raw
 
 
 async def test_public_profile_total_matches_raw_card_values(auth_client, seed, signing_key) -> None:

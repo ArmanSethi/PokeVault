@@ -57,7 +57,6 @@ class ImportConfirmRow(BaseModel):
     condition: str | None = None
     is_foil: bool = False
     acquired_price: Decimal | None = None
-    notes: str | None = None
 
 
 class ImportConfirm(BaseModel):

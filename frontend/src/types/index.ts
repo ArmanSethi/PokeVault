@@ -47,7 +47,6 @@ export interface CollectionEntry {
   grade: string | null;
   is_foil: boolean;
   acquired_price: string | null;
-  notes: string | null;
   created_at: string;
   updated_at: string;
   market_price: string | null; // grade-adjusted unit value
@@ -62,7 +61,6 @@ export interface CollectionEntryCreate {
   grade?: string | null;
   is_foil?: boolean;
   acquired_price?: number | null;
-  notes?: string | null;
 }
 
 export interface CollectionEntryUpdate {
@@ -70,7 +68,6 @@ export interface CollectionEntryUpdate {
   condition?: string | null;
   grade?: string | null;
   acquired_price?: number | null;
-  notes?: string | null;
 }
 
 export interface SetHolding {
@@ -277,7 +274,6 @@ export interface ImportConfirmRow {
   condition?: string | null;
   is_foil?: boolean;
   acquired_price?: number | null;
-  notes?: string | null;
 }
 
 export interface ImportConfirmResult {

@@ -8,7 +8,7 @@ import {
   useUpdateEntry,
 } from "../lib/queries";
 import { useCurrency } from "../context/CurrencyContext";
-import { LIMITS, clampInt, clampMoney, moneyOverCap } from "../lib/limits";
+import { LIMITS, clampInt, clampMoney } from "../lib/limits";
 import { RAW_GRADE_NOTE, gradedButRaw } from "../lib/grading";
 import { EmptyState, ErrorState } from "../components/States";
 import { TableSkeleton } from "../components/Skeleton";
@@ -359,7 +359,6 @@ function EditModal({
   const [quantity, setQuantity] = useState(entry.quantity);
   const [condition, setCondition] = useState(entry.condition ?? "");
   const [grade, setGrade] = useState(entry.grade ?? "");
-  const [notes, setNotes] = useState(entry.notes ?? "");
   const [acquired, setAcquired] = useState(String(entry.acquired_price ?? ""));
 
   useEffect(() => {
@@ -380,7 +379,6 @@ function EditModal({
           quantity,
           condition: condition || null,
           grade: grade || null,
-          notes: notes || null,
           acquired_price: acquired === "" ? null : clampMoney(Number(acquired)),
         },
       });
@@ -428,9 +426,6 @@ function EditModal({
               }
               className={inputClass}
             />
-            <span className="mt-1 block text-xs text-slate-400">
-              {LIMITS.cardQty.min}–{LIMITS.cardQty.max}
-            </span>
           </label>
           <GradingFields
             condition={condition}
@@ -449,23 +444,6 @@ function EditModal({
               max={LIMITS.money.max}
               value={acquired}
               onChange={(e) => setAcquired(e.target.value)}
-              className={inputClass}
-            />
-            {moneyOverCap(acquired) ? (
-              <span className="mt-1 block text-xs text-danger-600 dark:text-danger-500">
-                Max {LIMITS.money.max.toLocaleString()}
-              </span>
-            ) : (
-              <span className="mt-1 block text-xs text-slate-400">
-                0–{LIMITS.money.max.toLocaleString()}
-              </span>
-            )}
-          </label>
-          <label className="col-span-2">
-            <span className="mb-1 block">Notes</span>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
               className={inputClass}
             />
           </label>

@@ -75,7 +75,7 @@ export function SettingsPage() {
       </div>
       <p className="mb-6 text-sm text-slate-500 dark:text-slate-400">
         Claim a handle to get a shareable public showcase of your collection. Prices and set
-        completion are shown — what you paid and your notes are never public.
+        completion are shown — what you paid is never public.
       </p>
 
       <div className="space-y-4 rounded-xl border border-slate-200 p-5 dark:border-slate-800">

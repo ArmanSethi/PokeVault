@@ -12,8 +12,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_session
+from app.api.deps import CurrentUser, OptionalUser, get_session
+from app.schemas.comment import CommentCreate, CommentList, CommentRead
 from app.schemas.public import PublicCollection, PublicProfile
+from app.services import comments as comment_service
 from app.services import public as public_service
 
 router = APIRouter()
@@ -37,3 +39,49 @@ async def get_public_collection(handle: str, session: SessionDep) -> PublicColle
     if collection is None:
         raise HTTPException(status_code=404, detail="Showcase not found")
     return collection
+
+
+@router.get("/u/{handle}/comments", response_model=CommentList)
+async def list_comments(handle: str, session: SessionDep, viewer: OptionalUser) -> CommentList:
+    """Comments on a public showcase, newest first (public; 404 if the profile isn't public)."""
+    result = await comment_service.list_comments(session, handle, viewer)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Showcase not found")
+    return result
+
+
+@router.post("/u/{handle}/comments", response_model=CommentRead, status_code=201)
+async def post_comment(
+    handle: str, session: SessionDep, user: CurrentUser, data: CommentCreate
+) -> CommentRead:
+    """Post a comment (auth required). 403 if comments are disabled; 429 if rate-limited."""
+    try:
+        return await comment_service.add_comment(session, handle, user, data)
+    except comment_service.ProfileNotPublic:
+        raise HTTPException(status_code=404, detail="Showcase not found") from None
+    except comment_service.CommentsDisabled:
+        raise HTTPException(
+            status_code=403, detail="Comments are turned off for this showcase."
+        ) from None
+    except comment_service.RateLimited:
+        raise HTTPException(
+            status_code=429, detail="You're commenting too fast — try again in a moment."
+        ) from None
+
+
+@router.delete("/u/{handle}/comments/{comment_id}", status_code=204)
+async def delete_comment(
+    handle: str, session: SessionDep, user: CurrentUser, comment_id: int
+) -> None:
+    """Delete a comment (auth required; must be the comment's author or the profile owner)."""
+    if not await comment_service.delete_comment(session, handle, user, comment_id):
+        raise HTTPException(status_code=404, detail="Comment not found")
+
+
+@router.post("/u/{handle}/comments/{comment_id}/report", status_code=204)
+async def report_comment(
+    handle: str, session: SessionDep, user: CurrentUser, comment_id: int
+) -> None:
+    """Flag a comment for review (auth required)."""
+    if not await comment_service.report_comment(session, handle, comment_id):
+        raise HTTPException(status_code=404, detail="Comment not found")

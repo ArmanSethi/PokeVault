@@ -28,6 +28,8 @@ class User(Base):
     # touched by the per-request upsert in api/deps.py, so they survive normal auth traffic.
     handle: Mapped[str | None] = mapped_column(String(30), unique=True, index=True, default=None)
     is_public: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    # Owner toggle for comments on their public showcase (default on).
+    comments_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     # NB: the DB still has a vestigial `show_value_on_leaderboard` column from the removed
     # leaderboard feature; it's NOT NULL with a server default, so inserts that omit it are
     # fine. Left in place to avoid a destructive migration; can be dropped later.

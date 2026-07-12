@@ -357,6 +357,41 @@ export function useRemoveDeckCard() {
   });
 }
 
+// ---- showcase comments ----
+
+export function useComments(handle: string) {
+  return useQuery({
+    queryKey: ["comments", handle],
+    queryFn: () => api.listComments(handle),
+    enabled: Boolean(handle),
+    staleTime: 0,
+  });
+}
+
+export function useAddComment(handle: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: string) => api.addComment(handle, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["comments", handle] }),
+  });
+}
+
+export function useDeleteComment(handle: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.deleteComment(handle, id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["comments", handle] }),
+  });
+}
+
+export function useReportComment(handle: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.reportComment(handle, id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["comments", handle] }),
+  });
+}
+
 // ---- pack simulator ----
 
 export function useOpenPack() {

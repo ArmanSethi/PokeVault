@@ -14,7 +14,13 @@ from app.core.security import InvalidToken, verify_supabase_jwt
 from app.db.session import get_session
 from app.models.user import User
 
-__all__ = ["get_session", "get_current_user", "CurrentUser"]
+__all__ = [
+    "get_session",
+    "get_current_user",
+    "CurrentUser",
+    "get_optional_user",
+    "OptionalUser",
+]
 
 # auto_error=False so a missing header yields our own 401 (not FastAPI's 403).
 _bearer = HTTPBearer(auto_error=False)
@@ -57,3 +63,21 @@ async def get_current_user(
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+async def get_optional_user(
+    creds: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> User | None:
+    """Like ``get_current_user`` but returns ``None`` instead of 401 when no valid token is
+    present. Lets a public endpoint tailor its response to the viewer (if any) without
+    requiring login."""
+    if creds is None:
+        return None
+    try:
+        return await get_current_user(creds, session)
+    except HTTPException:
+        return None
+
+
+OptionalUser = Annotated[User | None, Depends(get_optional_user)]

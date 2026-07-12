@@ -15,6 +15,7 @@ from app.db.base_class import Base  # noqa: F401
 from app.models.alert_log import AlertLog  # noqa: E402, F401
 from app.models.card import Card, Set  # noqa: E402, F401
 from app.models.collection import CollectionEntry  # noqa: E402, F401
+from app.models.comment import ShowcaseComment  # noqa: E402, F401
 from app.models.deck import Deck, DeckCard  # noqa: E402, F401
 from app.models.portfolio import PortfolioValueDaily  # noqa: E402, F401
 from app.models.price import CardPriceCurrent, PriceHistory  # noqa: E402, F401

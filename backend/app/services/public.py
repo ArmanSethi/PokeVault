@@ -49,6 +49,7 @@ async def public_profile(session: AsyncSession, handle: str) -> PublicProfile | 
         total_market_value=summary.total_market_value,
         currency=summary.currency,
         sets_completed=sets_completed,
+        comments_enabled=user.comments_enabled,
         sets=summary.sets,
     )
 

@@ -1,11 +1,20 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { usePublicCollection, usePublicProfile } from "../lib/queries";
+import {
+  useAddComment,
+  useComments,
+  useDeleteComment,
+  usePublicCollection,
+  usePublicProfile,
+  useReportComment,
+} from "../lib/queries";
+import { useAuth } from "../context/AuthContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { CollectionFilters, type SortKey } from "../components/CollectionFilters";
 import { ErrorState } from "../components/States";
 import { CardGridSkeleton } from "../components/Skeleton";
 import { Meta } from "../components/Meta";
+import { useToast } from "../components/Toast";
 
 /** Public, shareable collection showcase at /u/:handle. Read-only: it renders ONLY the owner's
  * public collection (usePublicCollection) with no write/edit/export actions. Sort + filters are
@@ -136,7 +145,134 @@ export function ShowcasePage() {
           </div>
         </>
       )}
+
+      <CommentsSection handle={handle} />
     </>
+  );
+}
+
+const MAX_COMMENT = 500;
+
+/** Comments on a public showcase. Bodies render as plain text (React-escaped) — never HTML. */
+function CommentsSection({ handle }: { handle: string }) {
+  const { session } = useAuth();
+  const comments = useComments(handle);
+  const add = useAddComment(handle);
+  const del = useDeleteComment(handle);
+  const report = useReportComment(handle);
+  const toast = useToast();
+  const [body, setBody] = useState("");
+
+  if (comments.isError) return null; // profile not public / not found — stay silent
+
+  const data = comments.data;
+  const loggedIn = Boolean(session);
+
+  async function post() {
+    const text = body.trim();
+    if (!text) return;
+    try {
+      await add.mutateAsync(text);
+      setBody("");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Could not post comment.";
+      toast.error(msg);
+    }
+  }
+
+  return (
+    <section className="mt-10">
+      <h2 className="mb-3 text-lg font-semibold">Comments</h2>
+
+      {data && !data.comments_enabled ? (
+        <p className="rounded-xl border border-slate-200 p-4 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+          Comments are turned off for this showcase.
+        </p>
+      ) : (
+        <>
+          {loggedIn ? (
+            <div className="mb-4">
+              <textarea
+                value={body}
+                onChange={(e) => setBody(e.target.value.slice(0, MAX_COMMENT))}
+                maxLength={MAX_COMMENT}
+                rows={2}
+                placeholder="Leave a comment…"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+              />
+              <div className="mt-1 flex items-center justify-between">
+                <span className="text-xs text-slate-400">
+                  {body.length}/{MAX_COMMENT}
+                </span>
+                <button
+                  onClick={post}
+                  disabled={add.isPending || !body.trim()}
+                  className="rounded-lg bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                >
+                  {add.isPending ? "Posting…" : "Post comment"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+              <Link to="/login" className="text-brand-600 hover:underline">
+                Sign in
+              </Link>{" "}
+              to leave a comment.
+            </p>
+          )}
+
+          {comments.isPending ? (
+            <p className="text-sm text-slate-400">Loading comments…</p>
+          ) : !data || data.comments.length === 0 ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">No comments yet.</p>
+          ) : (
+            <ul className="space-y-3">
+              {data.comments.map((c) => (
+                <li
+                  key={c.id}
+                  className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"
+                >
+                  <div className="mb-1 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="font-medium text-slate-700 dark:text-slate-200">
+                      @{c.author_handle ?? "a collector"}
+                    </span>
+                    <span>· {new Date(c.created_at).toLocaleString()}</span>
+                    {c.is_reported && c.can_delete && (
+                      <span className="text-amber-600 dark:text-amber-400">· ⚠ reported</span>
+                    )}
+                  </div>
+                  {/* Plain text — React escapes it; comment markup can never execute. */}
+                  <p className="whitespace-pre-wrap break-words text-sm">{c.body}</p>
+                  {loggedIn && (
+                    <div className="mt-2 flex gap-3 text-xs">
+                      {c.can_delete && (
+                        <button
+                          onClick={() => del.mutate(c.id)}
+                          className="text-danger-600 hover:underline dark:text-danger-500"
+                        >
+                          Delete
+                        </button>
+                      )}
+                      <button
+                        onClick={() =>
+                          report.mutate(c.id, {
+                            onSuccess: () => toast.success("Reported for review."),
+                          })
+                        }
+                        className="text-slate-500 hover:underline dark:text-slate-400"
+                      >
+                        Report
+                      </button>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </section>
   );
 }
 

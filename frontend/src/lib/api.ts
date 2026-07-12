@@ -9,6 +9,8 @@ import type {
   CollectionEntryCreate,
   CollectionEntryUpdate,
   CollectionSummary,
+  Comment,
+  CommentList,
   Deck,
   DeckCardCreate,
   DeckCreate,
@@ -120,6 +122,28 @@ export const api = {
     request<PublicProfile>(`/public/u/${encodeURIComponent(handle)}`),
   publicCollection: (handle: string) =>
     request<PublicCollection>(`/public/u/${encodeURIComponent(handle)}/collection`),
+
+  // ---- showcase comments ----
+  listComments: (handle: string) =>
+    request<CommentList>(`/public/u/${encodeURIComponent(handle)}/comments`, {}, { auth: true }),
+  addComment: (handle: string, body: string) =>
+    request<Comment>(
+      `/public/u/${encodeURIComponent(handle)}/comments`,
+      { method: "POST", body: JSON.stringify({ body }) },
+      { auth: true },
+    ),
+  deleteComment: (handle: string, id: number) =>
+    request<void>(
+      `/public/u/${encodeURIComponent(handle)}/comments/${id}`,
+      { method: "DELETE" },
+      { auth: true },
+    ),
+  reportComment: (handle: string, id: number) =>
+    request<void>(
+      `/public/u/${encodeURIComponent(handle)}/comments/${id}/report`,
+      { method: "POST" },
+      { auth: true },
+    ),
 
   // ---- collection (auth) ----
   listCollection: () => request<CollectionEntry[]>("/collection", {}, { auth: true }),

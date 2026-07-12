@@ -192,6 +192,7 @@ export interface User {
   email: string | null;
   handle?: string | null;
   is_public?: boolean;
+  comments_enabled?: boolean;
 }
 
 // ---- import / export ----
@@ -252,6 +253,7 @@ export interface PublicProfile {
   total_market_value: string;
   currency: string;
   sets_completed: number;
+  comments_enabled: boolean;
   sets: SetHolding[];
 }
 
@@ -276,6 +278,23 @@ export interface PublicCollection {
 export interface ProfileUpdate {
   handle?: string | null;
   is_public?: boolean | null;
+  comments_enabled?: boolean | null;
+}
+
+// ---- showcase comments ----
+
+export interface Comment {
+  id: number;
+  author_handle: string | null;
+  body: string;
+  created_at: string;
+  is_reported: boolean;
+  can_delete: boolean;
+}
+
+export interface CommentList {
+  comments_enabled: boolean;
+  comments: Comment[];
 }
 
 // ---- wishlist + alerts ----

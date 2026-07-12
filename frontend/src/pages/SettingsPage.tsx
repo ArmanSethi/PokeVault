@@ -21,11 +21,13 @@ export function SettingsPage() {
   const navigate = useNavigate();
   const [handle, setHandle] = useState("");
   const [isPublic, setIsPublic] = useState(false);
+  const [commentsEnabled, setCommentsEnabled] = useState(true);
 
   useEffect(() => {
     if (me.data) {
       setHandle(me.data.handle ?? "");
       setIsPublic(Boolean(me.data.is_public));
+      setCommentsEnabled(me.data.comments_enabled ?? true);
     }
   }, [me.data]);
 
@@ -42,6 +44,7 @@ export function SettingsPage() {
       await update.mutateAsync({
         handle: handle || null,
         is_public: isPublic,
+        comments_enabled: commentsEnabled,
       });
       toast.success("Profile saved.");
     } catch (e) {
@@ -98,6 +101,15 @@ export function SettingsPage() {
             onChange={(e) => setIsPublic(e.target.checked)}
           />
           Make my collection showcase public
+        </label>
+
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={commentsEnabled}
+            onChange={(e) => setCommentsEnabled(e.target.checked)}
+          />
+          Allow comments on my showcase
         </label>
 
         <button

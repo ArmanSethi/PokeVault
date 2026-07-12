@@ -29,7 +29,12 @@ class PortfolioValuePoint(BaseModel):
 
 
 class PortfolioValueSeries(BaseModel):
-    """Total value of the user's current holdings priced against each past day."""
+    """The user's daily total portfolio value over time (one point per recorded day).
+
+    ``message`` carries a human-readable note when the series can't be built (e.g. a backend
+    error) so the UI can degrade gracefully instead of showing a broken chart.
+    """
 
     currency: str = "USD"
     points: list[PortfolioValuePoint] = []
+    message: str | None = None

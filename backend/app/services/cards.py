@@ -17,6 +17,7 @@ from sqlalchemy.orm import selectinload
 from app.models.card import Card
 from app.models.price import CardPriceCurrent
 from app.schemas.card import CardPriceRead, CardRead
+from app.services.fx import to_usd
 
 # Sort options exposed by the catalog list endpoint.
 CardSort = Literal["number", "name", "rarity", "price_desc", "price_asc"]
@@ -227,3 +228,25 @@ def market_price_for_entry(prices: Iterable[CardPriceCurrent], *, is_foil: bool)
     """
     primary = select_primary_price(prices, prefer="holofoil" if is_foil else "normal")
     return primary.market if primary else None
+
+
+def unit_price_usd(
+    prices: Iterable[CardPriceCurrent], *, is_foil: bool, eur_usd_rate: float
+) -> Decimal | None:
+    """Unit market price in **USD** for a collection entry, for portfolio valuation.
+
+    Prefers the TCGPlayer USD market price (``market_price_for_entry``); when a card has no
+    TCGPlayer market price, falls back to its CardMarket (EUR) market price, converted to USD
+    first (see ``services/fx.to_usd``) so currencies are never mixed in a total. Returns
+    ``None`` only when the card has no usable price in either source.
+    """
+    prices = list(prices)
+    tcg = market_price_for_entry(prices, is_foil=is_foil)
+    if tcg is not None:
+        return tcg
+    cardmarket = next(
+        (p for p in prices if p.source == "cardmarket" and p.market is not None), None
+    )
+    if cardmarket is None:
+        return None
+    return to_usd(cardmarket.market, cardmarket.currency, eur_usd_rate)

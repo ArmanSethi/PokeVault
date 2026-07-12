@@ -14,11 +14,13 @@ from sqlalchemy import func, select
 
 from app.core import security
 from app.core.config import settings
-from app.ingest.snapshot_prices import _snapshot_statement
+from app.ingest.snapshot_prices import _snapshot_statement, snapshot_portfolio_values
 from app.models.card import Card, Set
 from app.models.collection import CollectionEntry
+from app.models.portfolio import PortfolioValueDaily
 from app.models.price import CardPriceCurrent, PriceHistory
 from app.models.user import User
+from app.services.portfolio import compute_portfolio_values_usd
 
 _ISSUER = "https://test.supabase.co/auth/v1"
 _COLL = f"{settings.API_V1_PREFIX}/collection"
@@ -203,28 +205,123 @@ async def test_card_history_days_filter(auth_client, cards, db_session):
     assert len(pts) == 1 and float(pts[0]["market_price"]) == 9.0
 
 
-async def test_portfolio_history_and_isolation(auth_client, history_rows, signing_key):
-    a = _headers(signing_key, uuid.uuid4())
-    b = _headers(signing_key, uuid.uuid4())
-    await auth_client.post(_COLL, json={"card_id": "tst1-1", "quantity": 2}, headers=a)
-    await auth_client.post(_COLL, json={"card_id": "tst1-2", "quantity": 1}, headers=a)
-
-    series = (await auth_client.get(f"{_COLL}/history", headers=a)).json()
-    # per date: 2 * normal(tst1-1) + 1 * 5.00
-    got = {p["date"]: float(p["total_value"]) for p in series["points"]}
-    assert got == {"2026-06-01": 7.0, "2026-06-02": 9.0, "2026-06-03": 11.0}
-
-    # A different user's portfolio history is empty (ownership scoping).
-    assert (await auth_client.get(f"{_COLL}/history", headers=b)).json()["points"] == []
-
-
-async def test_portfolio_history_applies_grade_multiplier(auth_client, history_rows, signing_key):
-    """A PSA 10 card's over-time value = raw price × 5.0 (matches the graded portfolio tile)."""
-    a = _headers(signing_key, uuid.uuid4())
-    await auth_client.post(
-        _COLL, json={"card_id": "tst1-1", "quantity": 1, "grade": "PSA 10"}, headers=a
+@pytest.fixture
+async def current_prices(db_session, cards):
+    """Current prices: tst1-1 has a TCGPlayer USD normal + holofoil; tst1-2 EUR-only."""
+    db_session.add_all(
+        [
+            CardPriceCurrent(
+                card_id="tst1-1", source="tcgplayer", variant="normal",
+                market=Decimal("2.00"), currency="USD",
+            ),
+            CardPriceCurrent(
+                card_id="tst1-1", source="tcgplayer", variant="holofoil",
+                market=Decimal("12.00"), currency="USD",
+            ),
+            # tst1-2 has NO TCGPlayer market — only a CardMarket (EUR) price.
+            CardPriceCurrent(
+                card_id="tst1-2", source="cardmarket", variant="normal",
+                market=Decimal("10.00"), currency="EUR",
+            ),
+        ]
     )
+    await db_session.flush()
+
+
+async def test_compute_daily_values_grade_and_eur_conversion(db_session, current_prices):
+    """Per-user total = raw USD + graded (×mult) + EUR-converted, all summed in USD.
+
+    - tst1-1 normal @ $2, qty 3, PSA 9 (×2.0)  → 2 * 3 * 2.0 = 12.00
+    - tst1-2 EUR €10 @ rate 1.10, qty 2, raw    → (10 * 1.10) * 2 = 22.00
+    Total = 34.00. The EUR price is converted to USD *before* it joins the USD total.
+    """
+    uid = uuid.uuid4()
+    db_session.add(User(id=uid, email="v@pokevault.dev"))
+    await db_session.flush()
+    db_session.add_all(
+        [
+            CollectionEntry(user_id=uid, card_id="tst1-1", quantity=3, grade="PSA 9"),
+            CollectionEntry(user_id=uid, card_id="tst1-2", quantity=2),
+        ]
+    )
+    await db_session.flush()
+
+    totals, unpriced = await compute_portfolio_values_usd(db_session, eur_usd_rate=1.10)
+    assert unpriced == []
+    assert totals[uid] == Decimal("34.00")
+
+
+async def test_compute_daily_values_reports_unpriced(db_session, cards):
+    """A card with no usable price contributes 0 and is reported (never NaN)."""
+    uid = uuid.uuid4()
+    db_session.add(User(id=uid, email="u@pokevault.dev"))
+    await db_session.flush()
+    # tst1-1 has no price rows at all.
+    db_session.add(CollectionEntry(user_id=uid, card_id="tst1-1", quantity=1))
+    await db_session.flush()
+
+    totals, unpriced = await compute_portfolio_values_usd(db_session)
+    assert totals[uid] == Decimal("0")  # present, zero, not missing
+    assert (uid, "tst1-1") in unpriced
+
+
+async def test_snapshot_portfolio_values_idempotent(db_session, current_prices):
+    """The daily job upserts one row per user/day and re-runs in place."""
+    uid = uuid.uuid4()
+    db_session.add(User(id=uid, email="s@pokevault.dev"))
+    await db_session.flush()
+    db_session.add(CollectionEntry(user_id=uid, card_id="tst1-1", quantity=2))  # $2 * 2 = 4
+    await db_session.flush()
+
+    assert await snapshot_portfolio_values(db_session) == 1
+
+    async def _row_count() -> int:
+        return await db_session.scalar(
+            select(func.count()).select_from(PortfolioValueDaily).where(
+                PortfolioValueDaily.user_id == uid,
+                PortfolioValueDaily.snapshot_date == func.current_date(),
+            )
+        )
+
+    assert await _row_count() == 1
+    stored = await db_session.scalar(
+        select(PortfolioValueDaily.total_value_usd).where(PortfolioValueDaily.user_id == uid)
+    )
+    assert stored == Decimal("4.00")
+    # Re-run same day → still one row (upsert).
+    await snapshot_portfolio_values(db_session)
+    assert await _row_count() == 1
+
+
+async def test_portfolio_history_reads_daily_rows_plus_live_today(
+    auth_client, current_prices, signing_key, db_session
+):
+    """The endpoint returns stored daily rows + a live 'today' point, scoped per user."""
+    uid = uuid.uuid4()
+    a = _headers(signing_key, uid)
+    # Two historical daily rows (the user must exist first — the authed request upserts them,
+    # but seed the user row explicitly so the FK holds before the request runs).
+    db_session.add(User(id=uid, email=f"{uid}@pokevault.dev"))
+    await db_session.flush()
+    db_session.add_all(
+        [
+            PortfolioValueDaily(user_id=uid, snapshot_date=_D1, total_value_usd=Decimal("7.00")),
+            PortfolioValueDaily(user_id=uid, snapshot_date=_D2, total_value_usd=Decimal("9.00")),
+        ]
+    )
+    await db_session.flush()
+    # Current holdings → today's LIVE value = $2 normal * 2 = $4.00.
+    await auth_client.post(_COLL, json={"card_id": "tst1-1", "quantity": 2}, headers=a)
+
     series = (await auth_client.get(f"{_COLL}/history", headers=a)).json()
+    assert series["message"] is None
     got = {p["date"]: float(p["total_value"]) for p in series["points"]}
-    # normal prices 1/2/3 × PSA 10 multiplier (5.0)
-    assert got == {"2026-06-01": 5.0, "2026-06-02": 10.0, "2026-06-03": 15.0}
+    today = dt.date.today().isoformat()
+    assert got["2026-06-01"] == 7.0
+    assert got["2026-06-02"] == 9.0
+    assert got[today] == 4.0  # live, not stale
+
+    # A different user with no rows and no cards → empty series, no crash.
+    b = _headers(signing_key, uuid.uuid4())
+    other = (await auth_client.get(f"{_COLL}/history", headers=b)).json()
+    assert other["points"] == []

@@ -13,8 +13,9 @@ import re
 from collections.abc import Iterable
 from decimal import ROUND_HALF_UP, Decimal
 
+from app.core.config import settings
 from app.models.price import CardPriceCurrent
-from app.services.cards import market_price_for_entry
+from app.services.cards import unit_price_usd
 
 # PSA grade (1-10) -> multiplier applied to the raw market price. PSA 10 (Gem Mint) carries
 # the largest premium; low grades sit near or slightly below raw. Tune these freely.
@@ -56,13 +57,21 @@ def grade_multiplier(grade: str | None) -> Decimal:
 
 
 def graded_unit_price(
-    prices: Iterable[CardPriceCurrent], *, is_foil: bool, grade: str | None
+    prices: Iterable[CardPriceCurrent],
+    *,
+    is_foil: bool,
+    grade: str | None,
+    eur_usd_rate: float | None = None,
 ) -> Decimal | None:
-    """Unit market value for a copy, adjusting the raw TCGPlayer USD price for its grade.
+    """Unit market value for a copy in USD, adjusting the raw price for its grade.
 
-    Returns ``None`` when the card has no usable raw price (nothing to scale).
+    The raw unit price is USD (TCGPlayer, or CardMarket EUR converted — see
+    ``cards.unit_price_usd``); the PSA grade multiplier is then applied. ``eur_usd_rate``
+    defaults to ``settings.EUR_USD_RATE``. Returns ``None`` when the card has no usable
+    price in either source (nothing to scale).
     """
-    raw = market_price_for_entry(prices, is_foil=is_foil)
+    rate = eur_usd_rate if eur_usd_rate is not None else settings.EUR_USD_RATE
+    raw = unit_price_usd(prices, is_foil=is_foil, eur_usd_rate=rate)
     if raw is None:
         return None
     return (raw * grade_multiplier(grade)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)

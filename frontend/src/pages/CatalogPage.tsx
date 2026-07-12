@@ -28,6 +28,19 @@ export function CatalogPage() {
   const sets = useSets();
   const rarities = useRarities();
 
+  // Default landing (bare /catalog) opens on Base Set (base1), sorted by number. Only when
+  // the user arrived with no set and no search — set-specific links (?set=…) and search
+  // deep-links (?q=…) are left untouched, and picking "All sets" afterwards sticks.
+  useEffect(() => {
+    if (!params.get("set") && !params.get("q")) {
+      const next = new URLSearchParams(params);
+      next.set("set", "base1");
+      setParams(next, { replace: true });
+    }
+    // Run once on mount only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q), 300);
     return () => clearTimeout(t);

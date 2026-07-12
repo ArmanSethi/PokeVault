@@ -26,20 +26,20 @@ export function PriceChart({ data, label = "Value" }: { data: Point[]; label?: s
   const { format } = useCurrency();
   const points = data.filter((p) => p.value !== null);
 
-  // 0–1 points: not enough to draw a line — show a short note (plus today's value if we have
-  // one). format() converts + formats and returns "—" for null/NaN, so we only append the
-  // value when it's a real figure — never a bare "$…" or "—".
-  if (points.length < 2) {
-    const latest = format(points.length ? points[points.length - 1].value : null);
-    const hasValue = latest !== "—";
+  // 0 points: nothing recorded yet — show a short friendly note. format() returns "—" for
+  // null/NaN, so we never render a bare "$…" here.
+  if (points.length === 0) {
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
         📈 Price history shows up here for the cards in your collection and wishlist — give it a few
         days to build.
-        {hasValue && ` Today: ${latest}.`}
       </div>
     );
   }
+
+  // 1 point: not enough for a line — draw a single visible marker (dot) so today's value is
+  // shown without crashing. 2+ points: the area line.
+  const single = points.length === 1;
 
   return (
     <>
@@ -85,14 +85,16 @@ export function PriceChart({ data, label = "Value" }: { data: Point[]; label?: s
               stroke="#2563eb"
               strokeWidth={2}
               fill="url(#pv-fill)"
-              dot={false}
+              dot={single ? { r: 4, fill: "#2563eb" } : false}
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
       {points.length < FULL_HISTORY && (
         <p className="mt-2 text-center text-xs text-slate-400 dark:text-slate-500">
-          Still filling in — more detail over the next few days.
+          {single
+            ? `Today: ${format(points[0].value)} — daily history builds from here.`
+            : "Still filling in — more detail over the next few days."}
         </p>
       )}
     </>

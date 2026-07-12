@@ -80,12 +80,15 @@ async def detect_and_log_alerts(session: AsyncSession) -> int:
         if item.target_price is not None and current <= item.target_price:
             logged += await _log_alert(session, item, KIND_TARGET_HIT, current, today)
 
-        # Notable drop vs the most recent prior snapshot (TCGPlayer).
+        # Notable drop vs the most recent prior snapshot of the SAME variant (TCGPlayer).
+        # Without the variant filter, `prev` could be a different printing than `current`
+        # (holofoil vs normal vs reverse), producing spurious / missed drop alerts.
         prev = await session.scalar(
             select(PriceHistory.market_price)
             .where(
                 PriceHistory.card_id == card.id,
                 PriceHistory.source == "tcgplayer",
+                PriceHistory.variant == primary.variant,
                 PriceHistory.market_price.is_not(None),
                 PriceHistory.snapshot_date < today,
             )

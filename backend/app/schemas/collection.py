@@ -39,7 +39,7 @@ class CollectionEntryRead(CollectionEntryBase):
     updated_at: datetime
     # Valuation (TCGPlayer USD), populated by app/services/valuation.py.
     # market_price is the *grade-adjusted* unit value; grade_multiplier is the factor applied
-    # to the raw price (1.0 for raw/ungraded, e.g. 4.0 for PSA 10). See app/services/grading.py.
+    # to the raw price (1.0 for raw/ungraded, e.g. 5.0 for PSA 10). See app/services/grading.py.
     market_price: Decimal | None = None
     market_value: Decimal | None = None
     grade_multiplier: float = 1.0

@@ -24,9 +24,11 @@ from sqlalchemy.dialects.postgresql import insert
 import app.db.base  # noqa: F401
 from app.db.session import SessionLocal
 from app.models.collection import CollectionEntry
+from app.models.portfolio import PortfolioValueDaily
 from app.models.price import CardPriceCurrent, PriceHistory
 from app.models.wishlist import WishlistItem
 from app.services.alerts import detect_and_log_alerts
+from app.services.portfolio import compute_portfolio_values_usd
 
 logger = logging.getLogger("app.ingest.snapshot_prices")
 
@@ -68,6 +70,33 @@ def _snapshot_statement():
     )
 
 
+async def snapshot_portfolio_values(session) -> int:
+    """Upsert today's total portfolio value (USD) for every user who owns cards.
+
+    One row per ``(user_id, today)``; re-running the same day updates in place. Returns the
+    number of user rows written. Value uses the canonical USD valuation (EUR converted, PSA
+    multiplier applied); unpriced cards contribute 0 and are logged by the valuation service.
+    """
+    totals, _unpriced = await compute_portfolio_values_usd(session)
+    if not totals:
+        logger.info("No collections to value — 0 portfolio_value_daily rows.")
+        return 0
+
+    today = await session.scalar(select(func.current_date()))
+    rows = [
+        {"user_id": user_id, "snapshot_date": today, "total_value_usd": total}
+        for user_id, total in totals.items()
+    ]
+    stmt = insert(PortfolioValueDaily).values(rows)
+    stmt = stmt.on_conflict_do_update(
+        index_elements=["user_id", "snapshot_date"],
+        set_={"total_value_usd": stmt.excluded.total_value_usd},
+    )
+    await session.execute(stmt)
+    logger.info("Portfolio snapshot: %d user value rows for %s.", len(rows), today)
+    return len(rows)
+
+
 async def snapshot(*, dry_run: bool = False) -> int:
     """Write (or, in dry-run, count) today's price-history rows. Returns the row count."""
     async with SessionLocal() as session:
@@ -85,6 +114,8 @@ async def snapshot(*, dry_run: bool = False) -> int:
             return eligible
 
         await session.execute(_snapshot_statement())
+        # Per-user daily portfolio value (the Dashboard "value over time" series reads these).
+        await snapshot_portfolio_values(session)
         await session.commit()
         logger.info("Snapshot complete: %d price_history rows for today.", eligible)
 

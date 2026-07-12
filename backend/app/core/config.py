@@ -41,6 +41,12 @@ class Settings(BaseSettings):
     POKEMONTCG_API_KEY: str | None = None
     POKEMONTCG_API_BASE: str = "https://api.pokemontcg.io/v2"
 
+    # Portfolio valuation is single-currency USD. CardMarket prices are quoted in EUR, so a
+    # card priced only on CardMarket is converted with this rate before it enters any USD
+    # total (we never add EUR magnitudes to USD ones). A configurable daily-ish constant is
+    # enough for a heuristic valuation; override via the env when a fresher rate is wanted.
+    EUR_USD_RATE: float = 1.08
+
     # Auth (Supabase). The backend verifies Supabase-issued access tokens; it does not
     # issue its own. Only the project URL is needed — public signing keys are fetched
     # from the JWKS endpoint below. No shared secret is stored server-side.

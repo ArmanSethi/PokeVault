@@ -113,6 +113,7 @@ export interface PortfolioValuePoint {
 export interface PortfolioValueSeries {
   currency: string;
   points: PortfolioValuePoint[];
+  message?: string | null;
 }
 
 export interface ScanCandidate {

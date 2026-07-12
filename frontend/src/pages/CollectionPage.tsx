@@ -9,6 +9,7 @@ import {
 } from "../lib/queries";
 import { useCurrency } from "../context/CurrencyContext";
 import { LIMITS, clampInt, clampMoney, moneyOverCap } from "../lib/limits";
+import { RAW_GRADE_NOTE, gradedButRaw } from "../lib/grading";
 import { EmptyState, ErrorState } from "../components/States";
 import { TableSkeleton } from "../components/Skeleton";
 import { useToast } from "../components/Toast";
@@ -202,6 +203,14 @@ export function CollectionPage() {
                         <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium dark:bg-slate-800">
                           {e.grade}
                         </span>
+                        {gradedButRaw(e.grade) && (
+                          <span
+                            title={RAW_GRADE_NOTE}
+                            className="cursor-help text-xs text-amber-600 dark:text-amber-400"
+                          >
+                            raw*
+                          </span>
+                        )}
                       </span>
                     ) : (
                       "—"
@@ -255,7 +264,10 @@ export function CollectionPage() {
                   <span className="absolute left-1.5 top-1.5 text-xs text-accent-400">✦</span>
                 )}
                 {e.grade && (
-                  <span className="absolute right-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                  <span
+                    title={gradedButRaw(e.grade) ? RAW_GRADE_NOTE : undefined}
+                    className="absolute right-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white"
+                  >
                     {e.grade}
                   </span>
                 )}
@@ -269,6 +281,14 @@ export function CollectionPage() {
                   {names[e.card_id] ?? e.card_id}
                 </Link>
                 <p className="text-sm font-semibold">{format(e.market_value)}</p>
+                {gradedButRaw(e.grade) && (
+                  <p
+                    title={RAW_GRADE_NOTE}
+                    className="cursor-help text-[11px] text-amber-600 dark:text-amber-400"
+                  >
+                    raw price · no graded premium
+                  </p>
+                )}
                 <div className="mt-1 flex items-center gap-2">
                   <button
                     onClick={() => changeQty(e, -1)}

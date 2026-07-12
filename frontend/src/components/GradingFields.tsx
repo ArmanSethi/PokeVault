@@ -13,8 +13,25 @@ export const GRADING_COMPANIES = ["PSA", "BGS", "CGC", "SGC", "Other"] as const;
 
 // Standard grade scales, highest first.
 const FULL_SCALE = [
-  "10", "9.5", "9", "8.5", "8", "7.5", "7", "6.5", "6", "5.5",
-  "5", "4.5", "4", "3.5", "3", "2.5", "2", "1.5", "1",
+  "10",
+  "9.5",
+  "9",
+  "8.5",
+  "8",
+  "7.5",
+  "7",
+  "6.5",
+  "6",
+  "5.5",
+  "5",
+  "4.5",
+  "4",
+  "3.5",
+  "3",
+  "2.5",
+  "2",
+  "1.5",
+  "1",
 ];
 // PSA uses whole grades plus the half-grade 1.5.
 const PSA_SCALE = ["10", "9", "8", "7", "6", "5", "4", "3", "2", "1.5", "1"];
@@ -28,7 +45,8 @@ function parseGrade(grade: string): { company: string; value: string } | null {
   if (!g) return null;
   const m = g.match(/^(PSA|BGS|CGC|SGC|Other)\s+(.+)$/i);
   if (m) {
-    const company = GRADING_COMPANIES.find((c) => c.toLowerCase() === m[1].toLowerCase()) ?? "Other";
+    const company =
+      GRADING_COMPANIES.find((c) => c.toLowerCase() === m[1].toLowerCase()) ?? "Other";
     return { company, value: m[2].trim() };
   }
   return { company: "Other", value: g }; // legacy free-text grade
@@ -117,6 +135,12 @@ export function GradingFields({ condition, grade, onChange }: Props) {
               ))}
             </select>
           </label>
+          {company !== "PSA" && (
+            <p className="col-span-2 text-xs text-amber-600 dark:text-amber-400">
+              Heads up: only PSA grades carry a graded-value premium. {company} cards are valued at
+              the raw (ungraded) market price — no accurate graded pricing on the free tier.
+            </p>
+          )}
         </div>
       ) : (
         <label className="block text-sm">

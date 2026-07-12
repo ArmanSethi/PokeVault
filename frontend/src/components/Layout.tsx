@@ -3,6 +3,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { useMe } from "../lib/queries";
+import { AmbientBackground } from "./AmbientBackground";
 
 const NAV = [
   { to: "/", label: "Dashboard", end: true },
@@ -51,83 +52,86 @@ export function Layout() {
   );
 
   return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
-        <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3">
-          <NavLink to="/" className="flex items-center gap-2 text-lg font-bold text-brand-600">
-            <span aria-hidden>🃏</span> PokéVault
-          </NavLink>
+    <>
+      <AmbientBackground />
+      <div className="relative z-10 min-h-screen">
+        <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
+          <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3">
+            <NavLink to="/" className="flex items-center gap-2 text-lg font-bold text-brand-600">
+              <span aria-hidden>🃏</span> PokéVault
+            </NavLink>
 
-          {session && (
-            <nav className="hidden flex-1 flex-wrap gap-1 md:flex">
+            {session && (
+              <nav className="hidden flex-1 flex-wrap gap-1 md:flex">
+                {NAV.map((item) => (
+                  <NavLink key={item.to} to={item.to} end={item.end} className={navClass}>
+                    {item.label}
+                  </NavLink>
+                ))}
+              </nav>
+            )}
+
+            <div className="ml-auto flex items-center gap-2">
+              {session ? (
+                <>
+                  {/* Order: handle → dark/light → settings */}
+                  <HeaderIdentity />
+                  {themeToggle}
+                  <NavLink
+                    to="/settings"
+                    aria-label="Settings"
+                    className="hidden rounded-lg border border-slate-300 p-2 text-sm hover:bg-slate-100 sm:inline dark:border-slate-700 dark:hover:bg-slate-800"
+                  >
+                    <span aria-hidden>⚙️</span>
+                  </NavLink>
+                  <button
+                    onClick={() => setMenuOpen((o) => !o)}
+                    aria-label="Toggle menu"
+                    aria-expanded={menuOpen}
+                    className="rounded-lg border border-slate-300 p-2 md:hidden dark:border-slate-700"
+                  >
+                    <span aria-hidden>{menuOpen ? "✕" : "☰"}</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  {themeToggle}
+                  <NavLink
+                    to="/login"
+                    className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+                  >
+                    Log in
+                  </NavLink>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Mobile menu */}
+          {session && menuOpen && (
+            <nav className="flex flex-col gap-1 border-t border-slate-200 px-4 py-3 md:hidden dark:border-slate-800">
               {NAV.map((item) => (
-                <NavLink key={item.to} to={item.to} end={item.end} className={navClass}>
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  onClick={() => setMenuOpen(false)}
+                  className={navClass}
+                >
                   {item.label}
                 </NavLink>
               ))}
+              <NavLink to="/settings" onClick={() => setMenuOpen(false)} className={navClass}>
+                Settings
+              </NavLink>
             </nav>
           )}
+        </header>
 
-          <div className="ml-auto flex items-center gap-2">
-            {session ? (
-              <>
-                {/* Order: handle → dark/light → settings */}
-                <HeaderIdentity />
-                {themeToggle}
-                <NavLink
-                  to="/settings"
-                  aria-label="Settings"
-                  className="hidden rounded-lg border border-slate-300 p-2 text-sm hover:bg-slate-100 sm:inline dark:border-slate-700 dark:hover:bg-slate-800"
-                >
-                  <span aria-hidden>⚙️</span>
-                </NavLink>
-                <button
-                  onClick={() => setMenuOpen((o) => !o)}
-                  aria-label="Toggle menu"
-                  aria-expanded={menuOpen}
-                  className="rounded-lg border border-slate-300 p-2 md:hidden dark:border-slate-700"
-                >
-                  <span aria-hidden>{menuOpen ? "✕" : "☰"}</span>
-                </button>
-              </>
-            ) : (
-              <>
-                {themeToggle}
-                <NavLink
-                  to="/login"
-                  className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
-                >
-                  Log in
-                </NavLink>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Mobile menu */}
-        {session && menuOpen && (
-          <nav className="flex flex-col gap-1 border-t border-slate-200 px-4 py-3 md:hidden dark:border-slate-800">
-            {NAV.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                onClick={() => setMenuOpen(false)}
-                className={navClass}
-              >
-                {item.label}
-              </NavLink>
-            ))}
-            <NavLink to="/settings" onClick={() => setMenuOpen(false)} className={navClass}>
-              Settings
-            </NavLink>
-          </nav>
-        )}
-      </header>
-
-      <main className="mx-auto max-w-6xl px-4 py-6">
-        <Outlet />
-      </main>
-    </div>
+        <main className="mx-auto max-w-6xl px-4 py-6">
+          <Outlet />
+        </main>
+      </div>
+    </>
   );
 }

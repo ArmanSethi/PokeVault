@@ -56,3 +56,139 @@
     scrollbar-width: thin;
   }
 }
+
+/* ---- Ambient Pokémon-themed background (see components/AmbientBackground.tsx) ----
+   Fixed layer above the body canvas (z-0) but below app content (which sits at z-10 in
+   Layout). Abstract type-color glows + faint Poké Ball silhouettes; subtle enough that text
+   contrast on every page is unaffected. Two glow colors per palette as RGB triplets. */
+.pv-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  --g1: 59 130 246; /* default: brand blue */
+  --g2: 139 92 246; /* + violet */
+}
+.pv-bg[data-palette="electric"] {
+  --g1: 250 204 21;
+  --g2: 139 92 246;
+}
+.pv-bg[data-palette="water"] {
+  --g1: 56 189 248;
+  --g2: 37 99 235;
+}
+.pv-bg[data-palette="grass"] {
+  --g1: 52 211 153;
+  --g2: 132 204 22;
+}
+.pv-bg[data-palette="psychic"] {
+  --g1: 217 70 239;
+  --g2: 168 85 247;
+}
+.pv-bg[data-palette="fire"] {
+  --g1: 251 146 60;
+  --g2: 239 68 68;
+}
+.pv-bg[data-palette="gold"] {
+  --g1: 250 204 21;
+  --g2: 245 158 11;
+}
+.pv-bg[data-palette="steel"] {
+  --g1: 148 163 184;
+  --g2: 56 189 248;
+}
+
+.pv-glow {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: 0.2;
+  will-change: transform;
+}
+.pv-glow-1 {
+  width: 48vw;
+  height: 48vw;
+  background: rgb(var(--g1));
+  top: -10vh;
+  left: -8vw;
+  animation: pv-drift-a 28s ease-in-out infinite;
+}
+.pv-glow-2 {
+  width: 42vw;
+  height: 42vw;
+  background: rgb(var(--g2));
+  right: -8vw;
+  bottom: -12vh;
+  animation: pv-drift-b 34s ease-in-out infinite;
+}
+.pv-glow-3 {
+  width: 26vw;
+  height: 26vw;
+  background: rgb(var(--g1));
+  top: 38vh;
+  right: 22vw;
+  opacity: 0.12;
+  animation: pv-drift-a 44s ease-in-out infinite reverse;
+}
+.pv-ball {
+  position: absolute;
+  color: rgb(var(--g2));
+  opacity: 0.05;
+  will-change: transform;
+}
+.pv-ball-1 {
+  width: 34vw;
+  height: 34vw;
+  top: 7vh;
+  right: -6vw;
+  animation: pv-spin 90s linear infinite;
+}
+.pv-ball-2 {
+  width: 20vw;
+  height: 20vw;
+  bottom: 6vh;
+  left: -4vw;
+  opacity: 0.04;
+  animation: pv-spin 120s linear infinite reverse;
+}
+
+/* Softer on the light theme so pale grounds keep full text contrast. */
+:root:not(.dark) .pv-glow {
+  opacity: 0.13;
+}
+:root:not(.dark) .pv-ball {
+  opacity: 0.05;
+}
+
+@keyframes pv-drift-a {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(4vw, -3vh, 0);
+  }
+}
+@keyframes pv-drift-b {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(-5vw, 4vh, 0);
+  }
+}
+@keyframes pv-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Static background when the user prefers reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .pv-glow,
+  .pv-ball {
+    animation: none !important;
+  }
+}

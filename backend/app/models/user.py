@@ -28,10 +28,8 @@ class User(Base):
     # touched by the per-request upsert in api/deps.py, so they survive normal auth traffic.
     handle: Mapped[str | None] = mapped_column(String(30), unique=True, index=True, default=None)
     is_public: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
-    # Opt-in to displaying the exact portfolio value on the public leaderboard. Default hidden
-    # (safest): the user still ranks by true value, but the number shows as "hidden".
-    show_value_on_leaderboard: Mapped[bool] = mapped_column(
-        Boolean, default=False, server_default="false"
-    )
+    # NB: the DB still has a vestigial `show_value_on_leaderboard` column from the removed
+    # leaderboard feature; it's NOT NULL with a server default, so inserts that omit it are
+    # fine. Left in place to avoid a destructive migration; can be dropped later.
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())

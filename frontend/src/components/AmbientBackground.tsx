@@ -16,7 +16,7 @@ const PALETTES: Record<string, string> = {
   "/collection": "grass",
   "/wishlist": "psychic",
   "/deck": "fire",
-  "/leaderboard": "gold",
+  "/simulator": "gold",
   "/scan": "steel",
 };
 

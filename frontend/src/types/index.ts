@@ -154,6 +154,22 @@ export interface DeckCardCreate {
   quantity?: number;
 }
 
+// ---- pack simulator ----
+
+export interface PulledCard {
+  slot_kind: "common" | "uncommon" | "hit";
+  tier: string; // the card's rarity label
+  card: Card;
+}
+
+export interface PackResult {
+  set_id: string;
+  set_name: string;
+  template: string;
+  disclaimer: string;
+  cards: PulledCard[];
+}
+
 export interface ScanCandidate {
   card_id: string;
   name: string;
@@ -176,15 +192,6 @@ export interface User {
   email: string | null;
   handle?: string | null;
   is_public?: boolean;
-  show_value_on_leaderboard?: boolean;
-}
-
-export interface LeaderboardEntry {
-  rank: number;
-  handle: string;
-  card_count: number;
-  value_usd: string | null; // null when the user hides it
-  value_hidden: boolean;
 }
 
 // ---- import / export ----
@@ -269,7 +276,6 @@ export interface PublicCollection {
 export interface ProfileUpdate {
   handle?: string | null;
   is_public?: boolean | null;
-  show_value_on_leaderboard?: boolean | null;
 }
 
 // ---- wishlist + alerts ----

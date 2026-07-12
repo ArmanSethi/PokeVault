@@ -28,8 +28,6 @@ async def update_profile(session: AsyncSession, user: User, data: UserProfileUpd
         user.handle = data.handle
     if data.is_public is not None:
         user.is_public = data.is_public
-    if data.show_value_on_leaderboard is not None:
-        user.show_value_on_leaderboard = data.show_value_on_leaderboard
 
     try:
         await session.commit()

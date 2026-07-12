@@ -16,7 +16,7 @@ import type {
   ImportConfirmResult,
   ImportConfirmRow,
   ImportPreview,
-  LeaderboardEntry,
+  PackResult,
   PortfolioValueSeries,
   ProfileUpdate,
   PublicCollection,
@@ -120,7 +120,6 @@ export const api = {
     request<PublicProfile>(`/public/u/${encodeURIComponent(handle)}`),
   publicCollection: (handle: string) =>
     request<PublicCollection>(`/public/u/${encodeURIComponent(handle)}/collection`),
-  leaderboard: () => request<LeaderboardEntry[]>("/public/leaderboard"),
 
   // ---- collection (auth) ----
   listCollection: () => request<CollectionEntry[]>("/collection", {}, { auth: true }),
@@ -153,6 +152,14 @@ export const api = {
   deleteWishlist: (id: number) =>
     request<void>(`/wishlist/${id}`, { method: "DELETE" }, { auth: true }),
   listAlerts: () => request<Alert[]>("/wishlist/alerts", {}, { auth: true }),
+
+  // ---- pack simulator (auth) ----
+  openPack: (setId: string) =>
+    request<PackResult>(
+      "/simulator/open",
+      { method: "POST", body: JSON.stringify({ set_id: setId }) },
+      { auth: true },
+    ),
 
   // ---- decks (auth) ----
   listDecks: () => request<Deck[]>("/decks", {}, { auth: true }),

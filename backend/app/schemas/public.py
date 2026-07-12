@@ -43,14 +43,3 @@ class PublicEntry(BaseModel):
 class PublicCollection(BaseModel):
     handle: str
     entries: list[PublicEntry] = []
-
-
-class LeaderboardEntry(BaseModel):
-    """One row of the public leaderboard. ``value_usd`` is populated only when the user opted
-    to show it (``value_hidden`` otherwise) — but the rank always reflects the true value."""
-
-    rank: int
-    handle: str
-    card_count: int
-    value_usd: Decimal | None = None  # null when the user hides it
-    value_hidden: bool = False

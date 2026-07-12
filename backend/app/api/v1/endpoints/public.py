@@ -13,19 +13,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_session
-from app.schemas.public import LeaderboardEntry, PublicCollection, PublicProfile
+from app.schemas.public import PublicCollection, PublicProfile
 from app.services import public as public_service
 
 router = APIRouter()
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
-
-
-@router.get("/leaderboard", response_model=list[LeaderboardEntry])
-async def get_leaderboard(session: SessionDep) -> list[LeaderboardEntry]:
-    """Top public users by portfolio value. Public + read-only: only opt-in public users are
-    included; hidden users keep their rank but their value is returned as null."""
-    return await public_service.leaderboard(session)
 
 
 @router.get("/u/{handle}", response_model=PublicProfile)

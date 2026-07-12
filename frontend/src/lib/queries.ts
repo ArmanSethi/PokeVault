@@ -263,14 +263,6 @@ export function usePublicCollection(handle: string) {
   });
 }
 
-export function useLeaderboard() {
-  return useQuery({
-    queryKey: ["leaderboard"],
-    queryFn: () => api.leaderboard(),
-    staleTime: 60 * 1000,
-  });
-}
-
 // ---- wishlist + alerts ----
 
 export function useWishlist() {
@@ -363,6 +355,12 @@ export function useRemoveDeckCard() {
       api.removeDeckCard(deckId, cardId),
     onSuccess: () => invalidateDecks(qc),
   });
+}
+
+// ---- pack simulator ----
+
+export function useOpenPack() {
+  return useMutation({ mutationFn: (setId: string) => api.openPack(setId) });
 }
 
 export function useImportPreview() {

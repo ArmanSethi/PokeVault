@@ -18,6 +18,7 @@ from app.api.v1.endpoints import (
     public,
     scan,
     sets,
+    simulator,
     wishlist,
 )
 from app.services import public as public_service
@@ -48,4 +49,5 @@ api_router.include_router(importer.router, prefix="/collection", tags=["collecti
 api_router.include_router(scan.router, prefix="/scan", tags=["scan"])
 api_router.include_router(wishlist.router, prefix="/wishlist", tags=["wishlist"])
 api_router.include_router(deck.router, prefix="/decks", tags=["decks"])
+api_router.include_router(simulator.router, prefix="/simulator", tags=["simulator"])
 api_router.include_router(public.router, prefix="/public", tags=["public"])

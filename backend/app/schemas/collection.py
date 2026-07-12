@@ -7,6 +7,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.limits import MAX_CARD_QTY, MAX_MONEY, MIN_CARD_QTY, MIN_MONEY
+
 
 class CollectionEntryBase(BaseModel):
     card_id: str
@@ -19,15 +21,16 @@ class CollectionEntryBase(BaseModel):
 
 
 class CollectionEntryCreate(CollectionEntryBase):
-    quantity: int = Field(default=1, ge=1)
+    quantity: int = Field(default=1, ge=MIN_CARD_QTY, le=MAX_CARD_QTY)
+    acquired_price: Decimal | None = Field(default=None, ge=MIN_MONEY, le=MAX_MONEY)
 
 
 class CollectionEntryUpdate(BaseModel):
     # is_foil is part of the stack identity and is intentionally not editable.
-    quantity: int | None = Field(default=None, ge=1)
+    quantity: int | None = Field(default=None, ge=MIN_CARD_QTY, le=MAX_CARD_QTY)
     condition: str | None = None
     grade: str | None = None
-    acquired_price: Decimal | None = None
+    acquired_price: Decimal | None = Field(default=None, ge=MIN_MONEY, le=MAX_MONEY)
     notes: str | None = None
 
 

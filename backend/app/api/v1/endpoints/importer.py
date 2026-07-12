@@ -7,6 +7,7 @@ streams the collection back out as CSV.
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -14,6 +15,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_session
+from app.core.limits import MAX_CARD_QTY, MAX_MONEY, MIN_CARD_QTY, MIN_MONEY, clamp_int
 from app.schemas.collection import CollectionEntryCreate
 from app.schemas.importer import ImportConfirm, ImportConfirmResult, ImportPreview
 from app.services import collection as collection_service
@@ -49,16 +51,24 @@ async def import_confirm(
     added = 0
     skipped = 0
     for row in payload.rows:
+        # Clamp bulk CSV values into range rather than rejecting the whole batch (the
+        # interactive add paths reject via schema; here we keep the import resilient).
+        qty = clamp_int(row.quantity, MIN_CARD_QTY, MAX_CARD_QTY)
+        price = (
+            None
+            if row.acquired_price is None
+            else min(max(row.acquired_price, Decimal(MIN_MONEY)), Decimal(MAX_MONEY))
+        )
         try:
             await collection_service.add_or_increment(
                 session,
                 user.id,
                 CollectionEntryCreate(
                     card_id=row.card_id,
-                    quantity=row.quantity,
+                    quantity=qty,
                     condition=row.condition,
                     is_foil=row.is_foil,
-                    acquired_price=row.acquired_price,
+                    acquired_price=price,
                     notes=row.notes,
                 ),
             )

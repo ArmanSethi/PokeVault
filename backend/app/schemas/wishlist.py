@@ -5,12 +5,14 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.core.limits import MAX_MONEY, MIN_MONEY
 
 
 class WishlistItemCreate(BaseModel):
     card_id: str
-    target_price: Decimal | None = None
+    target_price: Decimal | None = Field(default=None, ge=MIN_MONEY, le=MAX_MONEY)
 
 
 class WishlistItemRead(BaseModel):

@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
+from app.core.limits import MAX_CARD_QTY, MIN_CARD_QTY, clamp_int
 from app.models.card import Card
 from app.models.deck import Deck, DeckCard
 from app.schemas.deck import DeckCardCreate, DeckCardRead, DeckCreate, DeckRead, DeckUpdate
@@ -137,7 +138,8 @@ async def add_card(
 
     existing = next((c for c in deck.cards if c.card_id == data.card_id), None)
     if existing is not None:
-        existing.quantity += data.quantity
+        # Clamp the running total (schema only bounds the incoming delta).
+        existing.quantity = clamp_int(existing.quantity + data.quantity, MIN_CARD_QTY, MAX_CARD_QTY)
     else:
         # Mutate through the relationship so the loaded deck (and the reload below, which
         # returns the same identity-mapped instance) reflects the change immediately.

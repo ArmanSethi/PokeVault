@@ -7,26 +7,28 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
+from app.core.limits import MAX_CARD_QTY, MAX_DECK_TARGET, MIN_CARD_QTY, MIN_DECK_TARGET
+
 
 class DeckCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
-    target_size: int = Field(ge=1, le=100000)
+    target_size: int = Field(ge=MIN_DECK_TARGET, le=MAX_DECK_TARGET)
 
 
 class DeckUpdate(BaseModel):
     """Partial update — rename and/or change the target size."""
 
     name: str | None = Field(default=None, min_length=1, max_length=120)
-    target_size: int | None = Field(default=None, ge=1, le=100000)
+    target_size: int | None = Field(default=None, ge=MIN_DECK_TARGET, le=MAX_DECK_TARGET)
 
 
 class DeckCardCreate(BaseModel):
     card_id: str
-    quantity: int = Field(default=1, ge=1)
+    quantity: int = Field(default=1, ge=MIN_CARD_QTY, le=MAX_CARD_QTY)
 
 
 class DeckCardUpdate(BaseModel):
-    quantity: int = Field(ge=1)
+    quantity: int = Field(ge=MIN_CARD_QTY, le=MAX_CARD_QTY)
 
 
 class DeckCardRead(BaseModel):

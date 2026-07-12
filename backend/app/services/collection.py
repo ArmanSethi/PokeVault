@@ -14,6 +14,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.limits import MAX_CARD_QTY, MIN_CARD_QTY, clamp_int
 from app.models.card import Card
 from app.models.collection import CollectionEntry
 from app.schemas.collection import CollectionEntryCreate, CollectionEntryUpdate
@@ -50,7 +51,9 @@ async def add_or_increment(
     existing = (await session.execute(stmt)).scalar_one_or_none()
 
     if existing is not None:
-        existing.quantity += data.quantity
+        # Clamp so repeated adds can't push a stack past the max (schema only bounds the
+        # incoming delta, not the running total).
+        existing.quantity = clamp_int(existing.quantity + data.quantity, MIN_CARD_QTY, MAX_CARD_QTY)
         entry_id = existing.id
     else:
         entry = CollectionEntry(

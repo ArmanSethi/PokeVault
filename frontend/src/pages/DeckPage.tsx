@@ -11,6 +11,7 @@ import {
   useUpdateDeckCard,
 } from "../lib/queries";
 import { useCurrency } from "../context/CurrencyContext";
+import { LIMITS, clampInt } from "../lib/limits";
 import { EmptyState, ErrorState } from "../components/States";
 import { TableSkeleton } from "../components/Skeleton";
 import { useToast } from "../components/Toast";
@@ -71,12 +72,19 @@ export function DeckPage() {
           />
         </label>
         <label className="text-sm">
-          <span className="mb-1 block text-slate-500 dark:text-slate-400">Target size</span>
+          <span className="mb-1 block text-slate-500 dark:text-slate-400">
+            Target size ({LIMITS.deckTarget.min}–{LIMITS.deckTarget.max})
+          </span>
           <input
             type="number"
-            min={1}
+            min={LIMITS.deckTarget.min}
+            max={LIMITS.deckTarget.max}
             value={newSize}
-            onChange={(e) => setNewSize(Math.max(1, Number(e.target.value)))}
+            onChange={(e) =>
+              setNewSize(
+                clampInt(Number(e.target.value), LIMITS.deckTarget.min, LIMITS.deckTarget.max),
+              )
+            }
             className={`${inputClass} w-28`}
           />
         </label>
@@ -190,7 +198,11 @@ function DeckDetail({ deck }: { deck: Deck }) {
       removeCard.mutate({ deckId: deck.id, cardId });
       return;
     }
-    updateCard.mutate({ deckId: deck.id, cardId, quantity });
+    updateCard.mutate({
+      deckId: deck.id,
+      cardId,
+      quantity: clampInt(quantity, LIMITS.cardQty.min, LIMITS.cardQty.max),
+    });
   }
 
   return (
@@ -208,12 +220,19 @@ function DeckDetail({ deck }: { deck: Deck }) {
               />
             </label>
             <label className="text-sm">
-              <span className="mb-1 block text-slate-500 dark:text-slate-400">Target size</span>
+              <span className="mb-1 block text-slate-500 dark:text-slate-400">
+                Target size ({LIMITS.deckTarget.min}–{LIMITS.deckTarget.max})
+              </span>
               <input
                 type="number"
-                min={1}
+                min={LIMITS.deckTarget.min}
+                max={LIMITS.deckTarget.max}
                 value={size}
-                onChange={(e) => setSize(Math.max(1, Number(e.target.value)))}
+                onChange={(e) =>
+                  setSize(
+                    clampInt(Number(e.target.value), LIMITS.deckTarget.min, LIMITS.deckTarget.max),
+                  )
+                }
                 className={`${inputClass} w-28`}
               />
             </label>

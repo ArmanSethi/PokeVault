@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ApiError } from "../lib/api";
 import { useAddWishlist } from "../lib/queries";
+import { LIMITS, clampMoney, moneyOverCap } from "../lib/limits";
 import { useToast } from "./Toast";
 
 /** Add a card to the wishlist with an optional target price. */
@@ -13,7 +14,7 @@ export function WishlistButton({ cardId }: { cardId: string }) {
     try {
       await add.mutateAsync({
         card_id: cardId,
-        target_price: target === "" ? null : Number(target),
+        target_price: target === "" ? null : clampMoney(Number(target)),
       });
       toast.success("Added to wishlist.");
       setTarget("");
@@ -29,12 +30,18 @@ export function WishlistButton({ cardId }: { cardId: string }) {
         <input
           type="number"
           step="0.01"
-          min={0}
+          min={LIMITS.money.min}
+          max={LIMITS.money.max}
           value={target}
           onChange={(e) => setTarget(e.target.value)}
           placeholder="Alert me at…"
           className="w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800"
         />
+        {moneyOverCap(target) && (
+          <span className="mt-1 block text-xs text-danger-600 dark:text-danger-500">
+            Max {LIMITS.money.max.toLocaleString()}
+          </span>
+        )}
       </label>
       <button
         onClick={submit}

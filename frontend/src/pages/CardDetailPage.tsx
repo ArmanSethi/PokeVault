@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ApiError } from "../lib/api";
 import { useAddEntry, useCard, useCardHistory } from "../lib/queries";
 import { hasPrice, money } from "../lib/format";
+import { LIMITS, clampInt, clampMoney } from "../lib/limits";
 import { useAuth } from "../context/AuthContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { PriceChart } from "../components/PriceChart";
@@ -149,29 +150,44 @@ export function CardDetailPage() {
                   <span className="mb-1 block">Quantity</span>
                   <input
                     type="number"
-                    min={1}
+                    min={LIMITS.cardQty.min}
+                    max={LIMITS.cardQty.max}
                     value={form.quantity}
                     onChange={(e) =>
-                      setForm({ ...form, quantity: Math.max(1, Number(e.target.value)) })
+                      setForm({
+                        ...form,
+                        quantity: clampInt(
+                          Number(e.target.value),
+                          LIMITS.cardQty.min,
+                          LIMITS.cardQty.max,
+                        ),
+                      })
                     }
                     className={inputClass}
                   />
+                  <span className="mt-1 block text-xs text-slate-400">
+                    {LIMITS.cardQty.min}–{LIMITS.cardQty.max}
+                  </span>
                 </label>
                 <label className="text-sm">
                   <span className="mb-1 block">Acquired price (optional)</span>
                   <input
                     type="number"
                     step="0.01"
-                    min={0}
+                    min={LIMITS.money.min}
+                    max={LIMITS.money.max}
                     value={form.acquired_price ?? ""}
                     onChange={(e) =>
                       setForm({
                         ...form,
-                        acquired_price: e.target.value ? Number(e.target.value) : null,
+                        acquired_price: e.target.value ? clampMoney(Number(e.target.value)) : null,
                       })
                     }
                     className={inputClass}
                   />
+                  <span className="mt-1 block text-xs text-slate-400">
+                    0–{LIMITS.money.max.toLocaleString()}
+                  </span>
                 </label>
                 <GradingFields
                   condition={form.condition ?? ""}

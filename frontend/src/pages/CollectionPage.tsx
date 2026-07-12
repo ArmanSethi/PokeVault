@@ -8,6 +8,7 @@ import {
   useUpdateEntry,
 } from "../lib/queries";
 import { useCurrency } from "../context/CurrencyContext";
+import { LIMITS, clampInt, clampMoney, moneyOverCap } from "../lib/limits";
 import { EmptyState, ErrorState } from "../components/States";
 import { TableSkeleton } from "../components/Skeleton";
 import { useToast } from "../components/Toast";
@@ -94,7 +95,10 @@ export function CollectionPage() {
       remove(entry);
       return;
     }
-    update.mutate({ id: entry.id, data: { quantity } });
+    update.mutate({
+      id: entry.id,
+      data: { quantity: clampInt(quantity, LIMITS.cardQty.min, LIMITS.cardQty.max) },
+    });
   }
 
   function remove(entry: CollectionEntry) {
@@ -357,7 +361,7 @@ function EditModal({
           condition: condition || null,
           grade: grade || null,
           notes: notes || null,
-          acquired_price: acquired === "" ? null : Number(acquired),
+          acquired_price: acquired === "" ? null : clampMoney(Number(acquired)),
         },
       });
       onSaved();
@@ -394,11 +398,19 @@ function EditModal({
             <input
               ref={firstRef}
               type="number"
-              min={1}
+              min={LIMITS.cardQty.min}
+              max={LIMITS.cardQty.max}
               value={quantity}
-              onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))}
+              onChange={(e) =>
+                setQuantity(
+                  clampInt(Number(e.target.value), LIMITS.cardQty.min, LIMITS.cardQty.max),
+                )
+              }
               className={inputClass}
             />
+            <span className="mt-1 block text-xs text-slate-400">
+              {LIMITS.cardQty.min}–{LIMITS.cardQty.max}
+            </span>
           </label>
           <GradingFields
             condition={condition}
@@ -413,10 +425,21 @@ function EditModal({
             <input
               type="number"
               step="0.01"
+              min={LIMITS.money.min}
+              max={LIMITS.money.max}
               value={acquired}
               onChange={(e) => setAcquired(e.target.value)}
               className={inputClass}
             />
+            {moneyOverCap(acquired) ? (
+              <span className="mt-1 block text-xs text-danger-600 dark:text-danger-500">
+                Max {LIMITS.money.max.toLocaleString()}
+              </span>
+            ) : (
+              <span className="mt-1 block text-xs text-slate-400">
+                0–{LIMITS.money.max.toLocaleString()}
+              </span>
+            )}
           </label>
           <label className="col-span-2">
             <span className="mb-1 block">Notes</span>

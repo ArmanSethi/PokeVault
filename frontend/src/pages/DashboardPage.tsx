@@ -73,6 +73,7 @@ export function DashboardPage() {
   const history = usePortfolioHistory();
   const { format } = useCurrency();
   const { hidden, toggle } = useHideValue();
+  const { hidden: spentHidden, toggle: spentToggle } = useHideValue("pv-hide-spent");
 
   return (
     <>
@@ -129,11 +130,23 @@ export function DashboardPage() {
               value={String(summary.data.total_quantity)}
               to="/collection?view=table"
             />
-            {/* Total spent = SUM(acquired_price x qty), nulls skipped; masked with the value toggle. */}
-            <Stat
-              label="Total spent"
-              value={hidden ? HIDDEN_MASK : format(summary.data.total_cost)}
-            />
+            {/* Total spent = SUM(acquired_price x qty), nulls skipped; its own hide toggle. */}
+            <div className="relative">
+              <Stat
+                label="Total spent"
+                value={spentHidden ? HIDDEN_MASK : format(summary.data.total_cost)}
+              />
+              <button
+                type="button"
+                onClick={spentToggle}
+                aria-label={spentHidden ? "Show total spent" : "Hide total spent"}
+                aria-pressed={spentHidden}
+                title={spentHidden ? "Show total spent" : "Hide total spent"}
+                className="absolute right-2 top-2 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                {spentHidden ? <EyeSlashIcon /> : <EyeIcon />}
+              </button>
+            </div>
           </div>
 
           <h2 className="mb-2 mt-8 text-lg font-semibold">Portfolio value over time</h2>

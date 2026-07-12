@@ -11,12 +11,12 @@ import { useSyncExternalStore } from "react";
  * visibility. The masked value is never rendered into the DOM (callers substitute the mask
  * string), so the real number isn't sitting in the page text while hidden.
  */
-const KEY = "pv-hide-portfolio";
+const DEFAULT_KEY = "pv-hide-portfolio";
 const listeners = new Set<() => void>();
 
-function read(): boolean {
+function read(key: string): boolean {
   try {
-    return localStorage.getItem(KEY) === "1";
+    return localStorage.getItem(key) === "1";
   } catch {
     return false;
   }
@@ -30,15 +30,19 @@ function subscribe(cb: () => void): () => void {
 /** Mask shown in place of the amount when hidden — reveals neither the value nor its magnitude. */
 export const HIDDEN_MASK = "••••••";
 
-export function useHideValue(): { hidden: boolean; toggle: () => void } {
+/**
+ * Masking preference for one monetary figure on the Dashboard, keyed by ``key`` so independent
+ * figures (portfolio value, total spent) toggle separately. Defaults to the portfolio key.
+ */
+export function useHideValue(key: string = DEFAULT_KEY): { hidden: boolean; toggle: () => void } {
   const hidden = useSyncExternalStore(
     subscribe,
-    read,
+    () => read(key),
     () => false, // server snapshot (client-only SPA; keeps the hook SSR-safe)
   );
   function toggle() {
     try {
-      localStorage.setItem(KEY, read() ? "0" : "1");
+      localStorage.setItem(key, read(key) ? "0" : "1");
     } catch {
       /* private mode / storage disabled — toggle is best-effort */
     }

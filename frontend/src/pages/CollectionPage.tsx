@@ -246,38 +246,47 @@ export function CollectionPage() {
                   )}
                 </div>
               </Link>
-              <div className="flex flex-1 flex-col gap-1 p-3">
-                <Link
-                  to={`/cards/${encodeURIComponent(e.card_id)}`}
-                  title={names[e.card_id] ?? e.card_id}
-                  className="truncate text-sm font-medium text-brand-600 hover:underline"
-                >
-                  {names[e.card_id] ?? e.card_id}
-                </Link>
-                <p className="text-sm font-semibold">{format(e.market_value)}</p>
-                {e.acquired_price != null && (
-                  <p className="text-xs text-slate-400">acquired at {format(e.acquired_price)}</p>
-                )}
-                {gradedButRaw(e.grade) && (
-                  <p
-                    title={RAW_GRADE_NOTE}
-                    className="cursor-help text-[11px] text-amber-600 dark:text-amber-400"
-                  >
-                    raw price · no graded premium
-                  </p>
-                )}
-                <div className="mt-1 flex flex-col items-start gap-2 text-sm">
-                  <button onClick={() => setEditing(e)} className="text-brand-600 hover:underline">
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => remove(e)}
-                    aria-label="Delete card"
-                    title="Delete this card from your collection"
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-danger-100 text-danger-600 hover:bg-danger-200 dark:bg-danger-600/20 dark:text-danger-400 dark:hover:bg-danger-600/30"
-                  >
-                    🗑
-                  </button>
+              <div className="flex flex-1 flex-col p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <Link
+                      to={`/cards/${encodeURIComponent(e.card_id)}`}
+                      title={names[e.card_id] ?? e.card_id}
+                      className="truncate text-sm font-medium text-brand-600 hover:underline"
+                    >
+                      {names[e.card_id] ?? e.card_id}
+                    </Link>
+                    <p className="text-sm font-semibold">{format(e.market_value)}</p>
+                    {e.acquired_price != null && (
+                      <p className="text-xs text-slate-400">
+                        acquired at {format(e.acquired_price)}
+                      </p>
+                    )}
+                    {gradedButRaw(e.grade) && (
+                      <p
+                        title={RAW_GRADE_NOTE}
+                        className="cursor-help text-[11px] text-amber-600 dark:text-amber-400"
+                      >
+                        raw price · no graded premium
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-2 text-sm">
+                    <button
+                      onClick={() => setEditing(e)}
+                      className="text-brand-600 hover:underline"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => remove(e)}
+                      aria-label="Delete card"
+                      title="Delete this card from your collection"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-danger-100 text-danger-600 hover:bg-danger-200 dark:bg-danger-600/20 dark:text-danger-400 dark:hover:bg-danger-600/30"
+                    >
+                      🗑
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

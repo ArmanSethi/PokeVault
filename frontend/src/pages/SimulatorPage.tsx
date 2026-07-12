@@ -60,6 +60,23 @@ export function SimulatorPage() {
     setDecisions((d) => ({ ...d, [index]: "discarded" }));
   }
 
+  // Bulk: add every not-yet-kept pulled card to the collection (reuses per-card keep).
+  function keepAll() {
+    if (!pack) return;
+    pack.cards.forEach((pc, i) => {
+      if (decisions[i] !== "kept") keep(i, pc);
+    });
+  }
+
+  // Bulk: cards marked Keep are already in the collection; everything else in THIS pack is
+  // dropped by clearing local state. No API call, no DELETE — the un-kept pulls were never
+  // added, and the existing collection is never touched.
+  function discardRest(keptCount: number, discardCount: number) {
+    setPack(null);
+    setDecisions({});
+    toast.success(`Kept ${keptCount}, discarded ${discardCount}.`);
+  }
+
   if (sets.isError)
     return <ErrorState message={(sets.error as Error).message} onRetry={() => sets.refetch()} />;
 
@@ -94,92 +111,114 @@ export function SimulatorPage() {
         </button>
       </div>
 
-      {pack && (
-        <>
-          <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
-            <span className="font-semibold">Approximate odds.</span> {pack.disclaimer} Template:{" "}
-            {pack.template}.
-          </div>
+      {pack &&
+        (() => {
+          const keptCount = pack.cards.filter((_, i) => decisions[i] === "kept").length;
+          const discardCount = pack.cards.length - keptCount;
+          return (
+            <>
+              <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                <span className="font-semibold">Approximate odds.</span> {pack.disclaimer} Template:{" "}
+                {pack.template}.
+              </div>
 
-          <h2 className="mb-2 text-lg font-semibold">
-            {pack.set_name} — you pulled {pack.cards.length} cards
-          </h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {pack.cards.map((pc, i) => {
-              const decision = decisions[i];
-              return (
-                <div
-                  key={i}
-                  className={`flex flex-col overflow-hidden rounded-xl border bg-white dark:bg-slate-900 ${
-                    decision === "kept"
-                      ? "border-emerald-400 dark:border-emerald-600"
-                      : decision === "discarded"
-                        ? "border-slate-200 opacity-40 dark:border-slate-800"
-                        : "border-slate-200 dark:border-slate-800"
-                  }`}
-                >
-                  <div className="relative flex aspect-[3/4] items-center justify-center bg-slate-100 dark:bg-slate-800">
-                    {pc.card.image_url ? (
-                      <img
-                        src={pc.card.image_url}
-                        alt={pc.card.name}
-                        loading="lazy"
-                        className="h-full w-full object-contain"
-                      />
-                    ) : (
-                      <span className="text-4xl opacity-30">🃏</span>
-                    )}
-                    <span
-                      className={`absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                        TIER_STYLE[pc.slot_kind]
-                      }`}
-                      title={`${pc.slot_kind} slot`}
-                    >
-                      {pc.tier}
-                    </span>
-                  </div>
-                  <div className="flex flex-1 flex-col gap-1 p-2">
-                    <p className="truncate text-sm font-medium" title={pc.card.name}>
-                      {pc.card.name}
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {hasPrice(pc.card.market_price)
-                        ? format(pc.card.market_price)
-                        : "No price yet"}
-                    </p>
-                    {decision ? (
-                      <p
-                        className={`mt-1 text-xs font-medium ${
-                          decision === "kept"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-slate-400"
-                        }`}
-                      >
-                        {decision === "kept" ? "✓ Kept" : "Discarded"}
-                      </p>
-                    ) : (
-                      <div className="mt-1 flex gap-2">
-                        <button
-                          onClick={() => keep(i, pc)}
-                          className="flex-1 rounded border border-brand-300 px-2 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50 dark:border-brand-700 dark:text-brand-300 dark:hover:bg-brand-900/30"
-                        >
-                          Keep
-                        </button>
-                        <button
-                          onClick={() => discard(i)}
-                          className="flex-1 rounded border border-slate-300 px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
-                        >
-                          Discard
-                        </button>
-                      </div>
-                    )}
-                  </div>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-lg font-semibold">
+                  {pack.set_name} — you pulled {pack.cards.length} cards
+                </h2>
+                <div className="flex gap-2">
+                  <button
+                    onClick={keepAll}
+                    disabled={keptCount === pack.cards.length}
+                    className="rounded-lg border border-brand-300 px-3 py-1.5 text-sm font-medium text-brand-600 hover:bg-brand-50 disabled:opacity-50 dark:border-brand-700 dark:text-brand-300 dark:hover:bg-brand-900/30"
+                  >
+                    Keep all
+                  </button>
+                  <button
+                    onClick={() => discardRest(keptCount, discardCount)}
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+                  >
+                    Keep marked, discard rest ({discardCount})
+                  </button>
                 </div>
-              );
-            })}
-          </div>
-        </>
-      )}
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                {pack.cards.map((pc, i) => {
+                  const decision = decisions[i];
+                  return (
+                    <div
+                      key={i}
+                      className={`flex flex-col overflow-hidden rounded-xl border bg-white dark:bg-slate-900 ${
+                        decision === "kept"
+                          ? "border-emerald-400 dark:border-emerald-600"
+                          : decision === "discarded"
+                            ? "border-slate-200 opacity-40 dark:border-slate-800"
+                            : "border-slate-200 dark:border-slate-800"
+                      }`}
+                    >
+                      <div className="relative flex aspect-[3/4] items-center justify-center bg-slate-100 dark:bg-slate-800">
+                        {pc.card.image_url ? (
+                          <img
+                            src={pc.card.image_url}
+                            alt={pc.card.name}
+                            loading="lazy"
+                            className="h-full w-full object-contain"
+                          />
+                        ) : (
+                          <span className="text-4xl opacity-30">🃏</span>
+                        )}
+                        <span
+                          className={`absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                            TIER_STYLE[pc.slot_kind]
+                          }`}
+                          title={`${pc.slot_kind} slot`}
+                        >
+                          {pc.tier}
+                        </span>
+                      </div>
+                      <div className="flex flex-1 flex-col gap-1 p-2">
+                        <p className="truncate text-sm font-medium" title={pc.card.name}>
+                          {pc.card.name}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {hasPrice(pc.card.market_price)
+                            ? format(pc.card.market_price)
+                            : "No price yet"}
+                        </p>
+                        {decision ? (
+                          <p
+                            className={`mt-1 text-xs font-medium ${
+                              decision === "kept"
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : "text-slate-400"
+                            }`}
+                          >
+                            {decision === "kept" ? "✓ Kept" : "Discarded"}
+                          </p>
+                        ) : (
+                          <div className="mt-1 flex gap-2">
+                            <button
+                              onClick={() => keep(i, pc)}
+                              className="flex-1 rounded border border-brand-300 px-2 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50 dark:border-brand-700 dark:text-brand-300 dark:hover:bg-brand-900/30"
+                            >
+                              Keep
+                            </button>
+                            <button
+                              onClick={() => discard(i)}
+                              className="flex-1 rounded border border-slate-300 px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+                            >
+                              Discard
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          );
+        })()}
     </>
   );
 }

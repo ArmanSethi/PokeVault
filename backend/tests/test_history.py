@@ -255,8 +255,10 @@ async def test_compute_daily_values_grade_and_eur_conversion(db_session, current
     )
     await db_session.flush()
 
+    # compute_portfolio_values_usd is DB-wide (the daily job values every user), so scope the
+    # assertions to this test's user rather than assuming an empty DB.
     totals, unpriced = await compute_portfolio_values_usd(db_session, eur_usd_rate=1.10)
-    assert unpriced == []
+    assert [cid for u, cid in unpriced if u == uid] == []
     assert totals[uid] == Decimal("34.00")
 
 
@@ -282,7 +284,10 @@ async def test_snapshot_portfolio_values_idempotent(db_session, current_prices):
     db_session.add(CollectionEntry(user_id=uid, card_id="tst1-1", quantity=2))  # $2 * 2 = 4
     await db_session.flush()
 
-    assert await snapshot_portfolio_values(db_session) == 1
+    # The job writes one row per user with holdings (DB-wide); assert on THIS user's row
+    # rather than the total count, which depends on other users' real data.
+    written = await snapshot_portfolio_values(db_session)
+    assert written >= 1
 
     async def _row_count() -> int:
         return await db_session.scalar(

@@ -343,8 +343,15 @@ export function useAddDeckCard() {
 export function useUpdateDeckCard() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ deckId, cardId, quantity }: { deckId: number; cardId: string; quantity: number }) =>
-      api.updateDeckCard(deckId, cardId, quantity),
+    mutationFn: ({
+      deckId,
+      cardId,
+      quantity,
+    }: {
+      deckId: number;
+      cardId: string;
+      quantity: number;
+    }) => api.updateDeckCard(deckId, cardId, quantity),
     onSuccess: () => invalidateDecks(qc),
   });
 }

@@ -139,7 +139,9 @@ async def add_card(
     if existing is not None:
         existing.quantity += data.quantity
     else:
-        session.add(DeckCard(deck_id=deck_id, card_id=data.card_id, quantity=data.quantity))
+        # Mutate through the relationship so the loaded deck (and the reload below, which
+        # returns the same identity-mapped instance) reflects the change immediately.
+        deck.cards.append(DeckCard(card_id=data.card_id, quantity=data.quantity))
     await session.commit()
     return await get_deck(session, user_id, deck_id)
 
@@ -166,8 +168,10 @@ async def remove_card(
     deck = await _load_deck(session, user_id, deck_id)
     if deck is None:
         return None
-    await session.execute(
-        delete(DeckCard).where(DeckCard.deck_id == deck_id, DeckCard.card_id == card_id)
-    )
+    dc = next((c for c in deck.cards if c.card_id == card_id), None)
+    if dc is not None:
+        # Remove via the relationship (delete-orphan cascades the row delete) so the loaded
+        # deck reflects the removal without a stale reload.
+        deck.cards.remove(dc)
     await session.commit()
     return await get_deck(session, user_id, deck_id)

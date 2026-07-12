@@ -166,7 +166,10 @@ function DeckDetail({ deck }: { deck: Deck }) {
 
   async function saveEdit() {
     try {
-      await update.mutateAsync({ id: deck.id, data: { name: name.trim() || deck.name, target_size: Math.max(1, size) } });
+      await update.mutateAsync({
+        id: deck.id,
+        data: { name: name.trim() || deck.name, target_size: Math.max(1, size) },
+      });
       setEditing(false);
       toast.success("Deck updated.");
     } catch {
@@ -198,7 +201,11 @@ function DeckDetail({ deck }: { deck: Deck }) {
           <div className="flex flex-wrap items-end gap-3">
             <label className="text-sm">
               <span className="mb-1 block text-slate-500 dark:text-slate-400">Name</span>
-              <input value={name} onChange={(e) => setName(e.target.value)} className={`${inputClass} w-56`} />
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className={`${inputClass} w-56`}
+              />
             </label>
             <label className="text-sm">
               <span className="mb-1 block text-slate-500 dark:text-slate-400">Target size</span>
@@ -276,7 +283,12 @@ function DeckDetail({ deck }: { deck: Deck }) {
             >
               <div className="flex aspect-[3/4] items-center justify-center bg-slate-100 dark:bg-slate-800">
                 {c.image_url ? (
-                  <img src={c.image_url} alt={c.name} loading="lazy" className="h-full w-full object-contain" />
+                  <img
+                    src={c.image_url}
+                    alt={c.name}
+                    loading="lazy"
+                    className="h-full w-full object-contain"
+                  />
                 ) : (
                   <span className="text-3xl opacity-30">🃏</span>
                 )}
@@ -397,7 +409,12 @@ function AddCardsPanel({ deck }: { deck: Deck }) {
               className="flex items-center gap-2 rounded-lg border border-slate-200 p-2 dark:border-slate-800"
             >
               {c.image_url ? (
-                <img src={c.image_url} alt={c.name} loading="lazy" className="h-14 w-auto rounded" />
+                <img
+                  src={c.image_url}
+                  alt={c.name}
+                  loading="lazy"
+                  className="h-14 w-auto rounded"
+                />
               ) : (
                 <span className="text-2xl opacity-30">🃏</span>
               )}

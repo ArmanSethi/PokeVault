@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ApiError } from "../lib/api";
 import { useAddEntry, useCard, useCardHistory } from "../lib/queries";
 import { hasPrice, money } from "../lib/format";
@@ -26,6 +26,8 @@ const SOURCE_LABELS: Record<string, string> = {
 
 export function CardDetailPage() {
   const { id = "" } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
   const card = useCard(id);
   const history = useCardHistory(id);
   const addEntry = useAddEntry();
@@ -65,9 +67,16 @@ export function CardDetailPage() {
         }. Track it free in your PokéVault collection.`}
         image={c.image_url}
       />
-      <Link to="/catalog" className="text-sm text-brand-600 hover:underline">
-        ← Back to catalog
-      </Link>
+      {/* Real back navigation: return to wherever the user came from (preserving that route's
+          filters/search/page/tab). location.key === "default" means this was the first in-app
+          entry (direct load / shared link), so fall back to the catalog. */}
+      <button
+        type="button"
+        onClick={() => (location.key === "default" ? navigate("/catalog") : navigate(-1))}
+        className="text-sm text-brand-600 hover:underline"
+      >
+        ← Back
+      </button>
 
       <div className="mt-4 grid gap-8 md:grid-cols-2">
         <div className="flex items-start justify-center">

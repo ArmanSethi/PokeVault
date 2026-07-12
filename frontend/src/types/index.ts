@@ -170,6 +170,33 @@ export interface PackResult {
   cards: PulledCard[];
 }
 
+// ---- virtual pull collection + leaderboard ----
+
+export interface PackPull {
+  id: number;
+  card_id: string;
+  name: string;
+  set_id: string;
+  number: string;
+  image_url: string | null;
+  rarity: string | null;
+  price_at_pull: string | null; // frozen at keep
+  current_value: string | null; // live
+  currency: string;
+  pulled_at: string;
+}
+
+export type LeaderboardMode = "best_single" | "total_value";
+export type LeaderboardWindow = "all_time" | "monthly";
+
+export interface PullLeaderboardEntry {
+  rank: number;
+  handle: string;
+  score: string;
+  pull_count?: number | null;
+  card?: { card_id: string; name: string; set_id: string; image_url: string | null } | null;
+}
+
 export interface ScanCandidate {
   card_id: string;
   name: string;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useAddEntry, useOpenPack, useSets } from "../lib/queries";
+import { useKeepPull, useOpenPack, useSets } from "../lib/queries";
 import { useCurrency } from "../context/CurrencyContext";
 import { hasPrice } from "../lib/format";
 import { ErrorState } from "../components/States";
@@ -17,7 +17,7 @@ const TIER_STYLE: Record<string, string> = {
 export function SimulatorPage() {
   const sets = useSets();
   const openPack = useOpenPack();
-  const addEntry = useAddEntry();
+  const keepPull = useKeepPull();
   const toast = useToast();
   const { format } = useCurrency();
 
@@ -44,16 +44,13 @@ export function SimulatorPage() {
   }
 
   function keep(index: number, card: PulledCard) {
-    addEntry.mutate(
-      { card_id: card.card.id, quantity: 1, is_foil: card.slot_kind === "hit" },
-      {
-        onSuccess: () => {
-          setDecisions((d) => ({ ...d, [index]: "kept" }));
-          toast.success(`Kept ${card.card.name}.`);
-        },
-        onError: () => toast.error("Could not add to collection."),
+    keepPull.mutate(card.card.id, {
+      onSuccess: () => {
+        setDecisions((d) => ({ ...d, [index]: "kept" }));
+        toast.success(`Kept ${card.card.name} in your Vault.`);
       },
-    );
+      onError: () => toast.error("Could not keep card."),
+    });
   }
 
   function discard(index: number) {

@@ -18,8 +18,12 @@ import type {
   ImportConfirmResult,
   ImportConfirmRow,
   ImportPreview,
+  LeaderboardMode,
+  LeaderboardWindow,
+  PackPull,
   PackResult,
   PortfolioValueSeries,
+  PullLeaderboardEntry,
   ProfileUpdate,
   PublicCollection,
   PublicProfile,
@@ -184,6 +188,17 @@ export const api = {
       { method: "POST", body: JSON.stringify({ set_id: setId }) },
       { auth: true },
     ),
+
+  // ---- virtual pull collection + leaderboard ----
+  keepPull: (cardId: string) =>
+    request<PackPull>(
+      "/pack-pulls",
+      { method: "POST", body: JSON.stringify({ card_id: cardId }) },
+      { auth: true },
+    ),
+  listPulls: () => request<PackPull[]>("/pack-pulls", {}, { auth: true }),
+  pullLeaderboard: (mode: LeaderboardMode, window: LeaderboardWindow) =>
+    request<PullLeaderboardEntry[]>(`/leaderboard${qs({ mode, window })}`),
 
   // ---- decks (auth) ----
   listDecks: () => request<Deck[]>("/decks", {}, { auth: true }),

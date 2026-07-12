@@ -12,6 +12,8 @@ const NAV = [
   { to: "/wishlist", label: "Wishlist" },
   { to: "/deck", label: "Deck" },
   { to: "/simulator", label: "Simulator" },
+  { to: "/pulls", label: "Vault" },
+  { to: "/leaderboard", label: "Leaderboard" },
   { to: "/scan", label: "Scan" },
 ];
 

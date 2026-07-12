@@ -41,6 +41,10 @@ const ScanPage = lazy(() => import("./pages/ScanPage").then((m) => ({ default: m
 const SimulatorPage = lazy(() =>
   import("./pages/SimulatorPage").then((m) => ({ default: m.SimulatorPage })),
 );
+const VaultPage = lazy(() => import("./pages/VaultPage").then((m) => ({ default: m.VaultPage })));
+const LeaderboardPage = lazy(() =>
+  import("./pages/LeaderboardPage").then((m) => ({ default: m.LeaderboardPage })),
+);
 
 export default function App() {
   return (
@@ -61,6 +65,7 @@ export default function App() {
           <Route path="cards/:id" element={<CardDetailPage />} />
           <Route path="sets/:id" element={<SetDetailPage />} />
           <Route path="u/:handle" element={<ShowcasePage />} />
+          <Route path="leaderboard" element={<LeaderboardPage />} />
 
           {/* Authenticated pages. */}
           <Route
@@ -76,6 +81,7 @@ export default function App() {
             <Route path="deck" element={<DeckPage />} />
             <Route path="wishlist" element={<WishlistPage />} />
             <Route path="simulator" element={<SimulatorPage />} />
+            <Route path="pulls" element={<VaultPage />} />
             <Route path="scan" element={<ScanPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>

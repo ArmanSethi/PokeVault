@@ -24,6 +24,7 @@ from sqlalchemy.dialects.postgresql import insert
 import app.db.base  # noqa: F401
 from app.db.session import SessionLocal
 from app.models.collection import CollectionEntry
+from app.models.pack_pull import PackPull
 from app.models.portfolio import PortfolioValueDaily
 from app.models.price import CardPriceCurrent, PriceHistory
 from app.models.wishlist import WishlistItem
@@ -39,6 +40,7 @@ logger = logging.getLogger("app.ingest.snapshot_prices")
 _tracked = union(
     select(CollectionEntry.card_id.label("card_id")),
     select(WishlistItem.card_id.label("card_id")),
+    select(PackPull.card_id.label("card_id")),  # virtual pull collection — keep its prices fresh
 ).subquery()
 _owned_card_ids = select(_tracked.c.card_id)
 

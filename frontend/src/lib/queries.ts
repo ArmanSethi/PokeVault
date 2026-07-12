@@ -16,6 +16,8 @@ import type {
   DeckCreate,
   DeckUpdate,
   ImportConfirmRow,
+  LeaderboardMode,
+  LeaderboardWindow,
   ProfileUpdate,
   WishlistItemCreate,
 } from "../types";
@@ -396,6 +398,28 @@ export function useReportComment(handle: string) {
 
 export function useOpenPack() {
   return useMutation({ mutationFn: (setId: string) => api.openPack(setId) });
+}
+
+// ---- virtual pull collection + leaderboard ----
+
+export function useKeepPull() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (cardId: string) => api.keepPull(cardId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["pulls"] }),
+  });
+}
+
+export function usePulls() {
+  return useQuery({ queryKey: ["pulls"], queryFn: () => api.listPulls(), staleTime: 0 });
+}
+
+export function usePullLeaderboard(mode: LeaderboardMode, window: LeaderboardWindow) {
+  return useQuery({
+    queryKey: ["pull-leaderboard", mode, window],
+    queryFn: () => api.pullLeaderboard(mode, window),
+    staleTime: 30 * 1000,
+  });
 }
 
 export function useImportPreview() {

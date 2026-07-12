@@ -10,11 +10,11 @@ from collections.abc import Iterable, Sequence
 from decimal import Decimal
 from typing import Literal
 
-from sqlalchemy import case, func, select
+from sqlalchemy import Integer, case, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.card import Card
+from app.models.card import Card, Set
 from app.models.price import CardPriceCurrent
 from app.schemas.card import CardPriceRead, CardRead
 from app.services.fx import to_usd
@@ -41,6 +41,21 @@ def _is_holo_rarity(rarity: str | None) -> bool:
 def _base_variant_order(rarity: str | None) -> tuple[str, ...]:
     """Variant preference for the card's base printing, keyed off its rarity."""
     return _HOLO_VARIANT_ORDER if _is_holo_rarity(rarity) else _NONHOLO_VARIANT_ORDER
+
+
+def _collector_number_order() -> tuple:
+    """Order-by expressions for numeric-aware collector-number sorting.
+
+    Pokémon collector numbers mix pure integers ("1".."102") with lettered subsets
+    ("TG12", "SV107", "GG70"). Sort by the leading non-digit prefix (empty for mainline
+    numbers, so they sort first), then the first run of digits cast to an *integer* (so
+    2 < 10 < 102, not the lexical 1, 10, 102, 11), then the raw string as a final tiebreak.
+    Lettered/edge numbers are kept, never dropped; a number with no digits sorts last within
+    its prefix group. Applied in the query, so paging/ordering is correct — not display-only.
+    """
+    prefix = func.substring(Card.number, "^[^0-9]*")
+    digits = cast(func.nullif(func.substring(Card.number, "[0-9]+"), ""), Integer)
+    return (prefix.asc(), digits.asc().nullslast(), Card.number.asc())
 
 
 def select_primary_price(
@@ -191,7 +206,13 @@ async def list_cards(
     elif sort == "rarity":
         stmt = stmt.order_by(Card.rarity.nullslast(), Card.set_id, Card.number)
     else:  # "number"
-        stmt = stmt.order_by(Card.set_id, Card.number)
+        # Group by set in chronological release order (oldest first → Base Set first), then
+        # numeric collector number within each set. Joins sets for release_date.
+        stmt = stmt.join(Card.set).order_by(
+            Set.release_date.asc().nullslast(),
+            Card.set_id.asc(),
+            *_collector_number_order(),
+        )
 
     stmt = stmt.limit(limit).offset(offset)
     result = await session.execute(stmt)

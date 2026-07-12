@@ -246,6 +246,26 @@ async def test_best_single_requires_optin_and_excludes_null(db_session):
     assert handles.index(a.handle) < handles.index(b.handle)
 
 
+async def test_best_single_is_daily(db_session):
+    """best_single is a UTC-daily board: pulls from prior days are excluded (window ignored)."""
+    today_user = await _user(db_session, opt_in=True, public=True)
+    stale_user = await _user(db_session, opt_in=True, public=True)
+    big = await _card(db_session, "999.00")
+    small = await _card(db_session, "5.00")
+    yesterday = dt.datetime.now(dt.UTC) - dt.timedelta(days=1)
+    # today_user: a big pull yesterday (excluded) + a small pull today (counts).
+    await _add_pull(db_session, today_user.id, big.id, "999.00", pulled_at=yesterday)
+    await _add_pull(db_session, today_user.id, small.id, "5.00")
+    # stale_user: only a big pull yesterday → absent from today's board.
+    await _add_pull(db_session, stale_user.id, big.id, "999.00", pulled_at=yesterday)
+
+    board = await svc.leaderboard(db_session, "best_single", "all_time")  # window ignored → daily
+    handles = [e.handle for e in board]
+    assert stale_user.handle not in handles  # only-yesterday puller excluded entirely
+    me = next(e for e in board if e.handle == today_user.handle)
+    assert me.score == Decimal("5.00") and me.card.card_id == small.id  # yesterday's 999 excluded
+
+
 async def test_total_value_and_monthly_window(db_session):
     u = await _user(db_session, opt_in=True, public=False)
     c10 = await _card(db_session, "10.00")

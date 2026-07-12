@@ -101,9 +101,15 @@ export function LeaderboardPage() {
 
       {session && <OptInBanner />}
 
-      <div className="mb-5 flex flex-wrap gap-3">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <Toggle options={MODES} value={mode} onChange={setMode} />
-        <Toggle options={WINDOWS} value={window} onChange={setWindow} />
+        {mode === "total_value" ? (
+          <Toggle options={WINDOWS} value={window} onChange={setWindow} />
+        ) : (
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Best single pull updates daily.
+          </p>
+        )}
       </div>
 
       {board.isPending ? (
@@ -112,9 +118,11 @@ export function LeaderboardPage() {
         <ErrorState message={(board.error as Error).message} onRetry={() => board.refetch()} />
       ) : board.data.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-          {window === "monthly"
-            ? "No pulls yet this month — open a pack to claim the top spot."
-            : "No pulls yet — open a pack to get on the board."}
+          {mode === "best_single"
+            ? "No pulls yet today — open a pack to claim the top spot."
+            : window === "monthly"
+              ? "No pulls yet this month — open a pack to claim the top spot."
+              : "No pulls yet — open a pack to get on the board."}
         </p>
       ) : (
         <ol className="space-y-2">

@@ -183,16 +183,25 @@ def _month_start():
     return func.date_trunc("month", func.timezone("UTC", func.now()))
 
 
+def _day_start():
+    """Postgres date_trunc('day', now() AT TIME ZONE 'UTC') — start of the current UTC day."""
+    return func.date_trunc("day", func.timezone("UTC", func.now()))
+
+
 async def leaderboard(
     session: AsyncSession, mode: LeaderboardMode, window: LeaderboardWindow
 ) -> list[PullLeaderboardEntry]:
     """Top pullers. Eligibility = leaderboard opt-in + a handle + ≥1 pull; ranked by real market
-    price. ``showcase_public`` tells the UI whether it may link the handle to /u/{handle}."""
+    price. ``showcase_public`` tells the UI whether it may link the handle to /u/{handle}.
+
+    ``best_single`` is a DAILY board (today, UTC) and ignores ``window`` — it resets naturally at
+    UTC midnight so the top spot stays competitive. ``total_value`` honors ``window``."""
     eligible = (User.leaderboard_opt_in.is_(True), User.handle.is_not(None))
     monthly = [PackPull.pulled_at >= _month_start()] if window == "monthly" else []
 
     if mode == "best_single":
-        # One row per user = their highest FROZEN pull (DISTINCT ON), then rank by that score.
+        # One row per user = their highest FROZEN pull TODAY (DISTINCT ON), ranked by that score.
+        # Window is ignored here: best_single is always the current UTC day.
         stmt = (
             select(
                 PackPull.user_id,
@@ -206,7 +215,9 @@ async def leaderboard(
             )
             .join(User, User.id == PackPull.user_id)
             .join(Card, Card.id == PackPull.card_id)
-            .where(*eligible, PackPull.price_at_pull.is_not(None), *monthly)
+            .where(
+                *eligible, PackPull.price_at_pull.is_not(None), PackPull.pulled_at >= _day_start()
+            )
             .distinct(PackPull.user_id)
             .order_by(PackPull.user_id, PackPull.price_at_pull.desc())
         )

@@ -397,15 +397,29 @@ export function useReportComment(handle: string) {
 // ---- pack simulator ----
 
 export function useOpenPack() {
-  return useMutation({ mutationFn: (setId: string) => api.openPack(setId) });
-}
-
-// ---- virtual pull collection + leaderboard ----
-
-export function useKeepPull() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (cardId: string) => api.keepPull(cardId),
+    mutationFn: (setId: string) => api.openPack(setId),
+    // Opening consumes quota — refresh the standalone quota query.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["sim-quota"] }),
+  });
+}
+
+export function useQuota() {
+  return useQuery({
+    queryKey: ["sim-quota"],
+    queryFn: () => api.simulatorQuota(),
+    staleTime: 0,
+  });
+}
+
+// ---- virtual vault + leaderboard ----
+
+export function useKeepFromOpen() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ openId, keptCardIds }: { openId: string; keptCardIds: string[] }) =>
+      api.keepFromOpen(openId, keptCardIds),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["pulls"] }),
   });
 }

@@ -5,6 +5,47 @@ Detailed rationale lives in `docs/`.
 
 ---
 
+## 2026-07-13 — Simulator: server-authoritative roll + own shell + flip-stack reveal ⏳
+
+Built the master-prompt simulator feature onto the existing (shipped) pack/pulls/leaderboard code.
+
+**Backend — server authority + quota (new `pack_opens`):**
+- `POST /simulator/open` now persists the authoritative roll (`pack_opens.rolled_cards` jsonb with
+  open-time prices) and enforces **2 packs/UTC-day** (query-time `date_trunc('day', now() AT TIME
+  ZONE 'UTC')`, no reset job). Returns `open_id` + `packs_remaining_today`. `GET /simulator/quota`.
+- Keep is now `POST /simulator/keep {open_id, kept_card_ids}` (replaced single-card `POST
+  /pack-pulls`): validates each id against the stored roll (rejects tampering), idempotent per open,
+  freezes `price_at_pull` from the server's `price_at_open`. `pack_pulls.open_id` FK added.
+- Vault/leaderboard moved under `/simulator/*` (`GET /simulator/vault`, `/simulator/leaderboard`).
+- Price frozen at OPEN time via the one-source `unit_price_usd` (same fn the vault/leaderboard use).
+
+**Leaderboard eligibility (decision — overrides master prompt + old rule):** dedicated opt-in.
+Renamed the vestigial unused `users.show_value_on_leaderboard` → **`leaderboard_opt_in`** (default
+off). Eligible iff `leaderboard_opt_in AND handle AND ≥1 pull` — **decoupled from `is_public`**.
+Leaderboard links a name to `/u/{handle}` only when that user's showcase is public (`showcase_public`
+flag added to the entry). Rules skill updated ("opt-in required; showcase visibility separate").
+
+**Handle (decision):** reused the existing `handle` (`^[a-z0-9_-]{3,30}$`, `PATCH /me`) as-is — NO
+citext / new endpoints. Added a first-simulator-entry gate (blocks open/vault until a handle is set;
+does NOT auto-opt-in to the leaderboard).
+
+**Frontend — own shell + the reveal:** new `SimulatorLayout` (dark arcade chrome, sub-nav, always
+`.dark`-scoped) at `/simulator/{open,vault,leaderboard}`; main nav collapsed to one "Simulator"
+entry; old `/pulls` + `/leaderboard` redirect in. Flip-stack `PackReveal` (tap-to-flip/advance, Flip
+all, progress dots, rarity tells restrained to rare+, dramatic finale on the hit — dim + label flash
++ chime, `prefers-reduced-motion` aware). Locked `CardBack` SVG (§7). Synthesized SFX (`lib/sfx.ts`,
+Web Audio, persisted mute). Vault stacks duplicates ×N. Settings gained the opt-in toggle.
+
+**Migration `b8dae2f406c9`** (additive): `pack_opens` + `pack_pulls.open_id` + the
+`show_value_on_leaderboard`→`leaderboard_opt_in` rename. **Not yet applied to prod** (awaiting the
+go-live step). Server import-clean; `test_simulator.py` green; ruff + `pnpm build`/`lint`/prettier
+clean. DB-backed `test_pulls.py` rewritten (separation, server-authority, quota, frozen-vs-live,
+opt-in leaderboard) — runs once the migration is applied.
+
+**Next:** apply the migration to the live session pooler → run `test_pulls.py` → e2e drive the flow.
+
+---
+
 ## 2026-07-09 — Price history: owned-cards-only snapshot (free-tier fix) ✅
 
 **Problem:** the daily snapshot wrote a `price_history` row for every priced card (~52k) →

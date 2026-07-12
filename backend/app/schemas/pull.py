@@ -9,10 +9,6 @@ from typing import Literal
 from pydantic import BaseModel
 
 
-class PackPullCreate(BaseModel):
-    card_id: str
-
-
 class PackPullRead(BaseModel):
     """A kept pull with card metadata, the frozen price, and the live current value."""
 
@@ -42,6 +38,7 @@ class PullLeaderboardEntry(BaseModel):
     rank: int
     handle: str
     score: Decimal
+    showcase_public: bool = False  # link the handle to /u/{handle} only when the showcase is public
     pull_count: int | None = None  # total_value mode
     card: LeaderboardCard | None = None  # best_single mode
 

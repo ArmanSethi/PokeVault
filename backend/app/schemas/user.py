@@ -16,6 +16,7 @@ class UserRead(BaseModel):
     handle: str | None = None
     is_public: bool = False
     comments_enabled: bool = True
+    leaderboard_opt_in: bool = False
     created_at: datetime
 
 
@@ -26,3 +27,4 @@ class UserProfileUpdate(BaseModel):
     handle: str | None = Field(default=None, pattern=r"^[a-z0-9_-]{3,30}$")
     is_public: bool | None = None
     comments_enabled: bool | None = None
+    leaderboard_opt_in: bool | None = None

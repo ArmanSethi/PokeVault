@@ -18,11 +18,13 @@ import type {
   ImportConfirmResult,
   ImportConfirmRow,
   ImportPreview,
+  KeepResult,
   LeaderboardMode,
   LeaderboardWindow,
   PackPull,
   PackResult,
   PortfolioValueSeries,
+  Quota,
   PullLeaderboardEntry,
   ProfileUpdate,
   PublicCollection,
@@ -188,17 +190,19 @@ export const api = {
       { method: "POST", body: JSON.stringify({ set_id: setId }) },
       { auth: true },
     ),
-
-  // ---- virtual pull collection + leaderboard ----
-  keepPull: (cardId: string) =>
-    request<PackPull>(
-      "/pack-pulls",
-      { method: "POST", body: JSON.stringify({ card_id: cardId }) },
+  // Server-authoritative keep: name the open + the subset of its rolled cards to keep.
+  keepFromOpen: (openId: string, keptCardIds: string[]) =>
+    request<KeepResult>(
+      "/simulator/keep",
+      { method: "POST", body: JSON.stringify({ open_id: openId, kept_card_ids: keptCardIds }) },
       { auth: true },
     ),
-  listPulls: () => request<PackPull[]>("/pack-pulls", {}, { auth: true }),
+  simulatorQuota: () => request<Quota>("/simulator/quota", {}, { auth: true }),
+
+  // ---- virtual vault + leaderboard ----
+  listPulls: () => request<PackPull[]>("/simulator/vault", {}, { auth: true }),
   pullLeaderboard: (mode: LeaderboardMode, window: LeaderboardWindow) =>
-    request<PullLeaderboardEntry[]>(`/leaderboard${qs({ mode, window })}`),
+    request<PullLeaderboardEntry[]>(`/simulator/leaderboard${qs({ mode, window })}`),
 
   // ---- decks (auth) ----
   listDecks: () => request<Deck[]>("/decks", {}, { auth: true }),

@@ -11,9 +11,8 @@ const NAV = [
   { to: "/collection", label: "Collection" },
   { to: "/wishlist", label: "Wishlist" },
   { to: "/deck", label: "Deck" },
+  // One entry into the simulator; its own shell exposes Open / Vault / Leaderboard.
   { to: "/simulator", label: "Simulator" },
-  { to: "/pulls", label: "Vault" },
-  { to: "/leaderboard", label: "Leaderboard" },
   { to: "/scan", label: "Scan" },
 ];
 

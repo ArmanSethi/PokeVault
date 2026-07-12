@@ -38,8 +38,16 @@ const SettingsPage = lazy(() =>
   import("./pages/SettingsPage").then((m) => ({ default: m.SettingsPage })),
 );
 const ScanPage = lazy(() => import("./pages/ScanPage").then((m) => ({ default: m.ScanPage })));
-const SimulatorPage = lazy(() =>
-  import("./pages/SimulatorPage").then((m) => ({ default: m.SimulatorPage })),
+const SimulatorLayout = lazy(() =>
+  import("./components/simulator/SimulatorLayout").then((m) => ({ default: m.SimulatorLayout })),
+);
+const SimulatorHandleGate = lazy(() =>
+  import("./components/simulator/SimulatorHandleGate").then((m) => ({
+    default: m.SimulatorHandleGate,
+  })),
+);
+const SimulatorOpenPage = lazy(() =>
+  import("./pages/SimulatorOpenPage").then((m) => ({ default: m.SimulatorOpenPage })),
 );
 const VaultPage = lazy(() => import("./pages/VaultPage").then((m) => ({ default: m.VaultPage })));
 const LeaderboardPage = lazy(() =>
@@ -59,13 +67,35 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
-        {/* The shell renders for everyone; its nav adapts to auth state. */}
+        {/* Simulator lives in its own shell (separate chrome) — see SimulatorLayout. The
+            leaderboard is public; opening packs + the vault require login + a handle. */}
+        <Route path="/simulator" element={<SimulatorLayout />}>
+          <Route index element={<Navigate to="/simulator/open" replace />} />
+          <Route path="leaderboard" element={<LeaderboardPage />} />
+          <Route
+            element={
+              <ProtectedRoute>
+                <SimulatorHandleGate>
+                  <Outlet />
+                </SimulatorHandleGate>
+              </ProtectedRoute>
+            }
+          >
+            <Route path="open" element={<SimulatorOpenPage />} />
+            <Route path="vault" element={<VaultPage />} />
+          </Route>
+        </Route>
+
+        {/* Back-compat: the old flat routes now live under the simulator shell. */}
+        <Route path="/pulls" element={<Navigate to="/simulator/vault" replace />} />
+        <Route path="/leaderboard" element={<Navigate to="/simulator/leaderboard" replace />} />
+
+        {/* The main shell renders for everyone; its nav adapts to auth state. */}
         <Route element={<Layout />}>
           {/* Public, indexable pages — no auth required. */}
           <Route path="cards/:id" element={<CardDetailPage />} />
           <Route path="sets/:id" element={<SetDetailPage />} />
           <Route path="u/:handle" element={<ShowcasePage />} />
-          <Route path="leaderboard" element={<LeaderboardPage />} />
 
           {/* Authenticated pages. */}
           <Route
@@ -80,8 +110,6 @@ export default function App() {
             <Route path="collection" element={<CollectionPage />} />
             <Route path="deck" element={<DeckPage />} />
             <Route path="wishlist" element={<WishlistPage />} />
-            <Route path="simulator" element={<SimulatorPage />} />
-            <Route path="pulls" element={<VaultPage />} />
             <Route path="scan" element={<ScanPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>

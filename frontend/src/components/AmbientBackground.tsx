@@ -16,10 +16,8 @@ const PALETTES: Record<string, string> = {
   "/collection": "grass",
   "/wishlist": "psychic",
   "/deck": "fire",
-  "/simulator": "gold",
-  "/pulls": "psychic",
-  "/leaderboard": "gold",
   "/scan": "steel",
+  // Note: /simulator/* renders its own (SimulatorLayout) shell, not this background.
 };
 
 function paletteFor(pathname: string): string {

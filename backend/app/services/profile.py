@@ -30,6 +30,8 @@ async def update_profile(session: AsyncSession, user: User, data: UserProfileUpd
         user.is_public = data.is_public
     if data.comments_enabled is not None:
         user.comments_enabled = data.comments_enabled
+    if data.leaderboard_opt_in is not None:
+        user.leaderboard_opt_in = data.leaderboard_opt_in
 
     try:
         await session.commit()

@@ -159,15 +159,27 @@ export interface DeckCardCreate {
 export interface PulledCard {
   slot_kind: "common" | "uncommon" | "hit";
   tier: string; // the card's rarity label
+  price_at_open: string | null; // frozen open-time value (matches what the vault later shows)
   card: Card;
 }
 
 export interface PackResult {
+  open_id: string; // referenced by the keep step
   set_id: string;
   set_name: string;
   template: string;
   disclaimer: string;
+  packs_remaining_today: number;
   cards: PulledCard[];
+}
+
+export interface KeepResult {
+  kept: number;
+  pulls: PackPull[];
+}
+
+export interface Quota {
+  packs_remaining_today: number;
 }
 
 // ---- virtual pull collection + leaderboard ----
@@ -193,6 +205,7 @@ export interface PullLeaderboardEntry {
   rank: number;
   handle: string;
   score: string;
+  showcase_public: boolean; // link the handle to /u/{handle} only when true
   pull_count?: number | null;
   card?: { card_id: string; name: string; set_id: string; image_url: string | null } | null;
 }
@@ -220,6 +233,7 @@ export interface User {
   handle?: string | null;
   is_public?: boolean;
   comments_enabled?: boolean;
+  leaderboard_opt_in?: boolean;
 }
 
 // ---- import / export ----
@@ -306,6 +320,7 @@ export interface ProfileUpdate {
   handle?: string | null;
   is_public?: boolean | null;
   comments_enabled?: boolean | null;
+  leaderboard_opt_in?: boolean | null;
 }
 
 // ---- showcase comments ----

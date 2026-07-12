@@ -30,8 +30,9 @@ class User(Base):
     is_public: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     # Owner toggle for comments on their public showcase (default on).
     comments_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
-    # NB: the DB still has a vestigial `show_value_on_leaderboard` column from the removed
-    # leaderboard feature; it's NOT NULL with a server default, so inserts that omit it are
-    # fine. Left in place to avoid a destructive migration; can be dropped later.
+    # Explicit opt-in to the best-pulls leaderboard (default off). Independent of `is_public`:
+    # a user can appear on the leaderboard without exposing their showcase, and vice versa.
+    # (Renamed from the vestigial `show_value_on_leaderboard` column — see migration.)
+    leaderboard_opt_in: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())

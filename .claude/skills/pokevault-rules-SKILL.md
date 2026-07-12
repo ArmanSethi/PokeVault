@@ -96,14 +96,21 @@ rule and surface the conflict to the user.
 ## Feature-specific rules
 
 - **Pack simulator:** odds are APPROXIMATE — never claim exact/real pull rates; label as
-  an estimate in UI + API. Pull is server-side only (never client-side randomness).
-  **Keep writes to the VIRTUAL pull collection (`pack_pulls`), NOT the IRL `collection_entries`
-  — the two are fully separate; pulls never touch the real collection.** Duplicates are
-  separate `pack_pulls` rows (no 99-cap on pulls). "Discard rest" stays pack-local skip-add.
-  Animation is a SEPARATE second pass — never block the working feature on it.
+  an estimate in UI + API. Pull is **server-authoritative**: `POST /simulator/open` rolls
+  server-side (never client randomness), persists the roll + open-time prices in `pack_opens`
+  (`rolled_cards` jsonb), and enforces a **2-packs/UTC-day quota** derived at query time (no reset
+  job). Keep is `POST /simulator/keep {open_id, kept_card_ids}` — it trusts ONLY the stored roll
+  (validates membership, idempotent per open) and freezes `price_at_pull` from the stored
+  `price_at_open`. **Keep writes to the VIRTUAL pull collection (`pack_pulls`), NOT the IRL
+  `collection_entries` — the two are fully separate; pulls never touch the real collection.**
+  Duplicates are separate `pack_pulls` rows (no 99-cap on pulls); the vault UI stacks them ×N.
+  The simulator lives in its own `/simulator/*` shell (SimulatorLayout) with the flip-stack reveal.
 - **Best-pulls leaderboard:** ranks by real market price only (never rarity tier). `best_single`
   uses the frozen `price_at_pull`; `total_value` uses live current value. Seasons (`monthly`)
-  are derived at query time from `pulled_at` — no cron/reset job. Public profiles only.
+  are derived at query time from `pulled_at` — no cron/reset job. **Eligibility = the explicit
+  `leaderboard_opt_in` flag (default off) + a handle + ≥1 pull.** This is SEPARATE from showcase
+  visibility (`is_public`): a user can be on the leaderboard with a private showcase, and the
+  leaderboard links a name to `/u/{handle}` ONLY when that user's showcase is public.
 - **Number limits:** every user-entered numeric field has a sane per-field max, enforced
   on the BACKEND (not just the input's `max`). Copies/qty cap 99; money fields do NOT cap
   at 99. Enforce min values too (no negatives).

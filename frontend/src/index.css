@@ -192,3 +192,148 @@
     animation: none !important;
   }
 }
+
+/* ---- Pack simulator: dark arcade shell + flip-stack reveal ---- */
+
+/* Always-dark cabinet backdrop (independent of the app light/dark toggle). */
+.sim-shell {
+  background:
+    radial-gradient(1100px 520px at 50% -12%, #1e293b 0%, transparent 62%),
+    linear-gradient(180deg, #0b1220 0%, #020617 100%);
+  background-attachment: fixed;
+}
+
+/* 3D card flip. */
+.sim-flip {
+  perspective: 1200px;
+  -webkit-tap-highlight-color: transparent;
+}
+.sim-flip-inner {
+  position: relative;
+  width: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.sim-flip-inner.is-flipped {
+  transform: rotateY(180deg);
+}
+.sim-flip-inner.sim-instant {
+  transition: none;
+}
+.sim-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 6%;
+  overflow: hidden;
+}
+.sim-face-rear {
+  transform: rotateY(180deg);
+}
+
+/* Finale: lift the hit card above the dim. */
+.sim-lift {
+  transition: transform 0.4s ease;
+  transform: translateY(-8px) scale(1.06);
+}
+
+/* Rare+ scale pop. */
+@keyframes sim-pop {
+  0% {
+    transform: scale(0.9);
+  }
+  60% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.sim-pop {
+  animation: sim-pop 0.5s ease-out;
+}
+
+/* Sparkle burst (particle count set inline via rarity). */
+.sim-sparkle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  opacity: 0;
+  animation: sim-sparkle 0.75s ease-out forwards;
+}
+@keyframes sim-sparkle {
+  0% {
+    transform: translate(-50%, -50%) scale(0.2);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1);
+    opacity: 0;
+  }
+}
+
+/* Dim the simulator section (not the whole browser) behind the finale card. */
+.sim-finale-dim {
+  position: absolute;
+  inset: -1.5rem -50vw;
+  z-index: 5;
+  background: rgba(2, 6, 23, 0.74);
+  animation: sim-fade 0.3s ease-out;
+}
+@keyframes sim-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.sim-finale-label {
+  position: absolute;
+  left: 50%;
+  top: -2.4rem;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-weight: 800;
+  font-size: 1.1rem;
+  text-shadow: 0 0 18px currentColor;
+  animation: sim-flash 1.4s ease-out;
+}
+@keyframes sim-flash {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.8);
+  }
+  20% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.05);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.9;
+  }
+}
+
+/* Reduced motion: instant flip, no pop / sparkles / lift / flash. */
+@media (prefers-reduced-motion: reduce) {
+  .sim-flip-inner {
+    transition: none;
+  }
+  .sim-pop,
+  .sim-sparkle,
+  .sim-finale-label,
+  .sim-lift {
+    animation: none !important;
+    transition: none !important;
+  }
+  .sim-lift {
+    transform: none;
+  }
+}

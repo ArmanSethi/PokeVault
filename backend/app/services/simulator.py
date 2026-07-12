@@ -12,18 +12,30 @@ is unit-testable without a database.
 from __future__ import annotations
 
 import random
+import uuid
+from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.config import settings
 from app.models.card import Card, Set
+from app.models.pack_open import PackOpen
 from app.schemas.card import CardRead
 from app.schemas.simulator import PackResult, PulledCard
-from app.services.cards import _to_card_read
+from app.services.cards import _to_card_read, unit_price_usd
 
 COMMON = "common"
 UNCOMMON = "uncommon"
+
+# Free packs per user per UTC day. Opening consumes quota even if every card is discarded.
+DAILY_PACK_LIMIT = 2
+
+
+class QuotaExceeded(Exception):
+    """Raised when a user has already opened their daily pack allowance."""
+
 
 # Default slot template (tunable). 6 commons + 3 uncommons + 1 rarity-weighted hit = 10.
 SLOT_TEMPLATE: list[tuple[str, int]] = [(COMMON, 6), (UNCOMMON, 3), ("hit", 1)]
@@ -152,8 +164,42 @@ def _bucket(cards: list[Card]) -> dict[str, list[Card]]:
     return by_tier
 
 
-async def open_pack(session: AsyncSession, set_id: str) -> PackResult | None:
-    """Open one pack for ``set_id``. Returns None if the set is unknown or has no cards."""
+def _utc_day_start():
+    """Postgres date_trunc('day', now() AT TIME ZONE 'UTC') — start of the current UTC day."""
+    return func.date_trunc("day", func.timezone("UTC", func.now()))
+
+
+async def opens_today_count(session: AsyncSession, user_id: uuid.UUID) -> int:
+    """How many packs the user has opened so far this UTC day (query-time, no reset job)."""
+    return (
+        await session.scalar(
+            select(func.count())
+            .select_from(PackOpen)
+            .where(PackOpen.user_id == user_id, PackOpen.opened_at >= _utc_day_start())
+        )
+        or 0
+    )
+
+
+async def packs_remaining_today(session: AsyncSession, user_id: uuid.UUID) -> int:
+    return max(0, DAILY_PACK_LIMIT - await opens_today_count(session, user_id))
+
+
+def _price_at_open(card: Card) -> Decimal | None:
+    """Open-time value via the one price source (same fn the vault + leaderboard use)."""
+    return unit_price_usd(card.prices_current, is_foil=False, eur_usd_rate=settings.EUR_USD_RATE)
+
+
+async def open_pack(session: AsyncSession, user_id: uuid.UUID, set_id: str) -> PackResult | None:
+    """Open one pack for ``set_id``, persisting the authoritative roll.
+
+    Returns None if the set is unknown or has no cards. Raises ``QuotaExceeded`` if the user has
+    already used their daily allowance. The rolled result (with open-time prices) is stored so the
+    keep step trusts only the server, never the client.
+    """
+    if await opens_today_count(session, user_id) >= DAILY_PACK_LIMIT:
+        raise QuotaExceeded
+
     set_obj = await session.get(Set, set_id)
     if set_obj is None:
         return None
@@ -170,14 +216,39 @@ async def open_pack(session: AsyncSession, set_id: str) -> PackResult | None:
         return None
 
     pulled = build_pack(_bucket(list(cards)), random.Random())
+    rolled: list[dict] = []
     out: list[PulledCard] = []
     for kind, card in pulled:
+        price = _price_at_open(card)
+        rolled.append(
+            {
+                "card_id": card.id,
+                "slot_kind": kind,
+                "rarity": card.rarity,
+                "name": card.name,
+                "number": card.number,
+                "image_url": card.image_small,
+                "price_at_open": str(price) if price is not None else None,
+            }
+        )
         card_read: CardRead = _to_card_read(card)
-        out.append(PulledCard(slot_kind=kind, tier=card.rarity or "Unknown", card=card_read))
+        out.append(
+            PulledCard(
+                slot_kind=kind, tier=card.rarity or "Unknown", price_at_open=price, card=card_read
+            )
+        )
+
+    pack_open = PackOpen(user_id=user_id, set_id=set_id, rolled_cards=rolled)
+    session.add(pack_open)
+    await session.commit()
+    await session.refresh(pack_open)
+
     return PackResult(
+        open_id=pack_open.id,
         set_id=set_id,
         set_name=set_obj.name,
         template=TEMPLATE_DESC,
         disclaimer=DISCLAIMER,
+        packs_remaining_today=await packs_remaining_today(session, user_id),
         cards=out,
     )

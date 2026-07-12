@@ -14,7 +14,7 @@ from rapidfuzz import fuzz, process
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.card import Card
+from app.models.card import Card, Set
 
 
 @dataclass
@@ -48,8 +48,11 @@ async def match_card(
     if not name and not number:
         return []
 
-    # Lightweight columns only — scoring ~20k names must not load ORM rows.
-    cols = select(Card.id, Card.name, Card.number, Card.set_id, Card.image_small)
+    # Lightweight columns only — scoring ~20k names must not load ORM rows. release_date
+    # (joined from Set) is a tiebreak for the name-only fallback below.
+    cols = select(
+        Card.id, Card.name, Card.number, Card.set_id, Card.image_small, Set.release_date
+    ).join(Set, Card.set_id == Set.id)
     if set_id:
         cols = cols.where(Card.set_id == set_id)
 
@@ -62,20 +65,41 @@ async def match_card(
         pool = (await session.execute(cols)).all()
 
     scored: list[tuple[float, object]] = []
-    if name:
+    if name and number:
+        # Number narrows the pool; blend the fuzzy name score with a number-match bonus.
         names = [row.name for row in pool]
-        # process.extract is fast over the full name list; map results back to rows.
         matches = process.extract(name, names, scorer=fuzz.WRatio, limit=max(limit * 4, 20))
-        idx_by_pos = {i: pool[i] for i in range(len(pool))}
         for _matched_name, score, pos in matches:
-            row = idx_by_pos[pos]
+            row = pool[pos]
             name_score = score / 100.0
-            num_match = bool(number and row.number == number)
-            if number:
-                confidence = 0.6 * name_score + 0.4 * (1.0 if num_match else 0.0)
-            else:
-                confidence = name_score
+            num_match = row.number == number
+            confidence = 0.6 * name_score + 0.4 * (1.0 if num_match else 0.0)
             scored.append((confidence, row))
+    elif name:
+        # Name-only fallback (OCR missed the collector number). Many cards can share a name
+        # (e.g. dozens of "Charizard"), so a pure fuzzy score ties them all at one value and,
+        # with a small top-K cut, drops the printing the user actually has. Score the WHOLE
+        # pool and add a small set-age tiebreak: identical-name cards then get distinct scores
+        # and the earliest/iconic printing surfaces instead of an arbitrary 5 tying at 0.90.
+        names = [row.name for row in pool]
+        matches = process.extract(name, names, scorer=fuzz.WRatio, limit=None)
+        cand = [(pool[pos], score / 100.0) for _matched_name, score, pos in matches]
+        dated = [r.release_date for r, _ in cand if r.release_date is not None]
+        if dated and max(dated) != min(dated):
+            newest, oldest = max(dated), min(dated)
+            span = (newest - oldest).days or 1
+
+            def age_bonus(r) -> float:
+                # Older printing -> higher bonus (1.0 oldest .. 0.0 newest); unknown date -> 0.
+                return (newest - r.release_date).days / span if r.release_date else 0.0
+        else:
+
+            def age_bonus(_r) -> float:
+                return 0.0
+
+        for row, name_score in cand:
+            # Name dominates; age only breaks ties among same/similar names (max 0.1 shift).
+            scored.append((0.9 * name_score + 0.1 * age_bonus(row), row))
     else:
         # Number only: every pooled row shares the number; assign a flat mid confidence.
         for row in pool:

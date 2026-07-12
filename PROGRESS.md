@@ -301,3 +301,64 @@ sitting in the untracked `backend/.env` (they stay out of git, but were exposed 
 
 **Next:** Goal 1 — run the full pokemontcg.io catalog sync into the live DB; report counts;
 watch the 500 MB free-tier cap.
+
+---
+
+## Session — 2026-07-12 (post-launch feature work, all deployed to main)
+
+All items below are shipped to `main` and live on Render/Vercel unless noted. Commits authored
+as the user, no `Co-Authored-By` trailers. Project rules now live in
+`.claude/skills/pokevault-rules-SKILL.md` (committed) — the locked-conventions source of truth.
+
+**Dashboard**
+- Portfolio-value-over-time chart reworked to **per-user daily rows** (`portfolio_value_daily`),
+  not reconstructed from per-card history; today's point is the live value; endpoint never 500s
+  (empty series + message on failure). EUR→USD via the one-source valuation (`86e4db5`).
+- "By set" table trimmed to **Set · Owned · Value** (dropped the orphaned Completion column;
+  retired `completion_pct` from schema/valuation; public `sets_completed` recomputed) (`170564b`).
+- **Eye toggle** to hide/show the portfolio value (localStorage, masks the number in the DOM,
+  reactive via `useSyncExternalStore`) (`dfe463a`).
+
+**Catalog / Collection / Deck / Wishlist**
+- Catalog defaults to **All sets**; `number` sort now groups by set release date then **numeric**
+  collector number (handles lettered SV/TG/GG, keeps them) — backend query, not display (`bf58d07`).
+- **Set completion removed**; **Deck** (dream-deck builder: `decks`+`deck_cards`) added, incl. a
+  read-after-write fix (`ff964fd`, `9ac116c`).
+- **Wishlist** sort control (status default) (`bbf1275`).
+- **Numeric validation** both sides (qty 1–99, deck target 1–100, money 0–1,000,000; backend is
+  source of truth via Pydantic + increment/import clamps) (`670cb24`).
+- **Graded value** clarified: PSA multiplier varies by grade; non-PSA (BGS/CGC/SGC) show RAW +
+  "graded premium not applied" label (backend was already correct; UI fix) (`0d2cccd`).
+
+**Simulator → Pulls → Leaderboard**
+- **Pack Simulator** (server-side, approximate rarity-weighted odds) replaced the old
+  portfolio leaderboard (`d969a0b`); bulk "Keep all" / "Keep marked, discard rest" (`f8889fe`).
+- **Virtual pull collection** (`pack_pulls`): Keep now writes there, **never** the IRL collection
+  (separation gate tested); frozen `price_at_pull` + live current value; snapshot job tracks pull
+  cards too. **Best-pulls leaderboard** (`best_single`/`total_value` × `all_time`/`monthly`,
+  query-time seasons, public profiles only). New **Vault** + **Leaderboard** pages (`eca2462`).
+
+**Other**
+- Ambient Pokémon-themed per-page background (CSS/SVG, reduced-motion aware) (`bb3871f`).
+- **Scan M1 fix**: name-only matches no longer tie flat / drop the exact card (set-age tiebreak);
+  base1-4 now ranks #1 for "Charizard" (`5e719c6`).
+- **Comments on public showcases** (`showcase_comments` + `users.comments_enabled`): 500-char cap,
+  5/min rate limit, React-escaped render, Report flag, owner-disable, public-only (`ac8a8a9`).
+- **Auth**: sign-in accepts any password + generic error; neutral anti-enumeration sign-up copy;
+  password-reset + magic-link flows (`/forgot-password`, `/reset-password`) (`ee2d1d0`, `73aceb2`).
+- **Daily snapshot job**: DATABASE_URL secret re-set to the tenant-qualified pooler URL; the
+  **scheduled** run is now green (was failing). Catalog confirmed current (173 sets); Mega
+  Evolution sets (me2pt5/me3/me4) are blank because **pokemontcg.io has no prices for them**
+  (upstream gap, not our bug).
+
+**Migrations applied to prod (session pooler, additive):** `d4f6b8c0e2a3` portfolio_value_daily ·
+`e5a7c9d1f3b4` decks/deck_cards · `f6b8d0e2a4c5` showcase_comments + users.comments_enabled ·
+`a7c9e1f3b5d7` pack_pulls. (Leaderboard removal left `users.show_value_on_leaderboard` as a
+harmless vestige — no destructive drop.)
+
+**OUTSTANDING — pre-launch blocker:**
+- **Signup is currently broken** (`POST /auth/v1/signup` → 500 `unexpected_failure`, no user row):
+  the built-in Supabase mailer is bounce-throttled. Fix = **custom SMTP via Resend** — frontend
+  reset/magic-link code is shipped, but SMTP is **paused awaiting a Resend account** (then wire
+  Supabase SMTP fields + verify a domain's DNS). Do NOT launch publicly until signup delivers.
+- Confirm-email is ON (`mailer_autoconfirm:false`) — launch-safe once SMTP works.

@@ -41,7 +41,6 @@ def _to_read(c: ShowcaseComment, author_handle: str | None, can_delete: bool) ->
         author_handle=author_handle,
         body=c.body,
         created_at=c.created_at,
-        is_reported=c.is_reported,
         can_delete=can_delete,
     )
 
@@ -112,18 +111,5 @@ async def delete_comment(session: AsyncSession, handle: str, viewer: User, comme
     if viewer.id not in (comment.author_user_id, profile.id):
         return False
     await session.execute(delete(ShowcaseComment).where(ShowcaseComment.id == comment_id))
-    await session.commit()
-    return True
-
-
-async def report_comment(session: AsyncSession, handle: str, comment_id: int) -> bool:
-    """Flag a comment for owner/admin review. False if not found on this public profile."""
-    profile = await _public_user(session, handle)
-    if profile is None:
-        return False
-    comment = await session.get(ShowcaseComment, comment_id)
-    if comment is None or comment.profile_user_id != profile.id:
-        return False
-    comment.is_reported = True
     await session.commit()
     return True

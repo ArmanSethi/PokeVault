@@ -8,15 +8,21 @@ price visibility) are free here.
 
 ## Features
 
-- **Full English catalog** — 173 sets / ~20k cards synced from pokemontcg.io, browsable and
-  searchable with current TCGPlayer (USD) prices.
-- **Auth** — Supabase email accounts; the API verifies Supabase JWTs (JWKS).
-- **Collection & portfolio** — add/edit/remove cards (quantity, condition, grade, foil),
-  total value, per-set breakdown, and set-completion progress — strictly per-user.
-- **Price history** — pokemontcg.io has no history, so PokéVault snapshots current prices
-  **daily** into its own table; charts fill in over time.
-- **Free OCR scanning** — upload a photo; Tesseract + fuzzy matching propose catalog
-  candidates (never auto-adds).
+- **Full English catalog** — ~173 sets / ~20k cards from pokemontcg.io, browsable/searchable with
+  current TCGPlayer (USD) prices, rarity filter + sort.
+- **Auth** — Supabase accounts; the API verifies Supabase JWTs (JWKS).
+- **Collection & portfolio** — per-user cards (quantity, condition, grade, foil, per-unit acquired
+  price); portfolio value, total spent, per-set breakdown, and portfolio value over time.
+- **Price history** — pokemontcg.io has none, so PokéVault snapshots tracked cards **daily** into
+  its own table; card + portfolio charts fill in over time.
+- **Wishlist & alerts** and a **dream-deck builder**.
+- **Pack simulator** — server-rolled packs (approximate odds) with an animated flip-stack reveal, a
+  virtual **Vault** (kept pulls, fully separate from your real collection), and an opt-in
+  **best-pulls leaderboard** (daily worldwide top-10 + total-value day/month/all-time windows).
+- **Public showcase** at `/u/:handle` with comments.
+- **Friends & direct messaging** — mutual-friend-gated 1:1 text chat (manual refresh), with block.
+- **Free OCR scanning** — upload a photo; Tesseract + fuzzy matching propose catalog candidates
+  (never auto-adds).
 
 ## Tech stack
 
@@ -33,7 +39,6 @@ price visibility) are free here.
 | ----------- | ---------------------------------------------- |
 | `backend/`  | FastAPI service, ORM models, migrations, tests |
 | `frontend/` | React SPA (Vite + Tailwind)                    |
-| `docs/`     | Architecture, data model, decision records     |
 
 ## Prerequisites
 

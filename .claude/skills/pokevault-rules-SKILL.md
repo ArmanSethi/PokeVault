@@ -104,16 +104,30 @@ rule and surface the conflict to the user.
   `price_at_open`. **Keep writes to the VIRTUAL pull collection (`pack_pulls`), NOT the IRL
   `collection_entries` — the two are fully separate; pulls never touch the real collection.**
   Duplicates are separate `pack_pulls` rows (no 99-cap on pulls); the vault UI stacks them ×N.
-  The simulator lives in its own `/simulator/*` shell (SimulatorLayout) with the flip-stack reveal.
+  The simulator lives in its own `/simulator/*` shell (SimulatorLayout). Reveal = flip-stack
+  (restrained rare+ tell, dramatic finale on the last/hit card) + the original PokéVault card back
+  + flip-click/chime sound with a mute toggle, `prefers-reduced-motion` aware. Vault tiles show the
+  card + current value ONLY (no "pulled at" line). First `/simulator` entry with no handle set →
+  a blocking "choose your handle" step (reuses the existing `^[a-z0-9_-]{3,30}$` validation +
+  PATCH /me); it never auto-opts anyone into the leaderboard.
 - **Best-pulls leaderboard:** ranks by real market price only (never rarity tier). `best_single`
-  uses the frozen `price_at_pull`; `total_value` uses live current value. Seasons (`monthly`)
-  are derived at query time from `pulled_at` — no cron/reset job. **Eligibility = the explicit
-  `leaderboard_opt_in` flag (default off) + a handle + ≥1 pull.** This is SEPARATE from showcase
-  visibility (`is_public`): a user can be on the leaderboard with a private showcase, and the
-  leaderboard links a name to `/u/{handle}` ONLY when that user's showcase is public.
+  = worldwide **DAILY top 10** (today UTC), ranked by frozen `price_at_pull` desc, with no window
+  toggle. `total_value` = SUM of each user's **live** current value within a window; three windows
+  — daily / monthly / all-time — with the day + month LABELS computed LIVE from the current UTC
+  date (never hardcoded), cap top 100. Every window is derived at query time from `pulled_at` — no
+  cron/reset job. Nulls are excluded from `best_single` and contribute 0 to `total_value`.
+  **Eligibility = the explicit `leaderboard_opt_in` flag (default off) + a handle + ≥1 pull**,
+  SEPARATE from `is_public`; link a name to `/u/{handle}` ONLY when that user's showcase is public.
+- **Friends + direct messaging:** mutual-friend gated (request → accept → message); 1:1, text only;
+  **manual refresh only (no websockets/polling)**. The send guard is re-checked server-side on
+  EVERY send — an accepted friendship AND no block in either direction, else 403. Block = unfriend
+  + bar requests/messages until the blocker unblocks. 2000-char cap, React-escaped on render, basic
+  send rate limit. **No report feature — removed everywhere (friends and showcase comments).**
 - **Number limits:** every user-entered numeric field has a sane per-field max, enforced
   on the BACKEND (not just the input's `max`). Copies/qty cap 99; money fields do NOT cap
-  at 99. Enforce min values too (no negatives).
+  at 99. Enforce min values too (no negatives). Clamped inputs use the shared **`NumberField`**:
+  edit RAW while typing (empty/partial allowed), normalize on blur + Enter — never clamp on every
+  keystroke; quantity blank → 1, money blank → null (not 0).
 - **Privacy:** public pages (profile, leaderboard/simulator if public) read ONLY public,
   opt-in data — never private collections, never another user's data. Rank/compute
   server-side; never ship private data to the client. Portfolio value defaults to hidden.

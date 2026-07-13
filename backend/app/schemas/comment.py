@@ -20,7 +20,6 @@ class CommentRead(BaseModel):
     author_handle: str | None = None  # display only; "A collector" fallback applied client-side
     body: str
     created_at: datetime
-    is_reported: bool
     can_delete: bool = False
 
 

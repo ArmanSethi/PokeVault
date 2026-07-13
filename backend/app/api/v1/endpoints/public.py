@@ -76,12 +76,3 @@ async def delete_comment(
     """Delete a comment (auth required; must be the comment's author or the profile owner)."""
     if not await comment_service.delete_comment(session, handle, user, comment_id):
         raise HTTPException(status_code=404, detail="Comment not found")
-
-
-@router.post("/u/{handle}/comments/{comment_id}/report", status_code=204)
-async def report_comment(
-    handle: str, session: SessionDep, user: CurrentUser, comment_id: int
-) -> None:
-    """Flag a comment for review (auth required)."""
-    if not await comment_service.report_comment(session, handle, comment_id):
-        raise HTTPException(status_code=404, detail="Comment not found")

@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ApiError } from "../lib/api";
 import { useAddEntry, useCard, useCardHistory } from "../lib/queries";
 import { hasPrice, money } from "../lib/format";
-import { LIMITS, clampInt, clampMoney } from "../lib/limits";
+import { LIMITS } from "../lib/limits";
+import { NumberField } from "../components/NumberField";
 import { useAuth } from "../context/AuthContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { PriceChart } from "../components/PriceChart";
@@ -157,38 +158,23 @@ export function CardDetailPage() {
               <div className="grid grid-cols-2 gap-3">
                 <label className="text-sm">
                   <span className="mb-1 block">Quantity</span>
-                  <input
-                    type="number"
+                  <NumberField
+                    kind="int"
+                    value={form.quantity ?? LIMITS.cardQty.min}
+                    onCommit={(v) => setForm({ ...form, quantity: v ?? LIMITS.cardQty.min })}
                     min={LIMITS.cardQty.min}
                     max={LIMITS.cardQty.max}
-                    value={form.quantity}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        quantity: clampInt(
-                          Number(e.target.value),
-                          LIMITS.cardQty.min,
-                          LIMITS.cardQty.max,
-                        ),
-                      })
-                    }
                     className={inputClass}
                   />
                 </label>
                 <label className="text-sm">
                   <span className="mb-1 block">Acquired price (optional)</span>
-                  <input
-                    type="number"
-                    step="0.01"
+                  <NumberField
+                    kind="money"
+                    value={form.acquired_price ?? null}
+                    onCommit={(v) => setForm({ ...form, acquired_price: v })}
                     min={LIMITS.money.min}
                     max={LIMITS.money.max}
-                    value={form.acquired_price ?? ""}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        acquired_price: e.target.value ? clampMoney(Number(e.target.value)) : null,
-                      })
-                    }
                     className={inputClass}
                   />
                 </label>

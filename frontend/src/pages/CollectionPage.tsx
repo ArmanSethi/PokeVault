@@ -8,7 +8,8 @@ import {
   useUpdateEntry,
 } from "../lib/queries";
 import { useCurrency } from "../context/CurrencyContext";
-import { LIMITS, clampInt, clampMoney } from "../lib/limits";
+import { LIMITS } from "../lib/limits";
+import { NumberField } from "../components/NumberField";
 import { RAW_GRADE_NOTE, gradedButRaw } from "../lib/grading";
 import { EmptyState, ErrorState } from "../components/States";
 import { TableSkeleton } from "../components/Skeleton";
@@ -328,7 +329,9 @@ function EditModal({
   const [quantity, setQuantity] = useState(entry.quantity);
   const [condition, setCondition] = useState(entry.condition ?? "");
   const [grade, setGrade] = useState(entry.grade ?? "");
-  const [acquired, setAcquired] = useState(String(entry.acquired_price ?? ""));
+  const [acquired, setAcquired] = useState<number | null>(
+    entry.acquired_price != null ? Number(entry.acquired_price) : null,
+  );
 
   useEffect(() => {
     firstRef.current?.focus();
@@ -348,7 +351,7 @@ function EditModal({
           quantity,
           condition: condition || null,
           grade: grade || null,
-          acquired_price: acquired === "" ? null : clampMoney(Number(acquired)),
+          acquired_price: acquired,
         },
       });
       onSaved();
@@ -382,17 +385,13 @@ function EditModal({
         <div className="grid grid-cols-2 gap-3 text-sm">
           <label>
             <span className="mb-1 block">Quantity</span>
-            <input
+            <NumberField
               ref={firstRef}
-              type="number"
+              kind="int"
+              value={quantity}
+              onCommit={(v) => setQuantity(v ?? LIMITS.cardQty.min)}
               min={LIMITS.cardQty.min}
               max={LIMITS.cardQty.max}
-              value={quantity}
-              onChange={(e) =>
-                setQuantity(
-                  clampInt(Number(e.target.value), LIMITS.cardQty.min, LIMITS.cardQty.max),
-                )
-              }
               className={inputClass}
             />
           </label>
@@ -406,13 +405,12 @@ function EditModal({
           />
           <label>
             <span className="mb-1 block">Acquired price</span>
-            <input
-              type="number"
-              step="0.01"
+            <NumberField
+              kind="money"
+              value={acquired}
+              onCommit={setAcquired}
               min={LIMITS.money.min}
               max={LIMITS.money.max}
-              value={acquired}
-              onChange={(e) => setAcquired(e.target.value)}
               className={inputClass}
             />
           </label>

@@ -326,7 +326,6 @@ export interface Comment {
   author_handle: string | null;
   body: string;
   created_at: string;
-  is_reported: boolean;
   can_delete: boolean;
 }
 

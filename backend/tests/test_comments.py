@@ -71,7 +71,7 @@ async def test_disabled_and_not_public(db_session):
         await svc.add_comment(db_session, private.handle, author, CommentCreate(body="nope"))
 
 
-async def test_delete_permissions_and_report(db_session):
+async def test_delete_permissions(db_session):
     owner = await _user(db_session)
     author = await _user(db_session)
     stranger = await _user(db_session)
@@ -79,10 +79,6 @@ async def test_delete_permissions_and_report(db_session):
 
     # Stranger cannot delete.
     assert await svc.delete_comment(db_session, owner.handle, stranger, c.id) is False
-    # Report flags it.
-    assert await svc.report_comment(db_session, owner.handle, c.id) is True
-    flagged = await svc.list_comments(db_session, owner.handle, viewer=owner)
-    assert flagged.comments[0].is_reported is True
     # Owner can delete any comment on their showcase.
     assert await svc.delete_comment(db_session, owner.handle, owner, c.id) is True
     assert (await svc.list_comments(db_session, owner.handle, viewer=owner)).comments == []

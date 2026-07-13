@@ -7,7 +7,6 @@ import {
   useFriendState,
   usePublicCollection,
   usePublicProfile,
-  useReportComment,
   useRequestFriend,
   useStartConversation,
 } from "../lib/queries";
@@ -222,7 +221,6 @@ function CommentsSection({ handle }: { handle: string }) {
   const comments = useComments(handle);
   const add = useAddComment(handle);
   const del = useDeleteComment(handle);
-  const report = useReportComment(handle);
   const toast = useToast();
   const [body, setBody] = useState("");
 
@@ -301,31 +299,16 @@ function CommentsSection({ handle }: { handle: string }) {
                       @{c.author_handle ?? "a collector"}
                     </span>
                     <span>· {new Date(c.created_at).toLocaleString()}</span>
-                    {c.is_reported && c.can_delete && (
-                      <span className="text-amber-600 dark:text-amber-400">· ⚠ reported</span>
-                    )}
                   </div>
                   {/* Plain text — React escapes it; comment markup can never execute. */}
                   <p className="whitespace-pre-wrap break-words text-sm">{c.body}</p>
-                  {loggedIn && (
+                  {loggedIn && c.can_delete && (
                     <div className="mt-2 flex gap-3 text-xs">
-                      {c.can_delete && (
-                        <button
-                          onClick={() => del.mutate(c.id)}
-                          className="text-danger-600 hover:underline dark:text-danger-500"
-                        >
-                          Delete
-                        </button>
-                      )}
                       <button
-                        onClick={() =>
-                          report.mutate(c.id, {
-                            onSuccess: () => toast.success("Reported for review."),
-                          })
-                        }
-                        className="text-slate-500 hover:underline dark:text-slate-400"
+                        onClick={() => del.mutate(c.id)}
+                        className="text-danger-600 hover:underline dark:text-danger-500"
                       >
-                        Report
+                        Delete
                       </button>
                     </div>
                   )}

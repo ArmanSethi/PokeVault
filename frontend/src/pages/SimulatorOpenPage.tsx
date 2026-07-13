@@ -218,15 +218,19 @@ export function SimulatorOpenPage() {
                     <p className="text-xs text-slate-400">
                       {hasPrice(pc.price_at_open) ? format(pc.price_at_open) : "No price yet"}
                     </p>
+                    {/* Action button: the label/color is what a click DOES. A kept card (bright)
+                        offers "Discard"; a discarded card (dim) offers "Keep". Tile styling +
+                        confirm()'s kept set are unchanged — the bright cards are exactly what's
+                        sent to /keep. */}
                     <button
                       onClick={() => toggle(i)}
                       className={`mt-1 rounded border px-2 py-1 text-xs font-medium ${
                         kept
-                          ? "border-amber-400/60 text-amber-300 hover:bg-amber-400/10"
-                          : "border-white/20 text-slate-400 hover:bg-white/10"
+                          ? "border-white/20 text-slate-300 hover:bg-white/10"
+                          : "border-amber-400/60 text-amber-300 hover:bg-amber-400/10"
                       }`}
                     >
-                      {kept ? "✓ Keep" : "Discard"}
+                      {kept ? "Discard" : "✓ Keep"}
                     </button>
                   </div>
                 </div>

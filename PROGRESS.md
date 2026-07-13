@@ -5,6 +5,37 @@ Detailed rationale lives in `docs/`.
 
 ---
 
+## 2026-07-13 — Feature round + consistency pass ✅ (shipped to main across several commits)
+
+Built on the simulator base below. All deployed via Render/Vercel; migrations on the session
+pooler (head `e1a3c5b7d9f2`).
+
+- **Collection/dashboard:** reused the existing per-unit `acquired_price` (no migration); dashboard
+  **Total spent** = Σ(acquired_price×qty), IRL-only, nulls skipped; collection grid shows
+  "acquired at $X"; removed the inline qty steppers (grid + table → static ×N); Edit on the card
+  title row with trash below; **separate** hide toggles for portfolio value vs total spent.
+- **Edit dialog:** dropped the 1–99 / 0–1,000,000 helper captions; **removed Notes fully** (field,
+  column drop migration `c9e2f4a6b8d1` — backup showed 0 non-empty rows).
+- **Card detail:** "← Back" now uses real router history (navigate(-1)) with a Catalog fallback
+  when there's no in-app history.
+- **Leaderboard (final):** `best_single` = worldwide DAILY top 10 (frozen price desc, no window);
+  `total_value` = live value across daily/monthly/all-time windows with LIVE UTC day/month labels;
+  dedicated `leaderboard_opt_in` (separate from `is_public`).
+- **Friends + 1:1 DMs** (`e1a3c5b7d9f2`: friendships/blocks/conversations/messages): mutual-friend
+  gated, manual-refresh, block; send guard re-checked every send; paper-plane nav + `/messages`.
+- **Consistency pass:** Vault tiles → card + current value only (no "pulled at"); all clamped
+  number inputs → shared `NumberField` (edit-raw, normalize on blur+Enter; qty blank→1, money
+  blank→null); **report feature removed everywhere** (friends never built it; tore out the
+  showcase-comment report + endpoint + UI, left `showcase_comments.is_reported` vestigial); fixed
+  the pack summary keep/discard button (was a state-label toggle that read inverted → now an action
+  button; tile styling + `/keep` data were already correct). Updated README, CLAUDE.md (status +
+  Vite 8), and the rules skill; `docs/` links removed (dir doesn't exist).
+
+**Open item:** portfolio "value over time" starts at the first per-user daily snapshot (07-12);
+earlier days aren't reconstructed (accepted). Signup emails still need custom Resend SMTP.
+
+---
+
 ## 2026-07-13 — Simulator: server-authoritative roll + own shell + flip-stack reveal ⏳
 
 Built the master-prompt simulator feature onto the existing (shipped) pack/pulls/leaderboard code.

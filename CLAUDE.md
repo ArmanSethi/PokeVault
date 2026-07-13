@@ -16,7 +16,7 @@ conditions, with valuation and import tooling. Pokémon cards only — no other 
 | DB driver | asyncpg (app) · psycopg 3 (Alembic migrations)                  |
 | Models    | Pydantic 2.13 · pydantic-settings 2.14                          |
 | Server    | uvicorn 0.49                                                    |
-| Frontend  | Vite 7 · React 19 · TypeScript 5.6 · Tailwind CSS 4 (`@tailwindcss/vite`) |
+| Frontend  | Vite 8 · React 19 · TypeScript 5.6 · Tailwind CSS 4 (`@tailwindcss/vite`) |
 | Database  | Postgres (Supabase-managed)                                     |
 | Tooling   | uv (Python) · pnpm 10 (JS) · ruff · eslint · prettier · pre-commit |
 
@@ -150,48 +150,33 @@ pre-commit install        # once; runs ruff (backend) + prettier (frontend)
 
 _Keep this section updated as the project evolves._
 
-**As of 2026-07-07 — Goal 0 complete; backend Goals 1–4 code-complete (see `PROGRESS.md`).**
+**Live on Render (API) + Vercel (SPA) + Supabase (Postgres/Auth), all free tier.** Backend is
+covered by pytest against the live Supabase DB; frontend `pnpm build`/`lint` clean. Migrations run
+on the Supabase **session pooler** (`+asyncpg` app / `+psycopg` v3 Alembic); current head is
+`e1a3c5b7d9f2`. Table is `collection_entries` (code-is-truth).
 
-Backend is substantially built and covered by **25 real pytest passing against the live
-Supabase DB** (not stubs, not skipped). The prior "scaffold only" status below was outdated.
+Shipped features:
 
-- ✅ Repo under **git** (baseline `f263208`); `backend/.env` gitignored.
-- ✅ ORM models: `Set`, `Card`, `CollectionEntry` (has `user_id`), `CardPriceCurrent`,
-  `PriceHistory`, `User`. 3 migrations applied on the Supabase **session pooler**
-  (`...pooler.supabase.com:5432`, `postgres.<ref>`); `+asyncpg` app / `+psycopg` (v3) Alembic.
-- ✅ **Real** endpoints: cards list/get/history, collection CRUD + summary + history, `/me`.
-  Auth is genuine Supabase JWKS verification (sig/exp/aud/iss) — `app/core/security.py`.
-- ✅ Ingest (`app/ingest/`): idempotent resumable sync CLI + DB-only `snapshot_prices` job.
-- ✅ Frontend on **Tailwind v4 CSS-first + React 19 + Vite 8**; `pnpm build`/`lint` clean;
-  both dev servers boot.
+- **Catalog** — full English catalog (~173 sets / ~20k cards) from pokemontcg.io; browse/search,
+  current TCGPlayer (USD) prices, rarity filter + sort.
+- **Auth** — Supabase JWTs verified via JWKS (`app/core/security.py`); thin `users` mirror.
+- **Collection & portfolio** — per-user CRUD (quantity, condition, grade, foil, per-unit
+  `acquired_price`). Dashboard: portfolio value, **total spent** (Σ `acquired_price`×qty, IRL only,
+  nulls skipped), per-set breakdown, and portfolio-value-over-time (per-user `portfolio_value_daily`).
+- **Price history** — owned + wishlist + pull card IDs snapshotted daily (GitHub Actions) into
+  `price_history`; card + portfolio series endpoints.
+- **Scan** — Tesseract OCR proposes catalog matches (propose-only; the Docker image ships Tesseract).
+- **Wishlist + alerts**; **Deck** (dream-deck builder).
+- **Pack simulator** — its own `/simulator/*` shell (SimulatorLayout); server-authoritative roll
+  (`pack_opens` + `rolled_cards`, 2 packs/day UTC quota), flip-stack reveal + original card back +
+  sound/mute + reduced-motion. **Vault** (`pack_pulls`, fully separate from the IRL collection;
+  duplicates stack ×N). **Best-pulls leaderboard** — daily worldwide top-10 `best_single`;
+  day/month/all-time windows for `total_value`; a dedicated `leaderboard_opt_in` (separate from
+  `is_public`), first-simulator-entry handle gate.
+- **Public showcase** `/u/:handle` + comments. (No report feature — removed everywhere.)
+- **Friends + 1:1 direct messaging** — mutual-friend gated (request → accept → message),
+  manual-refresh (no realtime), text-only, block/unblock; paper-plane nav + unread badge →
+  `/messages` (Chats / Requests).
 
-- ✅ **Goal 1 done:** full catalog synced — **173 sets / 20,314 cards / 52,021 prices**
-  (DB 71 MB). Added `/sets` read API + `tests/test_catalog.py`. Sync is now batched (multi-row
-  upserts per set) and resilient (per-set skip + end-of-run retry). Full suite: 38 pass, 3 skip.
-
-**Data reality:** full English catalog ingested.
-**Table naming:** `collection_entries` (not `collection_items`) — kept per code-is-truth.
-
-- ✅ **Goal 4 done:** snapshot job runs (fixed standalone import bug); daily schedulers added
-  (GitHub Actions + Task Scheduler + cron). Card + portfolio series endpoints verified.
-  **Price history is owned-cards-only** (snapshot filters to `collection_entries`; `sync_catalog`
-  no longer writes history) — keeps daily growth <1 MB/day within the Supabase free tier.
-- ✅ **Goal 6 built:** full React 19 + Tailwind v4 SPA (auth, catalog, collection, dashboard,
-  set-completion, price charts, scan). `pnpm build`/`lint` clean.
-- ✅ **Goal 5 done:** OCR scan pipeline built + **verified in the Docker image** (Tesseract 5.3.0,
-  `test_scan.py` 7/7 green in-container). No host Tesseract needed.
-- ✅ **Goal 7 config-ready + Docker verified:** `render.yaml` (runtime: docker),
-  `backend/Dockerfile` (builds clean; container serves health + 173 sets), `frontend/vercel.json`,
-  `docs/deployment.md`.
-
-**All 8 goals functionally verified.** On 2026-07-09 the full flow was driven end-to-end against
-the running stack (Docker backend :8000 + Vite :5173) with a real Supabase JWT: auth/`me`,
-catalog, collection + portfolio, and scan→confirm. Repo pushed to GitHub (`ArmanSethi/PokeVault`).
-
-**Outstanding (human-only):**
-
-- Goal 7 go-live: create Render/Vercel from the committed config (`render.yaml`,
-  `frontend/vercel.json`) + set dashboard secrets; add GitHub Actions secrets for the daily snapshot.
-- Recommended: rotate the DB password + API key that were exposed in `backend/.env`.
-- Note: Supabase "Confirm email" is currently OFF (enabled headless signup for the e2e). Re-enable
-  it (and add email templates) before real public launch.
+**Pre-launch (human-only):** custom SMTP (Resend) for Supabase signup emails is still pending; keep
+the daily snapshot GitHub Action green; rotate any secrets ever exposed on disk.

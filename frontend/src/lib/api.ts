@@ -150,12 +150,6 @@ export const api = {
       { method: "DELETE" },
       { auth: true },
     ),
-  reportComment: (handle: string, id: number) =>
-    request<void>(
-      `/public/u/${encodeURIComponent(handle)}/comments/${id}/report`,
-      { method: "POST" },
-      { auth: true },
-    ),
 
   // ---- collection (auth) ----
   listCollection: () => request<CollectionEntry[]>("/collection", {}, { auth: true }),

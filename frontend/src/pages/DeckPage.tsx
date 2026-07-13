@@ -12,6 +12,7 @@ import {
 } from "../lib/queries";
 import { useCurrency } from "../context/CurrencyContext";
 import { LIMITS, clampInt } from "../lib/limits";
+import { NumberField } from "../components/NumberField";
 import { EmptyState, ErrorState } from "../components/States";
 import { TableSkeleton } from "../components/Skeleton";
 import { useToast } from "../components/Toast";
@@ -75,16 +76,12 @@ export function DeckPage() {
           <span className="mb-1 block text-slate-500 dark:text-slate-400">
             Target size ({LIMITS.deckTarget.min}–{LIMITS.deckTarget.max})
           </span>
-          <input
-            type="number"
+          <NumberField
+            kind="int"
+            value={newSize}
+            onCommit={(v) => setNewSize(v ?? LIMITS.deckTarget.min)}
             min={LIMITS.deckTarget.min}
             max={LIMITS.deckTarget.max}
-            value={newSize}
-            onChange={(e) =>
-              setNewSize(
-                clampInt(Number(e.target.value), LIMITS.deckTarget.min, LIMITS.deckTarget.max),
-              )
-            }
             className={`${inputClass} w-28`}
           />
         </label>
@@ -223,16 +220,12 @@ function DeckDetail({ deck }: { deck: Deck }) {
               <span className="mb-1 block text-slate-500 dark:text-slate-400">
                 Target size ({LIMITS.deckTarget.min}–{LIMITS.deckTarget.max})
               </span>
-              <input
-                type="number"
+              <NumberField
+                kind="int"
+                value={size}
+                onCommit={(v) => setSize(v ?? LIMITS.deckTarget.min)}
                 min={LIMITS.deckTarget.min}
                 max={LIMITS.deckTarget.max}
-                value={size}
-                onChange={(e) =>
-                  setSize(
-                    clampInt(Number(e.target.value), LIMITS.deckTarget.min, LIMITS.deckTarget.max),
-                  )
-                }
                 className={`${inputClass} w-28`}
               />
             </label>

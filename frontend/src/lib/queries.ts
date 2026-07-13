@@ -386,14 +386,6 @@ export function useDeleteComment(handle: string) {
   });
 }
 
-export function useReportComment(handle: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) => api.reportComment(handle, id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["comments", handle] }),
-  });
-}
-
 // ---- pack simulator ----
 
 export function useOpenPack() {

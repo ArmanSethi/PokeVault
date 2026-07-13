@@ -21,7 +21,6 @@ interface Stack {
   currentEach: number | null;
   totalCurrent: number;
   pulledAt: string;
-  priceAtPull: string | null;
 }
 
 /** Virtual pull collection (Vault). Separate from the IRL collection — these are pack pulls. */
@@ -37,8 +36,8 @@ export function VaultPage() {
 
   const rows = useMemo(() => pulls.data ?? [], [pulls.data]);
 
-  // Stack duplicates. Rows arrive newest-first (backend orders by pulled_at desc), so the first
-  // row seen for a card_id is the most-recent pull — we take its frozen price for the "pulled at".
+  // Stack duplicates into one tile per card_id (rows arrive newest-first). pulledAt (most-recent)
+  // is kept only for the "recently pulled" sort — tiles show card + current value only.
   const stacks = useMemo(() => {
     const map = new Map<string, Stack>();
     for (const p of rows) {
@@ -55,7 +54,6 @@ export function VaultPage() {
           currentEach: priced ? Number(p.current_value) : null,
           totalCurrent: 0,
           pulledAt: p.pulled_at,
-          priceAtPull: p.price_at_pull,
         };
         map.set(p.card_id, s);
       }
@@ -180,15 +178,7 @@ export function VaultPage() {
                     </p>
                     <p className="text-sm font-semibold text-brand-600 dark:text-brand-400">
                       {s.currentEach !== null ? format(s.totalCurrent) : "No price yet"}
-                      {s.count > 1 && s.currentEach !== null && (
-                        <span className="ml-1 text-xs font-normal text-slate-400">
-                          ({format(s.currentEach)} ea)
-                        </span>
-                      )}
                     </p>
-                    {hasPrice(s.priceAtPull) && (
-                      <p className="text-xs text-slate-400">pulled at {format(s.priceAtPull)}</p>
-                    )}
                   </div>
                 </div>
               ))}
@@ -201,7 +191,6 @@ export function VaultPage() {
                     <th className="px-4 py-2">Card</th>
                     <th className="px-4 py-2">Set</th>
                     <th className="px-4 py-2 text-right">Qty</th>
-                    <th className="px-4 py-2 text-right">Pulled at</th>
                     <th className="px-4 py-2 text-right">Current value</th>
                   </tr>
                 </thead>
@@ -220,9 +209,6 @@ export function VaultPage() {
                         {s.set_id} · #{s.number}
                       </td>
                       <td className="px-4 py-2 text-right">×{s.count}</td>
-                      <td className="px-4 py-2 text-right text-slate-500">
-                        {hasPrice(s.priceAtPull) ? format(s.priceAtPull) : "—"}
-                      </td>
                       <td className="px-4 py-2 text-right font-medium">
                         {s.currentEach !== null ? format(s.totalCurrent) : "—"}
                       </td>

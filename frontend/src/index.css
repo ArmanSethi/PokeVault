@@ -193,6 +193,36 @@
   }
 }
 
+/* ---- Dashboard "Featured card" cross-fade (opacity only) ---- */
+@keyframes feat-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes feat-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.feat-in {
+  animation: feat-in 400ms ease;
+}
+.feat-out {
+  animation: feat-out 400ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .feat-in,
+  .feat-out {
+    animation: none;
+  }
+}
+
 /* ---- Pack simulator: dark arcade shell + flip-stack reveal ---- */
 
 /* Always-dark cabinet backdrop (independent of the app light/dark toggle). */
@@ -212,7 +242,8 @@
   position: relative;
   width: 100%;
   transform-style: preserve-3d;
-  transition: transform 0.55s cubic-bezier(0.2, 0.7, 0.2, 1);
+  /* Spring-like overshoot/settle so the flip feels tactile rather than a linear rotate. */
+  transition: transform 0.62s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .sim-flip-inner.is-flipped {
   transform: rotateY(180deg);
@@ -230,6 +261,136 @@
 }
 .sim-face-rear {
   transform: rotateY(180deg);
+}
+
+/* Rotating vortex swirl on the card back (behind the gem). transform-box:view-box resolves the
+   origin in SVG viewBox coords so it spins around the card centre (95,130). transform-only. */
+.pv-vortex {
+  transform-box: view-box;
+  transform-origin: 95px 130px;
+  animation: pv-vortex-spin 42s linear infinite;
+  will-change: transform;
+}
+@keyframes pv-vortex-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Idle "life" on the face-down card: a slow bob so the stack feels alive while you decide. */
+.sim-bob {
+  animation: sim-bob 3.2s ease-in-out infinite;
+}
+@keyframes sim-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* Parallax tilt toward the cursor/touch point (vars set by JS on hover; eased back on leave). */
+.sim-tilt {
+  transform-style: preserve-3d;
+  transform: rotateX(var(--sim-ty, 0deg)) rotateY(var(--sim-tx, 0deg));
+  transition: transform 0.12s ease-out;
+}
+
+/* Anticipation shimmer swept across a rare+ card back just before it resolves. */
+.sim-charge {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  border-radius: 6%;
+}
+.sim-charge::after {
+  content: "";
+  position: absolute;
+  inset: -40% -60%;
+  background: linear-gradient(
+    115deg,
+    transparent 42%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 58%
+  );
+  animation: sim-charge-sweep 0.34s ease-out;
+}
+@keyframes sim-charge-sweep {
+  0% {
+    transform: translateX(-70%);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(70%);
+    opacity: 0;
+  }
+}
+
+/* Finale: a rarity-colored shockwave ring pulsing out from the card, and a short screen-shake. */
+.sim-shockwave {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 6;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border-radius: 9999px;
+  border: 3px solid currentColor;
+  opacity: 0;
+  pointer-events: none;
+  animation: sim-shockwave 0.7s ease-out forwards;
+}
+@keyframes sim-shockwave {
+  0% {
+    transform: scale(0.3);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(7);
+    opacity: 0;
+  }
+}
+.sim-shake {
+  animation: sim-shake 0.45s ease-in-out;
+}
+@keyframes sim-shake {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(-3px, 1px);
+  }
+  40% {
+    transform: translate(3px, -2px);
+  }
+  60% {
+    transform: translate(-2px, 2px);
+  }
+  80% {
+    transform: translate(2px, -1px);
+  }
+}
+
+/* Momentum tally: a small pop each time the running pack value ticks up. */
+.sim-tick {
+  display: inline-block;
+  animation: sim-tick 0.3s ease-out;
+}
+@keyframes sim-tick {
+  0% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* Finale: lift the hit card above the dim. */
@@ -321,18 +482,27 @@
   }
 }
 
-/* Reduced motion: instant flip, no pop / sparkles / lift / flash. */
+/* Reduced motion: instant flip, static swirl, no bob / tilt / pop / sparkles / charge / shockwave /
+   shake / tick / lift / flash. (Sound stays governed only by the mute toggle.) */
 @media (prefers-reduced-motion: reduce) {
-  .sim-flip-inner {
+  .sim-flip-inner,
+  .sim-tilt {
     transition: none;
   }
+  .pv-vortex,
+  .sim-bob,
   .sim-pop,
   .sim-sparkle,
+  .sim-charge::after,
+  .sim-shockwave,
+  .sim-shake,
+  .sim-tick,
   .sim-finale-label,
   .sim-lift {
     animation: none !important;
     transition: none !important;
   }
+  .sim-tilt,
   .sim-lift {
     transform: none;
   }

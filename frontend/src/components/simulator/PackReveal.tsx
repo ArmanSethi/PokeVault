@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { useCurrency } from "../../context/CurrencyContext";
 import { hasPrice } from "../../lib/format";
 import { hasTell, rarityColor, rarityLabel, sparkleCount } from "../../lib/rarityColor";
-import { playChime, playFlip } from "../../lib/sfx";
+import { playChime, playWhoosh } from "../../lib/sfx";
 import type { PulledCard } from "../../types";
 import { CardBack } from "./CardBack";
 
@@ -20,14 +20,23 @@ function prefersReduced(): boolean {
  * the rest, staggered. Restraint by tier: common/uncommon flip plainly; rare+ get a scale-pop +
  * accent + a sparkle burst that scales with rarity; only the final (hit) card gets the dramatic
  * finale (dim over the sim section, a lifted card, a bigger burst, a rarity-label flash, a chime).
- * Under prefers-reduced-motion the flip is instant and the pop/sparkles are skipped.
+ *
+ * Extra "juice" (all additive, transform/opacity only): the face-down card gets a slow idle bob and
+ * a cursor-parallax tilt; the flip eases with a spring overshoot + a soft whoosh; a rare+ card holds
+ * a brief shimmer of anticipation before it resolves; the hit finale adds a shockwave ring, a short
+ * screen-shake and a crescendo chime; and a running "pack value" ticks up as you reveal. Under
+ * prefers-reduced-motion every animation is disabled and flips are instant — only sound (governed by
+ * the mute toggle) remains.
  */
 export function PackReveal({ cards, onComplete }: { cards: PulledCard[]; onComplete: () => void }) {
   const n = cards.length;
   const [step, setStep] = useState(0);
   const [faceUp, setFaceUp] = useState(false);
   const [auto, setAuto] = useState(false);
+  const [charging, setCharging] = useState(false); // rare+ anticipation beat before the flip lands
+  const [shake, setShake] = useState(false); // brief finale screen-shake
   const reduced = useRef(prefersReduced()).current;
+  const tiltRef = useRef<HTMLButtonElement>(null);
   const timers = useRef<number[]>([]);
   const { format } = useCurrency();
 
@@ -41,14 +50,45 @@ export function PackReveal({ cards, onComplete }: { cards: PulledCard[]; onCompl
 
   function sound(i: number) {
     if (i === n - 1) playChime();
-    else playFlip();
+    else playWhoosh();
+  }
+
+  // Parallax tilt toward the pointer — only while the back is face-down (its "holdable" feel).
+  function tilt(e: PointerEvent<HTMLButtonElement>) {
+    if (faceUp || auto || charging || reduced) return;
+    const el = tiltRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width - 0.5;
+    const py = (e.clientY - r.top) / r.height - 0.5;
+    el.style.setProperty("--sim-tx", `${(px * 20).toFixed(2)}deg`);
+    el.style.setProperty("--sim-ty", `${(-py * 20).toFixed(2)}deg`);
+  }
+  function untilt() {
+    const el = tiltRef.current;
+    if (!el) return;
+    el.style.setProperty("--sim-tx", "0deg");
+    el.style.setProperty("--sim-ty", "0deg");
   }
 
   function tap() {
-    if (auto) return;
+    if (auto || charging) return;
     if (!faceUp) {
-      setFaceUp(true);
-      sound(step);
+      untilt(); // settle the tilt as the card commits to the flip
+      // Rare+: a split-second shimmer of tension before the face lands, so good pulls feel earned.
+      if (hasTell(card.tier) && !reduced) {
+        setCharging(true);
+        timers.current.push(
+          window.setTimeout(() => {
+            setCharging(false);
+            setFaceUp(true);
+            sound(step);
+          }, 340),
+        );
+      } else {
+        setFaceUp(true);
+        sound(step);
+      }
     } else if (step < n - 1) {
       setStep(step + 1);
       setFaceUp(false);
@@ -85,13 +125,29 @@ export function PackReveal({ cards, onComplete }: { cards: PulledCard[]; onCompl
   const tell = faceUp && hasTell(card.tier);
   const sparkles = tell && !reduced ? sparkleCount(card.tier) : 0;
   const finale = isLast && faceUp;
+  const idleBob = !faceUp && !auto && !charging && !reduced;
+
+  // Running "pack value so far": sum of open-time prices for cards already revealed. Builds toward
+  // the finale. Uses the existing frozen price_at_open — no new data.
+  const revealedTotal = cards.reduce((sum, c, i) => {
+    const shown = i < step || (i === step && faceUp);
+    return shown && hasPrice(c.price_at_open) ? sum + Number(c.price_at_open) : sum;
+  }, 0);
+
+  // Kick a short screen-shake when the hit finale lands.
+  useEffect(() => {
+    if (!finale || reduced) return;
+    setShake(true);
+    const id = window.setTimeout(() => setShake(false), 460);
+    return () => clearTimeout(id);
+  }, [finale, reduced]);
 
   return (
     <div className="relative flex flex-col items-center py-4">
       <p className="mb-2 text-sm font-medium text-slate-300">
         Card {step + 1} of {n}
       </p>
-      <div className="mb-6 flex gap-1.5">
+      <div className="mb-3 flex gap-1.5">
         {cards.map((c, i) => {
           const shown = i < step || (i === step && faceUp);
           return (
@@ -104,41 +160,59 @@ export function PackReveal({ cards, onComplete }: { cards: PulledCard[]; onCompl
         })}
       </div>
 
+      {/* Momentum: running pack value, popping on each tick up (key remounts → replays the pop). */}
+      <p className="mb-6 text-xs font-medium text-slate-400">
+        Pack value{" "}
+        <span key={revealedTotal} className="sim-tick font-semibold text-amber-300">
+          {format(revealedTotal)}
+        </span>
+      </p>
+
       {finale && !reduced && <div className="sim-finale-dim" aria-hidden />}
 
-      <div className={`relative ${finale ? "z-10" : ""}`}>
-        <button
-          onClick={tap}
-          disabled={auto}
-          aria-label={faceUp ? (isLast ? "Finish reveal" : "Next card") : "Flip card"}
-          className={`sim-flip block w-52 sm:w-60 ${finale ? "sim-lift" : ""}`}
-        >
-          <div
-            className={`sim-flip-inner aspect-[190/266] ${faceUp ? "is-flipped" : ""} ${
-              reduced ? "sim-instant" : ""
-            }`}
+      <div className={`relative ${finale ? "z-10" : ""} ${shake ? "sim-shake" : ""}`}>
+        <div className={`sim-flip mx-auto block w-52 sm:w-60 ${finale ? "sim-lift" : ""} ${idleBob ? "sim-bob" : ""}`}>
+          <button
+            ref={tiltRef}
+            onClick={tap}
+            onPointerMove={tilt}
+            onPointerLeave={untilt}
+            disabled={auto}
+            aria-label={faceUp ? (isLast ? "Finish reveal" : "Next card") : "Flip card"}
+            className="sim-tilt block w-full"
           >
-            <div className="sim-face sim-face-front">
-              <CardBack className="h-full w-full" />
-            </div>
             <div
-              className={`sim-face sim-face-rear bg-slate-900 ${tell ? "sim-pop" : ""}`}
-              style={
-                tell ? { boxShadow: `0 0 0 3px ${accent}, 0 0 30px -2px ${accent}` } : undefined
-              }
+              className={`sim-flip-inner aspect-[190/266] ${faceUp ? "is-flipped" : ""} ${
+                reduced ? "sim-instant" : ""
+              }`}
             >
-              {card.card.image_url ? (
-                <img
-                  src={card.card.image_url}
-                  alt={card.card.name}
-                  className="h-full w-full object-contain"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-4xl">🃏</div>
-              )}
+              <div className="sim-face sim-face-front">
+                <CardBack className="h-full w-full" />
+                {charging && <span className="sim-charge" aria-hidden />}
+              </div>
+              <div
+                className={`sim-face sim-face-rear bg-slate-900 ${tell ? "sim-pop" : ""}`}
+                style={
+                  tell ? { boxShadow: `0 0 0 3px ${accent}, 0 0 30px -2px ${accent}` } : undefined
+                }
+              >
+                {card.card.image_url ? (
+                  <img
+                    src={card.card.image_url}
+                    alt={card.card.name}
+                    className="h-full w-full object-contain"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-4xl">🃏</div>
+                )}
+              </div>
             </div>
-          </div>
-        </button>
+          </button>
+        </div>
+
+        {finale && !reduced && (
+          <span className="sim-shockwave" style={{ color: accent }} aria-hidden />
+        )}
 
         {sparkles > 0 && (
           <div className="pointer-events-none absolute inset-0" aria-hidden>

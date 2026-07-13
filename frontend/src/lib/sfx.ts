@@ -97,11 +97,49 @@ export function playFlip(): void {
   blip(ac, "triangle", 520, 180, ac.currentTime, 0.08, 0.16);
 }
 
-/** A rising chime for the hit finale. */
+// A short burst of white noise, cached per audio context — the raw material for the whoosh.
+let noiseBuf: AudioBuffer | null = null;
+function noise(ac: AudioContext): AudioBuffer {
+  if (noiseBuf && noiseBuf.sampleRate === ac.sampleRate) return noiseBuf;
+  const len = Math.floor(ac.sampleRate * 0.3);
+  const buf = ac.createBuffer(1, len, ac.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  noiseBuf = buf;
+  return buf;
+}
+
+/** A soft "card whoosh" for each flip: filtered noise with a quick swell and a downward
+ * band-pass sweep, like a card cutting the air. Governed by the same mute toggle. */
+export function playWhoosh(): void {
+  if (muted) return;
+  const ac = audio();
+  if (!ac) return;
+  const t = ac.currentTime;
+  const src = ac.createBufferSource();
+  src.buffer = noise(ac);
+  const bp = ac.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.Q.value = 0.8;
+  bp.frequency.setValueAtTime(2600, t);
+  bp.frequency.exponentialRampToValueAtTime(650, t + 0.18);
+  const gain = ac.createGain();
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.exponentialRampToValueAtTime(0.13, t + 0.03);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+  src.connect(bp).connect(gain).connect(ac.destination);
+  src.start(t);
+  src.stop(t + 0.24);
+}
+
+/** A rising chime for the hit finale — five notes climbing with a swelling volume (crescendo)
+ * and a shimmer note on top. Kept to ~1s so ripping many packs doesn't get tiring. */
 export function playChime(): void {
   if (muted) return;
   const ac = audio();
   if (!ac) return;
-  const notes = [523.25, 659.25, 783.99, 1046.5]; // C5 · E5 · G5 · C6 — rising
-  notes.forEach((f, i) => blip(ac, "sine", f, f, ac.currentTime + i * 0.09, 0.5, 0.22));
+  const t = ac.currentTime;
+  const notes = [523.25, 659.25, 783.99, 1046.5, 1318.51]; // C5 · E5 · G5 · C6 · E6 — rising
+  notes.forEach((f, i) => blip(ac, "sine", f, f, t + i * 0.1, 0.55, 0.11 + i * 0.03)); // swell
+  blip(ac, "triangle", 1567.98, 1567.98, t + notes.length * 0.1, 0.55, 0.14); // G6 sparkle tail
 }

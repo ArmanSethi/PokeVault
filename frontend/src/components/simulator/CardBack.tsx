@@ -1,27 +1,36 @@
 import { useId } from "react";
 
 /**
- * The locked PokéVault card back (master spec §7): a navy field, a 36-ray sunburst clipped to an
- * inner rounded frame, concentric rings, a gold double frame, four corner diamonds, a central
- * roundel with a faceted gold gem crest, and the POKÉVAULT wordmark. Original artwork — never the
- * real (trademarked) Pokémon card back. All colors are fixed hex: a card back is a physical object,
- * so it does NOT invert in dark mode. The gem is a placeholder for an eventual logo mark.
+ * The locked PokéVault card back (master spec §7): a navy field with a slowly rotating gold-navy
+ * VORTEX/swirl (14 interleaved blades) clipped to an inner rounded frame, concentric rings, a gold
+ * double frame, four corner diamonds, a central roundel with a faceted gold gem crest, and the
+ * POKÉVAULT wordmark. The rings and gem are drawn OVER the swirl, so only the vortex moves. Original
+ * artwork — never the real (trademarked) Pokémon card back. All colors are fixed hex: a card back is
+ * a physical object, so it does NOT invert in dark mode. The gem is a placeholder for an eventual
+ * logo mark. The swirl spins via CSS (`.pv-vortex`, ~42s/turn) and renders STATIC under
+ * prefers-reduced-motion.
  */
 export function CardBack({ className }: { className?: string }) {
   const clip = useId();
-  const cx = 95;
-  const cy = 130;
-  const R = 215;
 
-  const rays = Array.from({ length: 36 }, (_, i) => {
-    const a0 = ((i * 10 - 2) * Math.PI) / 180;
-    const a1 = ((i * 10 + 2) * Math.PI) / 180;
-    const x0 = (cx + Math.cos(a0) * R).toFixed(1);
-    const y0 = (cy + Math.sin(a0) * R).toFixed(1);
-    const x1 = (cx + Math.cos(a1) * R).toFixed(1);
-    const y1 = (cy + Math.sin(a1) * R).toFixed(1);
-    return <path key={i} d={`M${cx} ${cy} L${x0} ${y0} L${x1} ${y1} Z`} fill="#164079" />;
-  });
+  // Vortex behind the gem: 7 outer + 7 inner blades, each placed at the card centre (95,130) and
+  // rotated evenly; the inner ring is offset by 25° so the blades interleave. The whole group spins.
+  const outer = Array.from({ length: 7 }, (_, i) => (
+    <path
+      key={`o${i}`}
+      d="M0 0 C 26 -7 58 -16 92 -10 C 58 4 28 10 0 0 Z"
+      fill="#164079"
+      transform={`translate(95 130) rotate(${((i * 360) / 7).toFixed(3)})`}
+    />
+  ));
+  const inner = Array.from({ length: 7 }, (_, i) => (
+    <path
+      key={`i${i}`}
+      d="M0 0 C 18 -5 40 -11 60 -7 C 40 3 18 7 0 0 Z"
+      fill="#1d4885"
+      transform={`translate(95 130) rotate(${((i * 360) / 7 + 25).toFixed(3)})`}
+    />
+  ));
 
   const corners: Array<[number, number]> = [
     [20, 20],
@@ -46,7 +55,11 @@ export function CardBack({ className }: { className?: string }) {
       </defs>
       <rect x="0" y="0" width="190" height="266" fill="#0e2f5e" />
       <g clipPath={`url(#${clip})`}>
-        {rays}
+        <g className="pv-vortex">
+          {outer}
+          {inner}
+        </g>
+        {/* rings over the swirl — only the vortex moves */}
         <circle cx="95" cy="130" r="52" fill="none" stroke="#1d4885" strokeWidth="1" />
         <circle cx="95" cy="130" r="44" fill="none" stroke="#265aa0" strokeWidth="1" />
       </g>

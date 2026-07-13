@@ -22,7 +22,17 @@ const FULL_HISTORY = 7;
  * Market-price / portfolio-value area chart. PokéVault self-snapshots prices daily, so early
  * on there may be only a point or two — we show a "history still building" note then.
  */
-export function PriceChart({ data, label = "Value" }: { data: Point[]; label?: string }) {
+export function PriceChart({
+  data,
+  label = "Value",
+  className = "",
+}: {
+  data: Point[];
+  label?: string;
+  // Extra classes for the panel wrapper, so a caller can match its surrounding card style
+  // (e.g. the dashboard passes `shadow-sm`). Other callers keep the plain bordered panel.
+  className?: string;
+}) {
   const { format } = useCurrency();
   const points = data.filter((p) => p.value !== null);
 
@@ -30,7 +40,9 @@ export function PriceChart({ data, label = "Value" }: { data: Point[]; label?: s
   // null/NaN, so we never render a bare "$…" here.
   if (points.length === 0) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+      <div
+        className={`rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 ${className}`}
+      >
         📈 Price history shows up here for the cards in your collection and wishlist — give it a few
         days to build.
       </div>
@@ -43,7 +55,9 @@ export function PriceChart({ data, label = "Value" }: { data: Point[]; label?: s
 
   return (
     <>
-      <div className="h-64 w-full rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+      <div
+        className={`h-64 w-full rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 ${className}`}
+      >
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={points} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
             <defs>

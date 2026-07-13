@@ -197,6 +197,38 @@ async def test_quota_blocks_third_open_and_unblocks_next_day(db_session):
     assert r3 is not None
 
 
+def test_effective_limit_uses_override_else_default():
+    default_user = User(id=uuid.uuid4(), daily_pack_limit=None)
+    bumped_user = User(id=uuid.uuid4(), daily_pack_limit=100)
+    assert sim.effective_daily_pack_limit(default_user) == sim.DAILY_PACK_LIMIT
+    assert sim.effective_daily_pack_limit(bumped_user) == 100
+
+
+async def test_per_user_override_raises_the_daily_cap(db_session):
+    user = await _user(db_session)
+    user.daily_pack_limit = 3  # override the default of 2 for this account only
+    await db_session.flush()
+    sid = await _set_with_cards(db_session)
+    limit = sim.effective_daily_pack_limit(user)
+    assert limit == 3
+    assert await sim.packs_remaining_today(db_session, user.id, limit) == 3
+    for expected_remaining in (2, 1, 0):
+        r = await sim.open_pack(db_session, user.id, sid, limit)
+        assert r is not None and r.packs_remaining_today == expected_remaining
+    with pytest.raises(sim.QuotaExceeded):  # 4th blocked at the raised cap
+        await sim.open_pack(db_session, user.id, sid, limit)
+
+
+async def test_override_does_not_change_default_for_others(db_session):
+    bumped = await _user(db_session)
+    bumped.daily_pack_limit = 5
+    normal = await _user(db_session)  # no override → default
+    await db_session.flush()
+    assert sim.effective_daily_pack_limit(bumped) == 5
+    assert sim.effective_daily_pack_limit(normal) == sim.DAILY_PACK_LIMIT
+    assert normal.daily_pack_limit is None
+
+
 # ---- frozen vs live -------------------------------------------------------------------------
 
 

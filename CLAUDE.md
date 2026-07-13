@@ -153,7 +153,7 @@ _Keep this section updated as the project evolves._
 **Live on Render (API) + Vercel (SPA) + Supabase (Postgres/Auth), all free tier.** Backend is
 covered by pytest against the live Supabase DB; frontend `pnpm build`/`lint` clean. Migrations run
 on the Supabase **session pooler** (`+asyncpg` app / `+psycopg` v3 Alembic); current head is
-`e1a3c5b7d9f2`. Table is `collection_entries` (code-is-truth).
+`a2c4e6f80b1d`. Table is `collection_entries` (code-is-truth).
 
 Shipped features:
 
@@ -168,7 +168,8 @@ Shipped features:
 - **Scan** — Tesseract OCR proposes catalog matches (propose-only; the Docker image ships Tesseract).
 - **Wishlist + alerts**; **Deck** (dream-deck builder).
 - **Pack simulator** — its own `/simulator/*` shell (SimulatorLayout); server-authoritative roll
-  (`pack_opens` + `rolled_cards`, 2 packs/day UTC quota), flip-stack reveal + original card back +
+  (`pack_opens` + `rolled_cards`, 2 packs/day UTC quota — overridable per account via a nullable
+  `users.daily_pack_limit`; `/quota` returns the effective `daily_limit`), flip-stack reveal + original card back +
   sound/mute + reduced-motion. **Vault** (`pack_pulls`, fully separate from the IRL collection;
   duplicates stack ×N). **Best-pulls leaderboard** — daily worldwide top-10 `best_single`;
   day/month/all-time windows for `total_value`; a dedicated `leaderboard_opt_in` (separate from

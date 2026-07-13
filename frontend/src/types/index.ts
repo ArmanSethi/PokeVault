@@ -177,6 +177,7 @@ export interface KeepResult {
 
 export interface Quota {
   packs_remaining_today: number;
+  daily_limit: number; // effective daily cap for the current user (override, else default)
 }
 
 // ---- virtual pull collection + leaderboard ----

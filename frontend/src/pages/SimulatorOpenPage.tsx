@@ -35,6 +35,7 @@ export function SimulatorOpenPage() {
   }, [sets.data, setId]);
 
   const remaining = quota.data?.packs_remaining_today ?? null;
+  const dailyLimit = quota.data?.daily_limit ?? 2;
 
   function open() {
     if (!setId) return;
@@ -114,7 +115,8 @@ export function SimulatorOpenPage() {
         </div>
         {remaining !== null && (
           <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-sm text-slate-200">
-            Packs left today: <span className="font-semibold text-amber-300">{remaining}</span> / 2
+            Packs left today: <span className="font-semibold text-amber-300">{remaining}</span> /{" "}
+            {dailyLimit}
           </span>
         )}
       </div>

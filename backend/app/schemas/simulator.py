@@ -51,3 +51,4 @@ class KeepResult(BaseModel):
 
 class QuotaRead(BaseModel):
     packs_remaining_today: int
+    daily_limit: int  # effective cap for this user (per-account override, else the default)

@@ -33,8 +33,9 @@ SessionDep = Annotated[AsyncSession, Depends(get_session)]
 async def open_pack(user: CurrentUser, session: SessionDep, data: OpenPackRequest) -> PackResult:
     """Open one rarity-weighted pack for a set. Odds are approximate (see the response
     ``disclaimer``). Enforces the daily UTC quota and persists the authoritative roll."""
+    limit = simulator_service.effective_daily_pack_limit(user)
     try:
-        result = await simulator_service.open_pack(session, user.id, data.set_id)
+        result = await simulator_service.open_pack(session, user.id, data.set_id, limit)
     except simulator_service.QuotaExceeded:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -65,6 +66,7 @@ async def keep(user: CurrentUser, session: SessionDep, data: KeepRequest) -> Kee
 
 @router.get("/quota", response_model=QuotaRead)
 async def quota(user: CurrentUser, session: SessionDep) -> QuotaRead:
-    """Packs the user may still open today (UTC)."""
-    remaining = await simulator_service.packs_remaining_today(session, user.id)
-    return QuotaRead(packs_remaining_today=remaining)
+    """Packs the user may still open today (UTC), plus this user's effective daily cap."""
+    limit = simulator_service.effective_daily_pack_limit(user)
+    remaining = await simulator_service.packs_remaining_today(session, user.id, limit)
+    return QuotaRead(packs_remaining_today=remaining, daily_limit=limit)

@@ -22,6 +22,7 @@ from sqlalchemy.orm import selectinload
 from app.core.config import settings
 from app.models.card import Card, Set
 from app.models.pack_open import PackOpen
+from app.models.user import User
 from app.schemas.card import CardRead
 from app.schemas.simulator import PackResult, PulledCard
 from app.services.cards import _to_card_read, unit_price_usd
@@ -29,8 +30,15 @@ from app.services.cards import _to_card_read, unit_price_usd
 COMMON = "common"
 UNCOMMON = "uncommon"
 
-# Free packs per user per UTC day. Opening consumes quota even if every card is discarded.
+# Default free packs per user per UTC day. Opening consumes quota even if every card is
+# discarded. A user may carry a per-account override (``users.daily_pack_limit``); the effective
+# cap is resolved by ``effective_daily_pack_limit`` — the quota logic itself never names a user.
 DAILY_PACK_LIMIT = 2
+
+
+def effective_daily_pack_limit(user: User) -> int:
+    """This user's daily pack cap: their per-account override if set, else the default."""
+    return user.daily_pack_limit if user.daily_pack_limit is not None else DAILY_PACK_LIMIT
 
 
 class QuotaExceeded(Exception):
@@ -181,8 +189,10 @@ async def opens_today_count(session: AsyncSession, user_id: uuid.UUID) -> int:
     )
 
 
-async def packs_remaining_today(session: AsyncSession, user_id: uuid.UUID) -> int:
-    return max(0, DAILY_PACK_LIMIT - await opens_today_count(session, user_id))
+async def packs_remaining_today(
+    session: AsyncSession, user_id: uuid.UUID, limit: int = DAILY_PACK_LIMIT
+) -> int:
+    return max(0, limit - await opens_today_count(session, user_id))
 
 
 def _price_at_open(card: Card) -> Decimal | None:
@@ -190,14 +200,17 @@ def _price_at_open(card: Card) -> Decimal | None:
     return unit_price_usd(card.prices_current, is_foil=False, eur_usd_rate=settings.EUR_USD_RATE)
 
 
-async def open_pack(session: AsyncSession, user_id: uuid.UUID, set_id: str) -> PackResult | None:
+async def open_pack(
+    session: AsyncSession, user_id: uuid.UUID, set_id: str, limit: int = DAILY_PACK_LIMIT
+) -> PackResult | None:
     """Open one pack for ``set_id``, persisting the authoritative roll.
 
     Returns None if the set is unknown or has no cards. Raises ``QuotaExceeded`` if the user has
-    already used their daily allowance. The rolled result (with open-time prices) is stored so the
-    keep step trusts only the server, never the client.
+    already used their daily allowance (``limit``, the caller-resolved effective cap). The rolled
+    result (with open-time prices) is stored so the keep step trusts only the server, never the
+    client.
     """
-    if await opens_today_count(session, user_id) >= DAILY_PACK_LIMIT:
+    if await opens_today_count(session, user_id) >= limit:
         raise QuotaExceeded
 
     set_obj = await session.get(Set, set_id)
@@ -249,6 +262,6 @@ async def open_pack(session: AsyncSession, user_id: uuid.UUID, set_id: str) -> P
         set_name=set_obj.name,
         template=TEMPLATE_DESC,
         disclaimer=DISCLAIMER,
-        packs_remaining_today=await packs_remaining_today(session, user_id),
+        packs_remaining_today=await packs_remaining_today(session, user_id, limit),
         cards=out,
     )

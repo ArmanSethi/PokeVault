@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, String, Uuid, func
+from sqlalchemy import Boolean, Integer, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base_class import Base
@@ -34,5 +34,10 @@ class User(Base):
     # a user can appear on the leaderboard without exposing their showcase, and vice versa.
     # (Renamed from the vestigial `show_value_on_leaderboard` column — see migration.)
     leaderboard_opt_in: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    # Per-user override for the daily pack-open cap. NULL = use the default (see
+    # simulator.DAILY_PACK_LIMIT); a value overrides it for this account only. Lets us grant a
+    # higher limit (e.g. testing) without hardcoding a username in the quota logic. Not touched by
+    # the per-request upsert in api/deps.py, so it survives normal auth traffic.
+    daily_pack_limit: Mapped[int | None] = mapped_column(Integer, default=None)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())

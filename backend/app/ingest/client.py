@@ -133,3 +133,8 @@ class PokemonTcgClient:
     def iter_cards(self, set_id: str) -> AsyncIterator[dict[str, Any]]:
         """Yield every card in a set, ordered by card number."""
         return self._paginate("/cards", {"q": f"set.id:{set_id}", "orderBy": "number"})
+
+    async def get_card(self, card_id: str) -> dict[str, Any] | None:
+        """Fetch a single card by id (e.g. ``base1-4``), or None if the API has no such card."""
+        payload = await self._get(f"/cards/{card_id}", {})
+        return payload.get("data")

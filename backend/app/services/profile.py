@@ -32,6 +32,11 @@ async def update_profile(session: AsyncSession, user: User, data: UserProfileUpd
         user.comments_enabled = data.comments_enabled
     if data.leaderboard_opt_in is not None:
         user.leaderboard_opt_in = data.leaderboard_opt_in
+    # Total spent is explicitly clearable: an omitted field leaves it untouched, but sending
+    # ``null`` sets it back to NULL (the dashboard's "unset" state). Hence model_fields_set,
+    # not an ``is not None`` guard.
+    if "total_spent_override" in data.model_fields_set:
+        user.total_spent_override = data.total_spent_override
 
     try:
         await session.commit()

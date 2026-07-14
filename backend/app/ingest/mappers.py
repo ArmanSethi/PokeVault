@@ -60,11 +60,24 @@ def card_to_values(c: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _cm_base_variant(rarity: str | None) -> str:
+    """Cardmarket has no variant breakdown; its main price tracks the card's BASE printing.
+
+    Align that base row with the TCGplayer base variant so the two markets pair per variant:
+    a holo rarity's base printing is the holofoil; everything else is normal.
+    """
+    return "holofoil" if "holo" in (rarity or "").lower() else "normal"
+
+
 def price_rows_from_card(c: dict[str, Any]) -> list[dict[str, Any]]:
     """Extract ``card_prices_current`` rows from a card's price blocks.
 
-    - tcgplayer: one row per variant (normal, holofoil, reverseHolofoil, …), USD.
-    - cardmarket: a single flat block with no variant breakdown → one ``normal`` row, EUR.
+    - tcgplayer: one row per variant (normal, holofoil, reverseHolofoil, …), USD, from ``market``.
+    - cardmarket: no variant breakdown, so map its main price (``trendPrice``, else
+      ``averageSellPrice``) onto the card's BASE variant (holofoil for holo rarities, else normal)
+      so it pairs with the
+      TCGplayer base row; also emit a ``reverseHolofoil`` row from the ``reverseHolo*`` fields when
+      Cardmarket carries them. EUR.
     """
     card_id = c["id"]
     rows: list[dict[str, Any]] = []
@@ -97,7 +110,7 @@ def price_rows_from_card(c: dict[str, Any]) -> list[dict[str, Any]]:
             {
                 "card_id": card_id,
                 "source": "cardmarket",
-                "variant": "normal",
+                "variant": _cm_base_variant(c.get("rarity")),
                 "low": cm_prices.get("lowPrice"),
                 "mid": None,
                 "high": None,
@@ -106,6 +119,23 @@ def price_rows_from_card(c: dict[str, Any]) -> list[dict[str, Any]]:
                 "currency": "EUR",
             }
         )
+        # Reverse-holo sub-prices, when Cardmarket carries them (0.0 means "not applicable").
+        rev_market = cm_prices.get("reverseHoloTrend") or cm_prices.get("reverseHoloSell")
+        rev_low = cm_prices.get("reverseHoloLow")
+        if (rev_market and rev_market > 0) or (rev_low and rev_low > 0):
+            rows.append(
+                {
+                    "card_id": card_id,
+                    "source": "cardmarket",
+                    "variant": "reverseHolofoil",
+                    "low": rev_low if rev_low and rev_low > 0 else None,
+                    "mid": None,
+                    "high": None,
+                    "market": rev_market if rev_market and rev_market > 0 else None,
+                    "direct_low": None,
+                    "currency": "EUR",
+                }
+            )
 
     return rows
 

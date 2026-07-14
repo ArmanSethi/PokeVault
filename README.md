@@ -9,14 +9,17 @@ price visibility) are free here.
 ## Features
 
 - **Full English catalog** — ~173 sets / ~20k cards from pokemontcg.io, browsable/searchable with
-  current TCGPlayer (USD) prices, rarity filter + sort.
+  rarity filter + sort. **Per-edition pricing:** each printing shows its TCGPlayer (USD) market and
+  Cardmarket (EUR) trend side by side, with a "verify edition" flag when the two disagree; owned
+  cards are valued at their exact variant. Daily refresh + a manual per-card refresh.
 - **Auth** — Supabase accounts; the API verifies Supabase JWTs (JWKS).
-- **Collection & portfolio** — per-user cards (quantity, condition, grade, foil, per-unit acquired
-  price); portfolio value, total spent, per-set breakdown, and portfolio value over time.
+- **Collection & portfolio** — per-user cards (quantity, condition, grade, foil); portfolio value,
+  a manually-entered total spent, per-set breakdown, and portfolio value over time.
 - **Price history** — pokemontcg.io has none, so PokéVault snapshots tracked cards **daily** into
   its own table; card + portfolio charts fill in over time.
 - **Wishlist & alerts** and a **dream-deck builder**.
-- **Pack simulator** — server-rolled packs (approximate odds) with an animated flip-stack reveal, a
+- **Pack simulator** — server-rolled packs (approximate odds) with a **swipe-to-decide** reveal
+  (swipe right to keep, left to discard; the hit card zooms in with a jackpot flourish), a
   virtual **Vault** (kept pulls, fully separate from your real collection), and an opt-in
   **best-pulls leaderboard** (daily worldwide top-10 + total-value day/month/all-time windows).
 - **Public showcase** at `/u/:handle` with comments.

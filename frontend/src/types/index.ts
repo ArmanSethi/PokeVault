@@ -13,6 +13,13 @@ export interface CardPrice {
   updated_at: string;
 }
 
+export interface CardVariant {
+  variant: string; // normal | holofoil | reverseHolofoil | 1stEdition | …
+  tcgplayer_usd: string | null; // TCGplayer market (USD)
+  cardmarket_eur: string | null; // Cardmarket trend (EUR)
+  diverges: boolean; // markets disagree beyond threshold → "verify edition"
+}
+
 export interface Card {
   id: string;
   set_id: string;
@@ -21,8 +28,9 @@ export interface Card {
   rarity: string | null;
   image_url: string | null;
   prices: CardPrice[];
-  market_price: string | null;
-  currency: string | null;
+  variants: CardVariant[]; // per-printing two-market view (for the detail table)
+  market_price: string | null; // canonical USD headline
+  currency: string | null; // "USD" when market_price is set
 }
 
 export type CardSort = "number" | "name" | "rarity" | "price_desc" | "price_asc";
@@ -46,7 +54,7 @@ export interface CollectionEntry {
   condition: string | null;
   grade: string | null;
   is_foil: boolean;
-  acquired_price: string | null;
+  variant: string | null; // the printing owned; determines this copy's value
   created_at: string;
   updated_at: string;
   market_price: string | null; // grade-adjusted unit value
@@ -60,14 +68,13 @@ export interface CollectionEntryCreate {
   condition?: string | null;
   grade?: string | null;
   is_foil?: boolean;
-  acquired_price?: number | null;
+  variant?: string | null;
 }
 
 export interface CollectionEntryUpdate {
   quantity?: number;
   condition?: string | null;
   grade?: string | null;
-  acquired_price?: number | null;
 }
 
 export interface SetHolding {
@@ -83,7 +90,8 @@ export interface CollectionSummary {
   total_quantity: number;
   total_distinct_cards: number;
   total_market_value: string;
-  total_cost: string;
+  // "Total spent" — the user's manual override, or null when unset (tile shows an empty state).
+  total_cost: string | null;
   currency: string;
   sets: SetHolding[];
 }
@@ -190,6 +198,7 @@ export interface PackPull {
   number: string;
   image_url: string | null;
   rarity: string | null;
+  variant: string | null; // the printing pulled; determines its value
   price_at_pull: string | null; // frozen at keep
   current_value: string | null; // live
   currency: string;
@@ -232,6 +241,8 @@ export interface User {
   is_public?: boolean;
   comments_enabled?: boolean;
   leaderboard_opt_in?: boolean;
+  // Manual "Total spent" the user typed; null/undefined when unset.
+  total_spent_override?: string | null;
 }
 
 // ---- import / export ----
@@ -255,7 +266,6 @@ export interface ImportRow {
   quantity: number;
   condition: string | null;
   is_foil: boolean;
-  acquired_price: string | null;
   status: ImportRowStatus;
   candidates: ImportCandidate[];
   selected_card_id: string | null;
@@ -274,7 +284,6 @@ export interface ImportConfirmRow {
   quantity?: number;
   condition?: string | null;
   is_foil?: boolean;
-  acquired_price?: number | null;
 }
 
 export interface ImportConfirmResult {
@@ -302,6 +311,7 @@ export interface PublicEntry {
   number: string;
   image_url: string | null;
   rarity: string | null;
+  grade: string | null; // e.g. "PSA 10"; public-safe display badge
   is_foil: boolean;
   quantity: number;
   market_price: string | null;
@@ -318,6 +328,8 @@ export interface ProfileUpdate {
   is_public?: boolean | null;
   comments_enabled?: boolean | null;
   leaderboard_opt_in?: boolean | null;
+  // Set a number to override Total spent; send null to clear back to the empty state.
+  total_spent_override?: number | null;
 }
 
 // ---- showcase comments ----

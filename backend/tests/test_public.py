@@ -106,7 +106,7 @@ async def test_showcase_private_by_default_then_public(auth_client, seed, signin
     a = _headers(signing_key, uuid.uuid4())
     await auth_client.post(
         f"{_API}/collection",
-        json={"card_id": "tst1-1", "quantity": 1, "acquired_price": 99.99},
+        json={"card_id": "tst1-1", "quantity": 1},
         headers=a,
     )
     # Claim a handle but stay private → showcase is 404 to the public.

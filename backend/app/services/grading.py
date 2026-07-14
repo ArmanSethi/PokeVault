@@ -121,16 +121,17 @@ def graded_unit_price(
     is_foil: bool,
     grade: str | None,
     eur_usd_rate: float | None = None,
+    variant: str | None = None,
 ) -> Decimal | None:
     """Unit market value for a copy in USD, adjusting the raw price for its grade.
 
-    The raw unit price is USD (TCGPlayer, or CardMarket EUR converted — see
-    ``cards.unit_price_usd``); the PSA grade multiplier is then applied. ``eur_usd_rate``
-    defaults to ``settings.EUR_USD_RATE``. Returns ``None`` when the card has no usable
-    price in either source (nothing to scale).
+    The raw unit price is USD for the copy's ``variant`` (TCGPlayer, or CardMarket EUR
+    converted — see ``cards.unit_price_usd``); the grade multiplier is then applied.
+    ``eur_usd_rate`` defaults to ``settings.EUR_USD_RATE``. Returns ``None`` when the card has
+    no usable price in either source (nothing to scale).
     """
     rate = eur_usd_rate if eur_usd_rate is not None else settings.EUR_USD_RATE
-    raw = unit_price_usd(prices, is_foil=is_foil, eur_usd_rate=rate)
+    raw = unit_price_usd(prices, is_foil=is_foil, eur_usd_rate=rate, variant=variant)
     if raw is None:
         return None
     return (raw * grade_multiplier(grade)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)

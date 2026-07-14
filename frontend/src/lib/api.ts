@@ -121,6 +121,8 @@ export const api = {
   ) => request<Card[]>(`/cards${qs(params)}`),
   listRarities: () => request<string[]>("/cards/rarities"),
   getCard: (id: string) => request<Card>(`/cards/${encodeURIComponent(id)}`),
+  refreshCardPrices: (id: string) =>
+    request<Card>(`/cards/${encodeURIComponent(id)}/refresh`, { method: "POST" }, { auth: true }),
   cardHistory: (id: string, params: { variant?: string; days?: number } = {}) =>
     request<CardPriceHistory>(`/cards/${encodeURIComponent(id)}/history${qs(params)}`),
 

@@ -1,7 +1,8 @@
 /**
  * Pack-reveal sound effects — synthesized with the Web Audio API (no bundled binary, offline-safe,
- * no licensing). A short click on each flip; a rising chime on the finale. Played only on a user
- * gesture (the tap that flips), so there are no autoplay issues.
+ * no licensing). A soft whoosh on each card reveal; an original celebratory "jackpot" flourish on
+ * the final hit card. Played on a user gesture (opening the pack / swiping), so there are no
+ * autoplay issues.
  *
  * The mute preference persists in localStorage (`pv-sim-muted`) — the app's established pattern for
  * UI prefs — and is exposed as a tiny external store so a toggle button stays in sync.
@@ -142,4 +143,48 @@ export function playChime(): void {
   const notes = [523.25, 659.25, 783.99, 1046.5, 1318.51]; // C5 · E5 · G5 · C6 · E6 — rising
   notes.forEach((f, i) => blip(ac, "sine", f, f, t + i * 0.1, 0.55, 0.11 + i * 0.03)); // swell
   blip(ac, "triangle", 1567.98, 1567.98, t + notes.length * 0.1, 0.55, 0.14); // G6 sparkle tail
+}
+
+/**
+ * A celebratory, jackpot-style "big win" flourish for the final hit card: a fast rising build
+ * (accelerating arpeggio + a noise riser sweeping up) that LANDS on a bright major-chord sting
+ * with a shimmer tail. Evokes a slots/lottery win — but is wholly synthesized from oscillators
+ * and noise here, so it's an original asset and imitates no real, copyrighted, or branded jingle.
+ * Kept to ~0.8s so ripping many packs stays snappy. Governed by the same mute toggle.
+ */
+export function playJackpot(): void {
+  if (muted) return;
+  const ac = audio();
+  if (!ac) return;
+  const t = ac.currentTime;
+
+  // 1) Rising build — an accelerating arpeggio climbing ~an octave and a half into the sting.
+  const build = [392.0, 523.25, 659.25, 783.99, 1046.5, 1318.51]; // G4 → E6, ascending
+  const step = 0.05;
+  build.forEach((f, i) => blip(ac, "square", f, f, t + i * step, 0.09, 0.045 + i * 0.01));
+  const land = t + build.length * step; // ~0.30s: the moment the win "hits"
+
+  // 2) Landing sting — a bright C-major chord across two octaves, with a low root for body.
+  [523.25, 659.25, 783.99, 1046.5].forEach((f) => blip(ac, "sawtooth", f, f, land, 0.5, 0.07));
+  blip(ac, "triangle", 261.63, 261.63, land, 0.5, 0.1); // C4 root
+
+  // 3) Shimmer tail — high sparkle notes gliding/twinkling out over the sting.
+  blip(ac, "sine", 1567.98, 2093.0, land + 0.06, 0.45, 0.08); // G6 → C7 glide
+  blip(ac, "triangle", 2637.02, 2637.02, land + 0.14, 0.32, 0.05); // E7 twinkle
+
+  // 4) A quiet filtered-noise riser under the build, sweeping up into the sting for excitement.
+  const src = ac.createBufferSource();
+  src.buffer = noise(ac);
+  const bp = ac.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.Q.value = 0.7;
+  bp.frequency.setValueAtTime(500, t);
+  bp.frequency.exponentialRampToValueAtTime(4000, land); // sweep up to the hit
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.05, land);
+  g.gain.exponentialRampToValueAtTime(0.0001, land + 0.2);
+  src.connect(bp).connect(g).connect(ac.destination);
+  src.start(t);
+  src.stop(t + 0.3); // noise buffer is 0.3s
 }

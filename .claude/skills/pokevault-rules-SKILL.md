@@ -104,10 +104,16 @@ rule and surface the conflict to the user.
   `price_at_open`. **Keep writes to the VIRTUAL pull collection (`pack_pulls`), NOT the IRL
   `collection_entries` — the two are fully separate; pulls never touch the real collection.**
   Duplicates are separate `pack_pulls` rows (no 99-cap on pulls); the vault UI stacks them ×N.
-  The simulator lives in its own `/simulator/*` shell (SimulatorLayout). Reveal = flip-stack
-  (restrained rare+ tell, dramatic finale on the last/hit card) + the original PokéVault card back
-  + flip-click/chime sound with a mute toggle, `prefers-reduced-motion` aware. Vault tiles show the
-  card + current value ONLY (no "pulled at" line). First `/simulator` entry with no handle set →
+  The simulator lives in its own `/simulator/*` shell (SimulatorLayout). Reveal = **swipe-to-decide**:
+  cards auto-reveal one at a time (best/hit last), and each is kept (swipe/drag right) or discarded
+  (left), with visible Keep/Discard buttons + ←/→ keys + a brief Undo (covers the last card too).
+  Earlier cards keep the flip + restrained rare+ tells + whoosh; the hit card zooms in over the
+  dimmed section with an original synthesized **jackpot** flourish (~1s). Kept `card.id`s are
+  accumulated and POSTed **once** to `/keep` at end of pack (the backend keeps a pack only once) —
+  discards never persist. Original PokéVault card back; mute toggle; `prefers-reduced-motion` aware
+  (no zoom/fling — decide instantly; sound still governed by the mute toggle). There is NO
+  keep/discard summary screen (removed). Vault tiles show the card + current value ONLY (no
+  "pulled at" line). First `/simulator` entry with no handle set →
   a blocking "choose your handle" step (reuses the existing `^[a-z0-9_-]{3,30}$` validation +
   PATCH /me); it never auto-opts anyone into the leaderboard.
 - **Best-pulls leaderboard:** ranks by real market price only (never rarity tier). `best_single`

@@ -12,6 +12,7 @@ import type {
   CollectionEntry,
   CollectionEntryCreate,
   CollectionEntryUpdate,
+  CollectionSummary,
   DeckCardCreate,
   DeckCreate,
   DeckUpdate,
@@ -138,6 +139,19 @@ export function useCard(id: string) {
   return useQuery({ queryKey: qk.card(id), queryFn: () => api.getCard(id), enabled: Boolean(id) });
 }
 
+/** Manual "refresh price" for one card (rate-limited server-side). Updates the card cache and
+ * invalidates its price-history series on success. */
+export function useRefreshCard(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.refreshCardPrices(id),
+    onSuccess: (card) => {
+      qc.setQueryData(qk.card(id), card);
+      qc.invalidateQueries({ queryKey: qk.cardHistory(id) });
+    },
+  });
+}
+
 export function useCardHistory(id: string) {
   return useQuery({
     queryKey: qk.cardHistory(id),
@@ -219,9 +233,8 @@ export function useUpdateEntry() {
       if (prev) {
         qc.setQueryData<CollectionEntry[]>(
           qk.collection,
-          // Transient optimistic merge (server response reconciles on settle); cast because
-          // the update DTO types acquired_price as number while the entry stores a string.
-          prev.map((e) => (e.id === id ? ({ ...e, ...data } as CollectionEntry) : e)),
+          // Transient optimistic merge; the server response reconciles on settle.
+          prev.map((e) => (e.id === id ? { ...e, ...data } : e)),
         );
       }
       return { prev };
@@ -243,7 +256,16 @@ export function useUpdateProfile() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: ProfileUpdate) => api.updateProfile(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: qk.me }),
+    onSuccess: (user) => {
+      qc.invalidateQueries({ queryKey: qk.me });
+      // Reflect the new Total spent IMMEDIATELY: the tile reads summary.total_cost, and the
+      // /collection/summary refetch over the pooler can lag a second (which looked like "not
+      // updating"). Patch the cached value from the PATCH's returned user, then reconcile.
+      qc.setQueryData<CollectionSummary>(qk.summary, (old) =>
+        old ? { ...old, total_cost: user.total_spent_override ?? null } : old,
+      );
+      qc.invalidateQueries({ queryKey: qk.summary });
+    },
   });
 }
 

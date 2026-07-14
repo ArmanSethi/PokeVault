@@ -25,7 +25,7 @@ from app.models.pack_open import PackOpen
 from app.models.user import User
 from app.schemas.card import CardRead
 from app.schemas.simulator import PackResult, PulledCard
-from app.services.cards import _to_card_read, unit_price_usd
+from app.services.cards import _to_card_read, base_variant_for_rarity, unit_price_usd
 
 COMMON = "common"
 UNCOMMON = "uncommon"
@@ -195,9 +195,11 @@ async def packs_remaining_today(
     return max(0, limit - await opens_today_count(session, user_id))
 
 
-def _price_at_open(card: Card) -> Decimal | None:
-    """Open-time value via the one price source (same fn the vault + leaderboard use)."""
-    return unit_price_usd(card.prices_current, is_foil=False, eur_usd_rate=settings.EUR_USD_RATE)
+def _price_at_open(card: Card, variant: str) -> Decimal | None:
+    """Open-time value at the pulled card's printing (same fn the vault + leaderboard use)."""
+    return unit_price_usd(
+        card.prices_current, is_foil=False, eur_usd_rate=settings.EUR_USD_RATE, variant=variant
+    )
 
 
 async def open_pack(
@@ -232,7 +234,8 @@ async def open_pack(
     rolled: list[dict] = []
     out: list[PulledCard] = []
     for kind, card in pulled:
-        price = _price_at_open(card)
+        variant = base_variant_for_rarity(card.rarity)
+        price = _price_at_open(card, variant)
         rolled.append(
             {
                 "card_id": card.id,
@@ -241,6 +244,7 @@ async def open_pack(
                 "name": card.name,
                 "number": card.number,
                 "image_url": card.image_small,
+                "variant": variant,
                 "price_at_open": str(price) if price is not None else None,
             }
         )

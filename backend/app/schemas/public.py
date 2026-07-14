@@ -1,7 +1,9 @@
 """Schemas for public showcases.
 
 These are the *only* projections exposed without authentication. They deliberately omit
-private fields — ``acquired_price`` never appears here.
+private fields — cost basis, notes, and the owner's manual Total spent never appear here.
+Public-safe display fields (image, name, set/number, grade, current value, quantity, foil)
+mirror what the owner's own Collection card shows.
 """
 
 from __future__ import annotations
@@ -35,6 +37,7 @@ class PublicEntry(BaseModel):
     number: str
     image_url: str | None = None
     rarity: str | None = None
+    grade: str | None = None  # e.g. "PSA 10"; public-safe display badge (no premium math shown)
     is_foil: bool
     quantity: int
     market_price: Decimal | None = None

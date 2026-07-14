@@ -48,7 +48,7 @@ async def add_entry(
 
 @router.get("/summary", response_model=CollectionSummary)
 async def collection_summary(user: CurrentUser, session: SessionDep) -> CollectionSummary:
-    """Portfolio value, cost basis, and per-set breakdown with completion (USD)."""
+    """Portfolio value, manual Total spent, and per-set breakdown with completion (USD)."""
     return await valuation_service.collection_summary(session, user.id)
 
 
@@ -66,7 +66,7 @@ async def portfolio_history(
 async def update_entry(
     user: CurrentUser, session: SessionDep, entry_id: int, data: CollectionEntryUpdate
 ) -> CollectionEntryRead:
-    """Edit an owned entry (quantity, condition, grade, acquired price)."""
+    """Edit an owned entry (quantity, condition, grade)."""
     entry = await collection_service.update_entry(session, user.id, entry_id, data)
     if entry is None:
         raise HTTPException(status_code=404, detail="Entry not found")

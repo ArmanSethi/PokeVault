@@ -7,11 +7,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_session
+from app.api.deps import CurrentUser, get_session
 from app.schemas.card import CardRead
 from app.schemas.history import CardPriceHistory
 from app.services import cards as cards_service
 from app.services import history as history_service
+from app.services import pricing_refresh as refresh_service
 
 router = APIRouter()
 
@@ -47,6 +48,30 @@ async def list_rarities(session: SessionDep) -> list[str]:
 async def get_card(session: SessionDep, card_id: str) -> CardRead:
     """Fetch a single card (e.g. ``sv3-125``) with its current prices."""
     card = await cards_service.get_card(session, card_id)
+    if card is None:
+        raise HTTPException(status_code=404, detail="Card not found")
+    return card
+
+
+@router.post("/{card_id}/refresh", response_model=CardRead)
+async def refresh_card_prices(user: CurrentUser, session: SessionDep, card_id: str) -> CardRead:
+    """Re-fetch this card's prices from pokemontcg.io now (rate-limited per user).
+
+    Complements the daily snapshot; use sparingly. 429 while cooling down, 502 if the upstream
+    price source is unreachable.
+    """
+    try:
+        card = await refresh_service.refresh_card(session, user.id, card_id)
+    except refresh_service.RefreshCoolingDown as exc:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Just refreshed — try again in {exc.retry_after}s.",
+            headers={"Retry-After": str(exc.retry_after)},
+        ) from None
+    except refresh_service.RefreshUnavailable:
+        raise HTTPException(
+            status_code=502, detail="Couldn't reach the price source. Try again shortly."
+        ) from None
     if card is None:
         raise HTTPException(status_code=404, detail="Card not found")
     return card

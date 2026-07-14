@@ -9,6 +9,7 @@ from pydantic import ValidationError
 
 from app.schemas.collection import CollectionEntryCreate, CollectionEntryUpdate
 from app.schemas.deck import DeckCardCreate, DeckCardUpdate, DeckCreate, DeckUpdate
+from app.schemas.user import UserProfileUpdate
 from app.schemas.wishlist import WishlistItemCreate
 
 
@@ -22,15 +23,17 @@ def test_card_quantity_bounds():
         CollectionEntryUpdate(quantity=100)
 
 
-def test_money_bounds_allow_decimals():
-    assert CollectionEntryCreate(
-        card_id="x-1", acquired_price=Decimal("12.34")
-    ).acquired_price == Decimal("12.34")
-    CollectionEntryCreate(card_id="x-1", acquired_price=Decimal("1000000"))  # cap ok
+def test_total_spent_override_bounds():
+    # Manual "Total spent": 0 up to 99,999,999,999 (11 digits), decimals allowed, and clearable.
+    assert UserProfileUpdate(
+        total_spent_override=Decimal("12.34")
+    ).total_spent_override == Decimal("12.34")
+    UserProfileUpdate(total_spent_override=Decimal("99999999999"))  # cap ok
+    assert UserProfileUpdate(total_spent_override=None).total_spent_override is None
     with pytest.raises(ValidationError):
-        CollectionEntryCreate(card_id="x-1", acquired_price=Decimal("1000000.01"))
+        UserProfileUpdate(total_spent_override=Decimal("100000000000"))
     with pytest.raises(ValidationError):
-        CollectionEntryCreate(card_id="x-1", acquired_price=Decimal("-1"))
+        UserProfileUpdate(total_spent_override=Decimal("-1"))
 
 
 def test_deck_bounds():

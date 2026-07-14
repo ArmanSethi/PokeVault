@@ -76,13 +76,9 @@ async def detect_and_log_alerts(session: AsyncSession) -> int:
             continue
         current = primary.market
 
-        # Target-price hit.
-        if item.target_price is not None and current <= item.target_price:
-            logged += await _log_alert(session, item, KIND_TARGET_HIT, current, today)
-
-        # Notable drop vs the most recent prior snapshot of the SAME variant (TCGPlayer).
-        # Without the variant filter, `prev` could be a different printing than `current`
-        # (holofoil vs normal vs reverse), producing spurious / missed drop alerts.
+        # Most recent prior snapshot of the SAME variant (TCGPlayer). Used both to detect a
+        # target CROSSING and a notable drop. The variant filter avoids comparing a holofoil to a
+        # normal/reverse printing (spurious / missed alerts).
         prev = await session.scalar(
             select(PriceHistory.market_price)
             .where(
@@ -95,6 +91,19 @@ async def detect_and_log_alerts(session: AsyncSession) -> int:
             .order_by(PriceHistory.snapshot_date.desc())
             .limit(1)
         )
+
+        # Target-price hit — only on a NEW crossing to at/below target, i.e. the prior snapshot was
+        # ABOVE target (or there's no history yet). This avoids logging a fresh alert every day the
+        # card simply *stays* at/below; if it recovers above and later dips again, that prior-above
+        # state makes it a genuinely new alert.
+        if (
+            item.target_price is not None
+            and current <= item.target_price
+            and (prev is None or prev > item.target_price)
+        ):
+            logged += await _log_alert(session, item, KIND_TARGET_HIT, current, today)
+
+        # Notable drop vs that prior snapshot.
         if prev is not None and prev > 0 and current <= prev * _DROP_THRESHOLD:
             logged += await _log_alert(session, item, KIND_DROP, current, today)
 
@@ -106,15 +115,41 @@ async def detect_and_log_alerts(session: AsyncSession) -> int:
 async def list_alerts(
     session: AsyncSession, user_id: uuid.UUID, *, limit: int = 50
 ) -> list[AlertRead]:
-    """Recent alerts for a user, newest first, joined with the card name."""
+    """Recent alerts for a user, newest first, one per episode.
+
+    Collapses consecutive-day repeats of the same (card, kind) into a single alert — the latest
+    day of the run — so an ongoing "at/below target" state shows once, not once per day. A gap of
+    more than a day means the card recovered above target and later dipped again → a genuinely
+    separate episode, which is preserved. (Going forward ``detect_and_log_alerts`` only logs on a
+    crossing, so runs are already short; this also cleans any daily rows logged before that fix.)
+    """
     stmt = (
         select(AlertLog, Card.name)
         .join(Card, Card.id == AlertLog.card_id)
         .where(AlertLog.user_id == user_id)
-        .order_by(AlertLog.snapshot_date.desc(), AlertLog.id.desc())
-        .limit(limit)
+        .order_by(
+            AlertLog.card_id,
+            AlertLog.kind,
+            AlertLog.snapshot_date.asc(),
+            AlertLog.id.asc(),
+        )
     )
     rows = (await session.execute(stmt)).all()
+
+    collapsed: list[tuple[AlertLog, str]] = []
+    prev_key: tuple[str, str] | None = None
+    prev_date: date | None = None
+    for alert, name in rows:
+        key = (alert.card_id, alert.kind)
+        gap_ok = prev_date is not None and (alert.snapshot_date - prev_date).days <= 1
+        same_run = key == prev_key and gap_ok
+        if same_run:
+            collapsed[-1] = (alert, name)  # later day of the same run wins
+        else:
+            collapsed.append((alert, name))  # new (card, kind) or a gap → new episode
+        prev_key, prev_date = key, alert.snapshot_date
+
+    collapsed.sort(key=lambda r: (r[0].snapshot_date, r[0].id), reverse=True)
     return [
         AlertRead(
             id=alert.id,
@@ -125,5 +160,5 @@ async def list_alerts(
             snapshot_date=alert.snapshot_date,
             name=name,
         )
-        for alert, name in rows
+        for alert, name in collapsed[:limit]
     ]

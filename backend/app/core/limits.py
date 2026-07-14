@@ -17,8 +17,8 @@ MAX_CARD_QTY = 99
 MIN_DECK_TARGET = 1
 MAX_DECK_TARGET = 100
 
-# Money fields (acquired price, wishlist target price). Cards can be worth thousands, so this
-# is deliberately high — not a 99 cap — while still fitting Numeric(10,2).
+# Money fields (e.g. wishlist target price). Cards can be worth thousands, so this is
+# deliberately high — not a 99 cap — while still fitting Numeric(10,2).
 MIN_MONEY = 0
 MAX_MONEY = 1_000_000
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CardBack } from "../components/simulator/CardBack";
 import { PackReveal } from "../components/simulator/PackReveal";
 import { ErrorState } from "../components/States";
@@ -8,9 +8,9 @@ import { ApiError } from "../lib/api";
 import { hasPrice } from "../lib/format";
 import { rarityColor } from "../lib/rarityColor";
 import { useKeepFromOpen, useOpenPack, useQuota, useSets } from "../lib/queries";
-import type { PackResult } from "../types";
+import type { PackResult, PulledCard } from "../types";
 
-type Phase = "idle" | "revealing" | "summary";
+type Phase = "idle" | "revealing" | "recap";
 
 const num = (v: string | null): number => Number(v ?? 0);
 
@@ -25,7 +25,8 @@ export function SimulatorOpenPage() {
   const [setId, setSetId] = useState("");
   const [pack, setPack] = useState<PackResult | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
-  const [discarded, setDiscarded] = useState<Set<number>>(new Set());
+  const [keptCards, setKeptCards] = useState<PulledCard[]>([]);
+  const committedRef = useRef(false);
 
   // Default the set picker to Base Set (or the first set) once the list loads.
   useEffect(() => {
@@ -42,7 +43,8 @@ export function SimulatorOpenPage() {
     openPack.mutate(setId, {
       onSuccess: (data) => {
         setPack(data);
-        setDiscarded(new Set());
+        setKeptCards([]);
+        committedRef.current = false;
         setPhase("revealing");
       },
       onError: (e) =>
@@ -54,51 +56,42 @@ export function SimulatorOpenPage() {
     });
   }
 
-  // Summary is best-first; we keep the original index so keep/discard maps to the right card
-  // (duplicates within a pack are distinct positions).
-  const summary = useMemo(
-    () =>
-      pack
-        ? pack.cards
-            .map((pc, i) => ({ pc, i }))
-            .sort((a, b) => num(b.pc.price_at_open) - num(a.pc.price_at_open))
-        : [],
-    [pack],
-  );
-  const keptCount = pack ? pack.cards.length - discarded.size : 0;
+  // The swipe flow decides every card, then hands back the cards swiped right. Show the recap;
+  // the single (once-per-open) /keep write is fired by the effect below.
+  const handleDecided = useCallback((kept: PulledCard[]) => {
+    setKeptCards(kept);
+    setPhase("recap");
+  }, []);
 
-  function toggle(i: number) {
-    setDiscarded((prev) => {
-      const next = new Set(prev);
-      if (next.has(i)) next.delete(i);
-      else next.add(i);
-      return next;
-    });
-  }
+  // Commit the kept set to the Vault exactly once. Discard-all makes no API call.
+  useEffect(() => {
+    if (phase !== "recap" || !pack || committedRef.current) return;
+    committedRef.current = true;
+    if (keptCards.length === 0) {
+      toast.info(`Discarded all ${pack.cards.length} cards.`);
+      return;
+    }
+    keep.mutate(
+      { openId: pack.open_id, keptCardIds: keptCards.map((pc) => pc.card.id) },
+      {
+        onSuccess: () => toast.success(`Added ${keptCards.length} to your Vault.`),
+        onError: (e) =>
+          toast.error(e instanceof ApiError ? e.message : "Could not save your pulls."),
+      },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
+
+  const keptValue = keptCards.reduce(
+    (s, pc) => (hasPrice(pc.price_at_open) ? s + num(pc.price_at_open) : s),
+    0,
+  );
 
   function reset() {
     setPack(null);
     setPhase("idle");
-    setDiscarded(new Set());
-  }
-
-  async function confirm() {
-    if (!pack) return;
-    const keptIds = pack.cards
-      .map((pc, i) => (discarded.has(i) ? null : pc.card.id))
-      .filter((id): id is string => id !== null);
-    if (keptIds.length === 0) {
-      toast.info(`Discarded all ${pack.cards.length} cards.`);
-      reset();
-      return;
-    }
-    try {
-      await keep.mutateAsync({ openId: pack.open_id, keptCardIds: keptIds });
-      toast.success(`Added ${keptIds.length} to your Vault.`);
-      reset();
-    } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : "Could not save your pulls.");
-    }
+    setKeptCards([]);
+    committedRef.current = false;
   }
 
   if (sets.isError)
@@ -156,44 +149,28 @@ export function SimulatorOpenPage() {
       )}
 
       {phase === "revealing" && pack && (
-        <PackReveal cards={pack.cards} onComplete={() => setPhase("summary")} />
+        <PackReveal cards={pack.cards} onDecided={handleDecided} />
       )}
 
-      {phase === "summary" && pack && (
-        <>
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+      {phase === "recap" && pack && (
+        <div className="flex flex-col items-center gap-5 py-4">
+          <div className="text-center">
             <h2 className="text-lg font-semibold text-white">
-              Keep what you want — {keptCount} of {pack.cards.length} selected
+              {keptCards.length > 0
+                ? `Added ${keptCards.length} to your Vault`
+                : "Discarded the whole pack"}
             </h2>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setDiscarded(new Set())}
-                className="rounded-lg border border-white/20 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-white/10"
-              >
-                Keep all
-              </button>
-              <button
-                onClick={confirm}
-                disabled={keep.isPending}
-                className="rounded-lg bg-amber-400 px-4 py-1.5 text-sm font-semibold text-slate-900 hover:bg-amber-300 disabled:opacity-50"
-              >
-                {keep.isPending
-                  ? "Saving…"
-                  : keptCount > 0
-                    ? `Add ${keptCount} to Vault`
-                    : "Discard all"}
-              </button>
-            </div>
+            {keptCards.length > 0 && (
+              <p className="text-sm text-slate-400">Kept value {format(keptValue)}</p>
+            )}
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {summary.map(({ pc, i }) => {
-              const kept = !discarded.has(i);
-              return (
+
+          {keptCards.length > 0 && (
+            <div className="grid w-full grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+              {keptCards.map((pc, i) => (
                 <div
                   key={i}
-                  className={`flex flex-col overflow-hidden rounded-xl border bg-white/5 transition-opacity ${
-                    kept ? "border-amber-400/60" : "border-white/10 opacity-40"
-                  }`}
+                  className="flex flex-col overflow-hidden rounded-xl border border-amber-400/40 bg-white/5"
                 >
                   <div className="relative flex aspect-[3/4] items-center justify-center bg-slate-900">
                     {pc.card.image_url ? (
@@ -213,33 +190,27 @@ export function SimulatorOpenPage() {
                       {pc.tier}
                     </span>
                   </div>
-                  <div className="flex flex-1 flex-col gap-1 p-2">
-                    <p className="truncate text-sm font-medium text-slate-100" title={pc.card.name}>
+                  <div className="flex flex-1 flex-col gap-0.5 p-2">
+                    <p className="truncate text-xs font-medium text-slate-100" title={pc.card.name}>
                       {pc.card.name}
                     </p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-[11px] text-slate-400">
                       {hasPrice(pc.price_at_open) ? format(pc.price_at_open) : "No price yet"}
                     </p>
-                    {/* Action button: the label/color is what a click DOES. A kept card (bright)
-                        offers "Discard"; a discarded card (dim) offers "Keep". Tile styling +
-                        confirm()'s kept set are unchanged — the bright cards are exactly what's
-                        sent to /keep. */}
-                    <button
-                      onClick={() => toggle(i)}
-                      className={`mt-1 rounded border px-2 py-1 text-xs font-medium ${
-                        kept
-                          ? "border-white/20 text-slate-300 hover:bg-white/10"
-                          : "border-amber-400/60 text-amber-300 hover:bg-amber-400/10"
-                      }`}
-                    >
-                      {kept ? "Discard" : "✓ Keep"}
-                    </button>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </>
+              ))}
+            </div>
+          )}
+
+          <button
+            onClick={reset}
+            disabled={remaining === 0}
+            className="rounded-lg bg-amber-400 px-6 py-2 text-sm font-semibold text-slate-900 hover:bg-amber-300 disabled:opacity-50"
+          >
+            {remaining === 0 ? "No packs left today" : "Open another"}
+          </button>
+        </div>
       )}
     </>
   );

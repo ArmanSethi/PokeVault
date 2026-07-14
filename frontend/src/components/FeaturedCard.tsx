@@ -218,10 +218,11 @@ export function FeaturedCard() {
     return () => clearTimeout(id);
   }, [prev]);
 
-  // h-64 matches the "Portfolio value over time" chart tile so the row is balanced on desktop;
-  // full-width and the same height when stacked below the chart on mobile.
+  // h-72 aligns with the top-row tiles (hero / stats / By-set) while still giving the
+  // (object-contain) card image room to show in full with the name/set/value block beneath.
+  // Full-width when stacked on mobile.
   const box =
-    "group relative flex h-64 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900";
+    "group relative flex h-72 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900";
 
   if (!cur) {
     return (

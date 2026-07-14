@@ -14,7 +14,6 @@ import csv
 import io
 import uuid
 from dataclasses import dataclass, field
-from decimal import Decimal, InvalidOperation
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -58,13 +57,6 @@ _COLUMN_SYNONYMS: dict[str, str] = {
     "is foil": "foil",
     "variant": "foil",
     "holo": "foil",
-    "price": "price",
-    "paid": "price",
-    "price paid": "price",
-    "acquired price": "price",
-    "purchase price": "price",
-    "cost": "price",
-    "market price": "price",
 }
 
 # Confidence thresholds for auto-classifying a matched row.
@@ -84,7 +76,6 @@ class ParsedRow:
     quantity: int = 1
     condition: str | None = None
     is_foil: bool = False
-    acquired_price: Decimal | None = None
     extras: dict[str, str] = field(default_factory=dict)
 
 
@@ -100,18 +91,6 @@ def _parse_int(value: str | None, default: int = 1) -> int:
         return n if n >= 1 else default
     except (ValueError, AttributeError):
         return default
-
-
-def _parse_price(value: str | None) -> Decimal | None:
-    if not value:
-        return None
-    cleaned = value.strip().lstrip("$€£").replace(",", "")
-    if not cleaned:
-        return None
-    try:
-        return Decimal(cleaned)
-    except (InvalidOperation, ValueError):
-        return None
 
 
 def _parse_foil(value: str | None) -> bool:
@@ -180,7 +159,6 @@ def parse_csv(data: bytes) -> list[ParsedRow]:
                 quantity=_parse_int(fields.get("quantity")),
                 condition=fields.get("condition") or None,
                 is_foil=_parse_foil(fields.get("foil")),
-                acquired_price=_parse_price(fields.get("price")),
                 extras=extras,
             )
         )
@@ -246,7 +224,6 @@ async def preview_import(session: AsyncSession, data: bytes) -> ImportPreview:
                 quantity=pr.quantity,
                 condition=pr.condition,
                 is_foil=pr.is_foil,
-                acquired_price=pr.acquired_price,
                 status=status,
                 candidates=candidates,
                 selected_card_id=selected,
@@ -271,7 +248,6 @@ _EXPORT_HEADER = [
     "condition",
     "grade",
     "foil",
-    "acquired_price",
     "market_price",
     "market_value",
 ]
@@ -302,7 +278,6 @@ async def export_csv(session: AsyncSession, user_id: uuid.UUID) -> str:
                 e.condition or "",
                 e.grade or "",
                 "foil" if e.is_foil else "normal",
-                e.acquired_price if e.acquired_price is not None else "",
                 unit if unit is not None else "",
                 value if value is not None else "",
             ]

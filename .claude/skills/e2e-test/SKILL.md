@@ -102,9 +102,10 @@ Render log) · severity**.
    - **Gamification:** `GET /collection/achievements` → level/xp/badges/streak; sanity-check
      the XP formula (distinct×10 + qty×2 + sets_completed×250 + int(total_value)).
    - **Public showcase + PRIVACY:** `PATCH /me` set handle + `is_public:true` → `GET
-     /public/u/{handle}` and `/collection`. **⭐ Assert NO `acquired_price` and NO `notes`
-     leak** in any public field. Toggle `is_public:false` → showcase returns **404**. Unknown
-     handle → 404.
+     /public/u/{handle}` and `/collection`. Public cards carry image/name/set/number/**grade**/
+     current value/qty/foil (mirroring the owner's Collection card). **⭐ Assert NO `notes` and NO
+     `total_spent_override` (and no cost basis of any kind) leak** in any public field. Toggle
+     `is_public:false` → showcase returns **404**. Unknown handle → 404.
    - **CSV import/export:** `GET /collection/export` (auth) → round-trippable CSV; `POST
      /collection/import` with a small CSV → classification is correct (a clean name+set+number
      → `matched`; a bare popular name → `ambiguous`; a junk name → `unmatched`).

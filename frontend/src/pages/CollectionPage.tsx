@@ -10,6 +10,7 @@ import {
 import { useCurrency } from "../context/CurrencyContext";
 import { LIMITS } from "../lib/limits";
 import { NumberField } from "../components/NumberField";
+import { CardBadgeOverlay } from "../components/CardBadgeOverlay";
 import { RAW_GRADE_NOTE, gradedButRaw } from "../lib/grading";
 import { EmptyState, ErrorState } from "../components/States";
 import { TableSkeleton } from "../components/Skeleton";
@@ -230,22 +231,7 @@ export function CollectionPage() {
                 ) : (
                   <span className="text-4xl opacity-30">🃏</span>
                 )}
-                {e.is_foil && (
-                  <span className="absolute left-1.5 top-1.5 text-xs text-accent-400">✦</span>
-                )}
-                <div className="absolute right-1.5 top-1.5 flex flex-col items-end gap-1">
-                  <span className="rounded-full bg-brand-600 px-2 py-0.5 text-xs font-bold text-white shadow">
-                    ×{e.quantity}
-                  </span>
-                  {e.grade && (
-                    <span
-                      title={gradedButRaw(e.grade) ? RAW_GRADE_NOTE : undefined}
-                      className="rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white"
-                    >
-                      {e.grade}
-                    </span>
-                  )}
-                </div>
+                <CardBadgeOverlay isFoil={e.is_foil} quantity={e.quantity} grade={e.grade} />
               </Link>
               <div className="flex flex-1 flex-col p-3">
                 <div className="flex items-start justify-between gap-2">
@@ -258,11 +244,6 @@ export function CollectionPage() {
                       {names[e.card_id] ?? e.card_id}
                     </Link>
                     <p className="text-sm font-semibold">{format(e.market_value)}</p>
-                    {e.acquired_price != null && (
-                      <p className="text-xs text-slate-400">
-                        acquired at {format(e.acquired_price)}
-                      </p>
-                    )}
                     {gradedButRaw(e.grade) && (
                       <p
                         title={RAW_GRADE_NOTE}
@@ -329,9 +310,6 @@ function EditModal({
   const [quantity, setQuantity] = useState(entry.quantity);
   const [condition, setCondition] = useState(entry.condition ?? "");
   const [grade, setGrade] = useState(entry.grade ?? "");
-  const [acquired, setAcquired] = useState<number | null>(
-    entry.acquired_price != null ? Number(entry.acquired_price) : null,
-  );
 
   useEffect(() => {
     firstRef.current?.focus();
@@ -351,7 +329,6 @@ function EditModal({
           quantity,
           condition: condition || null,
           grade: grade || null,
-          acquired_price: acquired,
         },
       });
       onSaved();
@@ -403,17 +380,6 @@ function EditModal({
               setGrade(next.grade);
             }}
           />
-          <label>
-            <span className="mb-1 block">Acquired price</span>
-            <NumberField
-              kind="money"
-              value={acquired}
-              onCommit={setAcquired}
-              min={LIMITS.money.min}
-              max={LIMITS.money.max}
-              className={inputClass}
-            />
-          </label>
         </div>
         <div className="mt-4 flex justify-end gap-2">
           <button

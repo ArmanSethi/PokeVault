@@ -40,7 +40,6 @@ def test_parse_generic_headers() -> None:
     assert r.quantity == 3
     assert r.condition == "NM"
     assert r.is_foil is True
-    assert r.acquired_price == Decimal("12.50")
 
 
 def test_parse_collectr_style_synonyms() -> None:
@@ -55,16 +54,14 @@ def test_parse_collectr_style_synonyms() -> None:
     assert r.number == "4"
     assert r.quantity == 1
     assert r.is_foil is True
-    assert r.acquired_price == Decimal("399.99")
 
 
 def test_parse_degrades_gracefully() -> None:
-    # Missing quantity → 1; garbled price → None; blank line skipped.
-    csv = b"name,quantity,price\nEevee,,abc\n\n"
+    # Missing quantity → 1; blank line skipped.
+    csv = b"name,quantity\nEevee,\n\n"
     rows = parse_csv(csv)
     assert len(rows) == 1
     assert rows[0].quantity == 1
-    assert rows[0].acquired_price is None
     assert rows[0].is_foil is False
 
 

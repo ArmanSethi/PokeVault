@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models.card import Card
 from app.models.collection import CollectionEntry
+from app.models.user import User
 from app.schemas.collection import CollectionEntryRead, CollectionSummary, SetHolding
 from app.services.cards import market_price_for_entry
 from app.services.grading import grade_multiplier, graded_unit_price
@@ -20,7 +21,13 @@ from app.services.grading import grade_multiplier, graded_unit_price
 
 def _to_entry_read(entry: CollectionEntry) -> CollectionEntryRead:
     # Grade-aware: PSA-graded copies are worth a multiple of the raw price (see grading.py).
-    unit = graded_unit_price(entry.card.prices_current, is_foil=entry.is_foil, grade=entry.grade)
+    # Priced at the entry's exact variant when recorded (else derived from is_foil).
+    unit = graded_unit_price(
+        entry.card.prices_current,
+        is_foil=entry.is_foil,
+        grade=entry.grade,
+        variant=entry.variant,
+    )
     value = unit * entry.quantity if unit is not None else None
     return CollectionEntryRead(
         id=entry.id,
@@ -29,7 +36,6 @@ def _to_entry_read(entry: CollectionEntry) -> CollectionEntryRead:
         condition=entry.condition,
         grade=entry.grade,
         is_foil=entry.is_foil,
-        acquired_price=entry.acquired_price,
         created_at=entry.created_at,
         updated_at=entry.updated_at,
         market_price=unit,
@@ -83,23 +89,24 @@ async def collection_summary(
 
     total_quantity = 0
     total_market_value = Decimal("0")
-    total_cost = Decimal("0")
     all_card_ids: set[str] = set()
     by_set: dict[str, _SetAgg] = {}
 
     for entry in entries:
         card = entry.card
         if graded:
-            unit = graded_unit_price(card.prices_current, is_foil=entry.is_foil, grade=entry.grade)
+            unit = graded_unit_price(
+                card.prices_current, is_foil=entry.is_foil, grade=entry.grade, variant=entry.variant
+            )
         else:
-            unit = market_price_for_entry(card.prices_current, is_foil=entry.is_foil)
+            unit = market_price_for_entry(
+                card.prices_current, is_foil=entry.is_foil, variant=entry.variant
+            )
         line_value = unit * entry.quantity if unit is not None else Decimal("0")
 
         total_quantity += entry.quantity
         total_market_value += line_value
         all_card_ids.add(card.id)
-        if entry.acquired_price is not None:
-            total_cost += entry.acquired_price * entry.quantity
 
         agg = by_set.get(card.set_id)
         if agg is None:
@@ -125,6 +132,11 @@ async def collection_summary(
         for set_id, agg in by_set.items()
     ]
     sets.sort(key=lambda s: s.market_value, reverse=True)
+
+    # "Total spent" is the owner's manual override (no auto-calculation); None when unset. It is
+    # never surfaced publicly — the public showcase reads PublicProfile, which omits total_cost.
+    owner = await session.get(User, user_id)
+    total_cost = owner.total_spent_override if owner else None
 
     return CollectionSummary(
         total_quantity=total_quantity,

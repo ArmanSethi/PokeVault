@@ -136,14 +136,22 @@ async def add_card(
     if await session.get(Card, data.card_id) is None:
         raise UnknownCard(data.card_id)
 
+    # The deck's target size is a hard cap on total cards: never add past it. Add only as many as
+    # fit; once the deck is full (total == target_size), adding is a no-op.
+    current_total = sum(c.quantity for c in deck.cards)
+    room = deck.target_size - current_total
+    if room <= 0:
+        return await get_deck(session, user_id, deck_id)
+    add_qty = min(data.quantity, room)
+
     existing = next((c for c in deck.cards if c.card_id == data.card_id), None)
     if existing is not None:
         # Clamp the running total (schema only bounds the incoming delta).
-        existing.quantity = clamp_int(existing.quantity + data.quantity, MIN_CARD_QTY, MAX_CARD_QTY)
+        existing.quantity = clamp_int(existing.quantity + add_qty, MIN_CARD_QTY, MAX_CARD_QTY)
     else:
         # Mutate through the relationship so the loaded deck (and the reload below, which
         # returns the same identity-mapped instance) reflects the change immediately.
-        deck.cards.append(DeckCard(card_id=data.card_id, quantity=data.quantity))
+        deck.cards.append(DeckCard(card_id=data.card_id, quantity=add_qty))
     await session.commit()
     return await get_deck(session, user_id, deck_id)
 
@@ -158,7 +166,10 @@ async def set_card_quantity(
     dc = next((c for c in deck.cards if c.card_id == card_id), None)
     if dc is None:
         return None
-    dc.quantity = quantity
+    # Respect the deck's target-size cap: this card's quantity can't push the deck past target.
+    others = sum(c.quantity for c in deck.cards if c.card_id != card_id)
+    ceiling = min(MAX_CARD_QTY, max(MIN_CARD_QTY, deck.target_size - others))
+    dc.quantity = clamp_int(quantity, MIN_CARD_QTY, ceiling)
     await session.commit()
     return await get_deck(session, user_id, deck_id)
 

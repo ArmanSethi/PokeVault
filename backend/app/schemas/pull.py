@@ -19,6 +19,7 @@ class PackPullRead(BaseModel):
     number: str
     image_url: str | None = None
     rarity: str | None = None
+    variant: str | None = None  # the printing this pull represents (drives its value)
     price_at_pull: Decimal | None = None  # frozen at keep
     current_value: Decimal | None = None  # looked up now from the price table
     currency: str = "USD"

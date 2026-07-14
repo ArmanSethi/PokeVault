@@ -56,8 +56,7 @@ A card the owner holds, with copy-level detail. (Multi-user is not modeled yet â
 | `quantity`       | int             | default 1                    |
 | `condition`      | str?            | e.g. NM, LP, MP              |
 | `is_foil`        | bool            | default false                |
-| `acquired_price` | Numeric(10,2)?  | what the user paid           |
-| `notes`          | str?            |                              |
+| `variant`        | str?            | printing owned (holofoil, reverseHolofoil, â€¦); drives value |
 | `created_at`     | datetime        | server default `now()`       |
 | `updated_at`     | datetime        | `now()` + `onupdate`         |
 

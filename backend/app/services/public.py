@@ -1,8 +1,8 @@
 """Public-showcase business logic + sitemap generation.
 
 Everything here is reachable without authentication, so it must expose only public-safe
-data. Ownership stats and per-card market values are fine; cost basis (``acquired_price``)
-is never projected.
+data. Ownership stats, per-card market values, and the grade badge are fine; private data
+(cost basis, notes, the owner's manual Total spent) is never projected.
 """
 
 from __future__ import annotations
@@ -78,6 +78,7 @@ async def public_collection(session: AsyncSession, handle: str) -> PublicCollect
                 number=card.number,
                 image_url=card.image_small,
                 rarity=card.rarity,
+                grade=e.grade,
                 is_foil=e.is_foil,
                 quantity=e.quantity,
                 market_price=unit,

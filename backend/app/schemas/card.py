@@ -24,6 +24,21 @@ class CardPriceRead(BaseModel):
     updated_at: datetime
 
 
+class CardVariantPrice(BaseModel):
+    """The two markets for one printing of a card, paired for display.
+
+    ``tcgplayer_usd`` is that variant's TCGPlayer market (USD); ``cardmarket_eur`` is the
+    Cardmarket trend (EUR). ``diverges`` is a data-quality signal: the two markets disagree
+    beyond a threshold once converted to a common currency (usually an edition/printing
+    mismatch upstream) → the UI shows a "verify edition" flag. Never a hard error.
+    """
+
+    variant: str
+    tcgplayer_usd: Decimal | None = None
+    cardmarket_eur: Decimal | None = None
+    diverges: bool = False
+
+
 class CardBase(BaseModel):
     number: str
     name: str
@@ -40,11 +55,12 @@ class CardRead(CardBase):
 
     id: str
     set_id: str
-    # All current price rows plus a convenience TCGPlayer USD summary. Populated by
-    # the cards service (see app/services/cards.py); the ORM has no such attribute.
+    # All raw current price rows, a per-variant two-market view (for the detail table), and a
+    # convenience canonical USD headline. Populated by the cards service (app/services/cards.py).
     prices: list[CardPriceRead] = []
-    market_price: Decimal | None = None
-    currency: str | None = None
+    variants: list[CardVariantPrice] = []
+    market_price: Decimal | None = None  # canonical USD (see select_display_price)
+    currency: str | None = None  # always "USD" when market_price is set
 
 
 class SetBase(BaseModel):

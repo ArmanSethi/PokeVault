@@ -53,8 +53,10 @@ class InvalidKeep(Exception):
         self.card_id = card_id
 
 
-def _current_value(card: Card) -> Decimal | None:
-    return unit_price_usd(card.prices_current, is_foil=False, eur_usd_rate=settings.EUR_USD_RATE)
+def _current_value(card: Card, variant: str | None = None) -> Decimal | None:
+    return unit_price_usd(
+        card.prices_current, is_foil=False, eur_usd_rate=settings.EUR_USD_RATE, variant=variant
+    )
 
 
 async def keep_from_open(
@@ -89,6 +91,7 @@ async def keep_from_open(
         rolled_by_id[cid] = {
             "price": Decimal(price) if price is not None else None,
             "rarity": rc.get("rarity"),
+            "variant": rc.get("variant"),
         }
 
     # Reject anything not in the roll (or kept more times than it was rolled).
@@ -105,6 +108,7 @@ async def keep_from_open(
             card_id=cid,
             price_at_pull=info["price"],
             rarity=info["rarity"],
+            variant=info["variant"],
         )
         session.add(pull)
         created.append(pull)
@@ -138,8 +142,9 @@ async def keep_from_open(
                 number=card.number,
                 image_url=card.image_small,
                 rarity=p.rarity or card.rarity,
+                variant=p.variant,
                 price_at_pull=p.price_at_pull,
-                current_value=_current_value(card),
+                current_value=_current_value(card, p.variant),
                 pulled_at=p.pulled_at,
             )
         )
@@ -171,8 +176,9 @@ async def list_pulls(session: AsyncSession, user_id: uuid.UUID) -> list[PackPull
                 number=card.number,
                 image_url=card.image_small,
                 rarity=p.rarity or card.rarity,
+                variant=p.variant,
                 price_at_pull=p.price_at_pull,
-                current_value=_current_value(card),
+                current_value=_current_value(card, p.variant),
                 pulled_at=p.pulled_at,
             )
         )
@@ -258,7 +264,7 @@ async def leaderboard(
             {"handle": handle, "is_public": is_public, "total": Decimal("0"), "count": 0},
         )
         a["count"] += 1
-        val = _current_value(pull.card)
+        val = _current_value(pull.card, pull.variant)
         if val is not None:
             a["total"] += val
     ranked = sorted(agg.values(), key=lambda a: a["total"], reverse=True)[:LEADERBOARD_LIMIT]

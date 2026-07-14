@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -32,7 +31,6 @@ class ImportRow(BaseModel):
     quantity: int = 1
     condition: str | None = None
     is_foil: bool = False
-    acquired_price: Decimal | None = None
     # Reconciliation.
     status: RowStatus
     candidates: list[ImportCandidate] = []
@@ -56,7 +54,6 @@ class ImportConfirmRow(BaseModel):
     quantity: int = Field(default=1, ge=1)
     condition: str | None = None
     is_foil: bool = False
-    acquired_price: Decimal | None = None
 
 
 class ImportConfirm(BaseModel):

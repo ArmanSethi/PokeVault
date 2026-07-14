@@ -41,5 +41,7 @@ class PackPull(Base):
         DateTime(timezone=True), server_default=func.now(), index=True
     )
     rarity: Mapped[str | None] = mapped_column(String(64), default=None)  # display cache
+    # The TCGplayer printing this pull represents; determines price_at_pull + current value.
+    variant: Mapped[str | None] = mapped_column(String(32), default=None)
 
     card: Mapped[Card] = relationship()

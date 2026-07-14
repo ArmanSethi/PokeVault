@@ -2,8 +2,9 @@
 
 Every read and mutation is bounded by ``user_id`` so one user can never see or touch
 another's entries. A "stack" is identified by
-``(user_id, card_id, condition, is_foil, grade)`` — adding a matching stack increments its
-quantity rather than creating a duplicate row.
+``(user_id, card_id, condition, is_foil, grade, variant)`` — adding a matching stack increments
+its quantity rather than creating a duplicate row (so a holofoil and a reverseHolofoil of the same
+card are separate stacks, valued at their own printing).
 """
 
 from __future__ import annotations
@@ -47,6 +48,7 @@ async def add_or_increment(
         CollectionEntry.condition.is_not_distinct_from(data.condition),
         CollectionEntry.grade.is_not_distinct_from(data.grade),
         CollectionEntry.is_foil == data.is_foil,
+        CollectionEntry.variant.is_not_distinct_from(data.variant),
     )
     existing = (await session.execute(stmt)).scalar_one_or_none()
 
@@ -63,7 +65,7 @@ async def add_or_increment(
             condition=data.condition,
             grade=data.grade,
             is_foil=data.is_foil,
-            acquired_price=data.acquired_price,
+            variant=data.variant,
         )
         session.add(entry)
         await session.flush()

@@ -12,6 +12,7 @@ import {
 } from "../lib/queries";
 import { useAuth } from "../context/AuthContext";
 import { useCurrency } from "../context/CurrencyContext";
+import { CardBadgeOverlay } from "../components/CardBadgeOverlay";
 import { CollectionFilters, type SortKey } from "../components/CollectionFilters";
 import { ErrorState } from "../components/States";
 import { CardGridSkeleton } from "../components/Skeleton";
@@ -142,6 +143,9 @@ export function ShowcasePage() {
           <Stat label="Sets completed" value={String(p.sets_completed)} />
           <Stat label="Collection value" value={format(p.total_market_value)} />
         </div>
+        <p className="mt-4 border-t border-slate-200 pt-3 text-xs text-slate-400 dark:border-slate-800">
+          This is @{p.handle}&apos;s real card collection.
+        </p>
       </div>
 
       {collection.isPending ? (
@@ -165,9 +169,9 @@ export function ShowcasePage() {
             />
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-            {displayed.map((e) => (
+            {displayed.map((e, i) => (
               <Link
-                key={e.card_id}
+                key={`${e.card_id}-${e.grade ?? ""}-${e.is_foil ? "f" : ""}-${i}`}
                 to={`/cards/${encodeURIComponent(e.card_id)}`}
                 className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition-all hover:-translate-y-1 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900"
               >
@@ -182,14 +186,8 @@ export function ShowcasePage() {
                   ) : (
                     <span className="text-4xl opacity-30">🃏</span>
                   )}
-                  {e.quantity > 1 && (
-                    <span className="absolute right-1.5 top-1.5 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium text-white">
-                      ×{e.quantity}
-                    </span>
-                  )}
-                  {e.is_foil && (
-                    <span className="absolute left-1.5 top-1.5 text-xs text-accent-400">✦</span>
-                  )}
+                  {/* Same badges (foil / ×N / grade) as the owner's Collection card. */}
+                  <CardBadgeOverlay isFoil={e.is_foil} quantity={e.quantity} grade={e.grade} />
                 </div>
                 <div className="flex flex-1 flex-col gap-0.5 p-3">
                   <p className="truncate text-sm font-medium" title={e.name}>

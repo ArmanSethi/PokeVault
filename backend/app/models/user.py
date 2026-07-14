@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import Boolean, Integer, String, Uuid, func
+from sqlalchemy import Boolean, Integer, Numeric, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base_class import Base
@@ -39,5 +40,9 @@ class User(Base):
     # higher limit (e.g. testing) without hardcoding a username in the quota logic. Not touched by
     # the per-request upsert in api/deps.py, so it survives normal auth traffic.
     daily_pack_limit: Mapped[int | None] = mapped_column(Integer, default=None)
+    # Manual "Total spent" figure the user types on the dashboard. NULL = unset (the tile shows a
+    # neutral empty state). There is no auto-calculation — this value is the sole source of the
+    # dashboard's Total spent. Private to the owner; never projected onto the public showcase.
+    total_spent_override: Mapped[Decimal | None] = mapped_column(Numeric(13, 2), default=None)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())

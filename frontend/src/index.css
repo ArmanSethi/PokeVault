@@ -482,8 +482,71 @@
   }
 }
 
+/* Finale zoom-in for the last (hit) card: scales up from small to prominent while fading in.
+   Replaces the old flip for the hit card; the section dim still sits behind it. ~0.6s. */
+@keyframes sim-zoom {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.sim-zoom {
+  animation: sim-zoom 0.6s cubic-bezier(0.2, 0.85, 0.25, 1) both;
+}
+
+/* Swipe-to-decide: the card follows the pointer (transform set inline, no transition while
+   dragging). On release the card either flings off-screen or snaps back — that motion runs
+   through `.is-animating` (transform + opacity only, GPU-friendly). */
+.sim-swipe {
+  touch-action: pan-y; /* let the page scroll vertically; we own horizontal drag */
+  will-change: transform;
+  cursor: grab;
+}
+.sim-swipe:active {
+  cursor: grabbing;
+}
+.sim-swipe.is-animating {
+  transition:
+    transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1),
+    opacity 0.35s ease;
+}
+
+/* Keep/Discard drag affordances that fade in with drag distance (opacity set inline). */
+.sim-verdict {
+  position: absolute;
+  top: 0.75rem;
+  z-index: 20;
+  border-radius: 0.5rem;
+  border-width: 2px;
+  padding: 0.15rem 0.6rem;
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+.sim-verdict-keep {
+  right: 0.75rem;
+  transform: rotate(12deg);
+  color: #34d399;
+  border-color: #34d399;
+}
+.sim-verdict-discard {
+  left: 0.75rem;
+  transform: rotate(-12deg);
+  color: #f87171;
+  border-color: #f87171;
+}
+
 /* Reduced motion: instant flip, static swirl, no bob / tilt / pop / sparkles / charge / shockwave /
-   shake / tick / lift / flash. (Sound stays governed only by the mute toggle.) */
+   shake / tick / lift / flash / zoom / swipe-fling. (Sound stays governed only by the mute toggle.) */
 @media (prefers-reduced-motion: reduce) {
   .sim-flip-inner,
   .sim-tilt {
@@ -498,7 +561,9 @@
   .sim-shake,
   .sim-tick,
   .sim-finale-label,
-  .sim-lift {
+  .sim-lift,
+  .sim-zoom,
+  .sim-swipe.is-animating {
     animation: none !important;
     transition: none !important;
   }

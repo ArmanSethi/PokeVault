@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ApiError } from "../lib/api";
-import { useAddEntry, useCard, useCardHistory } from "../lib/queries";
+import { useAddEntry, useCard, useCardHistory, useRefreshCard } from "../lib/queries";
 import { hasPrice, money } from "../lib/format";
 import { LIMITS } from "../lib/limits";
 import { NumberField } from "../components/NumberField";
@@ -19,11 +19,19 @@ import type { CollectionEntryCreate } from "../types";
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800";
 
-// Friendly names for the raw price-source keys shown in the per-source reference table.
-const SOURCE_LABELS: Record<string, string> = {
-  tcgplayer: "TCGplayer",
-  cardmarket: "CardMarket",
+// Friendly labels for the TCGplayer variant keys (used in the per-variant table + the picker).
+const VARIANT_LABELS: Record<string, string> = {
+  normal: "Normal",
+  holofoil: "Holofoil",
+  reverseHolofoil: "Reverse Holofoil",
+  "1stEdition": "1st Edition",
+  "1stEditionHolofoil": "1st Edition Holofoil",
+  unlimited: "Unlimited",
+  unlimitedHolofoil: "Unlimited Holofoil",
 };
+const variantLabel = (v: string): string => VARIANT_LABELS[v] ?? v;
+// A copy of a "holo" printing is a foil copy (kept in sync with the legacy is_foil flag).
+const isFoilVariant = (v: string): boolean => /holo/i.test(v);
 
 export function CardDetailPage() {
   const { id = "" } = useParams();
@@ -32,28 +40,53 @@ export function CardDetailPage() {
   const card = useCard(id);
   const history = useCardHistory(id);
   const addEntry = useAddEntry();
+  const refresh = useRefreshCard(id);
   const toast = useToast();
   const { session } = useAuth();
   const { format } = useCurrency();
 
-  const [form, setForm] = useState<CollectionEntryCreate>({
-    card_id: id,
-    quantity: 1,
-    is_foil: false,
-  });
+  const [form, setForm] = useState<CollectionEntryCreate>({ card_id: id, quantity: 1 });
 
   if (card.isPending) return <DetailSkeleton />;
   if (card.isError)
     return <ErrorState message={(card.error as Error).message} onRetry={() => card.refetch()} />;
   const c = card.data;
 
+  // Printings the user can own — the card's actual TCGplayer variants (fallback: normal). The
+  // picker defaults to the base printing (holofoil for holo rarities, else normal).
+  const availableVariants = [
+    ...new Set(c.prices.filter((p) => p.source === "tcgplayer").map((p) => p.variant)),
+  ];
+  if (availableVariants.length === 0) availableVariants.push("normal");
+  const baseVariant =
+    c.rarity && /holo/i.test(c.rarity) && availableVariants.includes("holofoil")
+      ? "holofoil"
+      : availableVariants[0];
+  const selectedVariant = form.variant ?? baseVariant;
+
   async function add(e: FormEvent) {
     e.preventDefault();
     try {
-      await addEntry.mutateAsync({ ...form, card_id: id });
-      toast.success(`Added ${c.name} to your collection.`);
+      await addEntry.mutateAsync({
+        card_id: id,
+        quantity: form.quantity,
+        condition: form.condition,
+        grade: form.grade,
+        variant: selectedVariant,
+        is_foil: isFoilVariant(selectedVariant),
+      });
+      toast.success(`Added ${c.name} (${variantLabel(selectedVariant)}) to your collection.`);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Could not add card");
+    }
+  }
+
+  async function doRefresh() {
+    try {
+      await refresh.mutateAsync();
+      toast.success("Prices refreshed.");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not refresh prices.");
     }
   }
 
@@ -101,39 +134,76 @@ export function CardDetailPage() {
             {c.set_id} · #{c.number}
             {c.rarity ? ` · ${c.rarity}` : ""}
           </p>
-          {hasPrice(c.market_price) ? (
-            <p className="mt-3 text-3xl font-bold text-brand-600 dark:text-brand-400">
-              {format(c.market_price)}
-            </p>
-          ) : (
-            <p className="mt-3 text-base text-slate-500 dark:text-slate-400">
-              No market price yet — our price sources haven&apos;t published one for this card.
-            </p>
-          )}
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            {hasPrice(c.market_price) ? (
+              <p className="text-3xl font-bold text-brand-600 dark:text-brand-400">
+                {format(c.market_price)}
+              </p>
+            ) : (
+              <p className="text-base text-slate-500 dark:text-slate-400">
+                No market price yet — our price sources haven&apos;t published one for this card.
+              </p>
+            )}
+            {session && (
+              <button
+                type="button"
+                onClick={doRefresh}
+                disabled={refresh.isPending}
+                title="Re-fetch the latest prices now"
+                className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-medium hover:bg-slate-100 disabled:opacity-50 dark:border-slate-700 dark:hover:bg-slate-800"
+              >
+                {refresh.isPending ? "Refreshing…" : "↻ Refresh price"}
+              </button>
+            )}
+          </div>
 
-          {c.prices.length > 0 && (
+          {/* Per printing: TCGplayer market (USD) + Cardmarket trend (EUR), each in its native
+              currency. A "verify edition" flag warns when the two markets disagree wildly (usually
+              an upstream edition/printing mismatch — a data-quality hint, not an error). */}
+          {c.variants.length > 0 && (
             <table className="mt-4 w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
+                  <th className="py-1 font-medium">Printing</th>
+                  <th className="py-1 text-right font-medium">TCGplayer</th>
+                  <th className="py-1 text-right font-medium">Cardmarket</th>
+                </tr>
+              </thead>
               <tbody>
-                {c.prices.map((p) => (
+                {c.variants.map((v) => (
                   <tr
-                    key={`${p.source}-${p.variant}`}
+                    key={v.variant}
                     className="border-t border-slate-100 dark:border-slate-800"
                   >
-                    <td className="py-1 text-slate-500">
-                      <span className="font-medium text-slate-600 dark:text-slate-300">
-                        {SOURCE_LABELS[p.source] ?? p.source}
-                      </span>{" "}
-                      · {p.variant}
+                    <td className="py-1.5 text-slate-600 dark:text-slate-300">
+                      <span className="font-medium">{variantLabel(v.variant)}</span>
+                      {v.diverges && (
+                        <span
+                          title="These two markets disagree a lot for this printing — verify the edition."
+                          className="ml-2 cursor-help rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/50 dark:text-amber-400"
+                        >
+                          ⚠ verify edition
+                        </span>
+                      )}
                     </td>
-                    {/* Each marketplace's own quote, in its native currency (symbol + ISO code). */}
-                    <td className="py-1 text-right">
-                      {p.market != null ? (
+                    <td className="py-1.5 text-right tabular-nums">
+                      {v.tcgplayer_usd != null ? (
                         <>
-                          {money(p.market, p.currency)}{" "}
-                          <span className="text-xs text-slate-400">{p.currency}</span>
+                          {money(v.tcgplayer_usd, "USD")}{" "}
+                          <span className="text-xs text-slate-400">USD</span>
                         </>
                       ) : (
-                        "—"
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="py-1.5 text-right tabular-nums">
+                      {v.cardmarket_eur != null ? (
+                        <>
+                          {money(v.cardmarket_eur, "EUR")}{" "}
+                          <span className="text-xs text-slate-400">EUR</span>
+                        </>
+                      ) : (
+                        <span className="text-slate-400">—</span>
                       )}
                     </td>
                   </tr>
@@ -167,17 +237,6 @@ export function CardDetailPage() {
                     className={inputClass}
                   />
                 </label>
-                <label className="text-sm">
-                  <span className="mb-1 block">Acquired price (optional)</span>
-                  <NumberField
-                    kind="money"
-                    value={form.acquired_price ?? null}
-                    onCommit={(v) => setForm({ ...form, acquired_price: v })}
-                    min={LIMITS.money.min}
-                    max={LIMITS.money.max}
-                    className={inputClass}
-                  />
-                </label>
                 <GradingFields
                   condition={form.condition ?? ""}
                   grade={form.grade ?? ""}
@@ -186,13 +245,22 @@ export function CardDetailPage() {
                   }
                 />
               </div>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.is_foil ?? false}
-                  onChange={(e) => setForm({ ...form, is_foil: e.target.checked })}
-                />
-                Foil / holo copy
+              <label className="block text-sm">
+                <span className="mb-1 block">Edition / variant</span>
+                <select
+                  value={selectedVariant}
+                  onChange={(e) => setForm({ ...form, variant: e.target.value })}
+                  className={inputClass}
+                >
+                  {availableVariants.map((v) => (
+                    <option key={v} value={v}>
+                      {variantLabel(v)}
+                    </option>
+                  ))}
+                </select>
+                <span className="mt-1 block text-xs text-slate-400">
+                  Priced at this printing&apos;s market value.
+                </span>
               </label>
               <button
                 type="submit"

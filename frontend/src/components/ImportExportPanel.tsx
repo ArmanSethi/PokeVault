@@ -44,7 +44,6 @@ export function ImportExportPanel({ onClose }: { onClose: () => void }) {
         quantity: row.quantity,
         condition: row.condition,
         is_foil: row.is_foil,
-        acquired_price: row.acquired_price === null ? null : Number(row.acquired_price),
       });
     }
     return out;

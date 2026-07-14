@@ -5,6 +5,154 @@ Detailed rationale lives in `docs/`.
 
 ---
 
+## 2026-07-14 — Per-(card,variant) pricing fix + licensed-API eval ⏳ (in progress, not yet committed)
+
+Track A (fix pokemontcg.io reading) implemented + verified against a local backend on the live
+Supabase DB; frontend `tsc`/`lint`/`build` + backend `ruff` clean. Track B delivered as a written
+recommendation (no build). Both ASK points answered: canonical = **TCGplayer USD** (Cardmarket
+EUR→USD fallback via `settings.EUR_USD_RATE`); refresh = **daily + a rate-limited manual button**.
+
+- **Diagnosis (reported before editing):** the model already stored per-`(card,source,variant)` and
+  TCGplayer ingestion was correct (dynamic variant keys, uses `market`). Real bugs were: Cardmarket
+  written as a single `variant="normal"` row (never pairs with a holo card's `holofoil` TCG row;
+  reverse-holo sub-prices dropped); the card **headline** fed a EUR fallback into `format()` which
+  assumes USD (silent currency mix, e.g. base1-8 Machamp); **no divergence detection**; owned entries
+  + vault pulls priced by a boolean `is_foil` only (no variant). base1-4 = TCG holo $773 vs CM trend
+  €4,184 (edition-conflated upstream) → the flagship divergence case.
+- **Ingest (`mappers.price_rows_from_card`):** Cardmarket main price → the card's BASE variant
+  (holofoil for holo rarities, else normal); + a `reverseHolofoil` row from `reverseHolo*`. A
+  raw_json backfill re-mapped all 20k cards (no API): cardmarket now holofoil 2.7k / normal 17k /
+  reverseHolofoil 15.9k.
+- **Valuation (`cards`/`grading`/`valuation`/`pulls`/`simulator`):** headline is now canonical **USD**
+  (`select_display_price` converts the CM fallback); `market_price_for_entry`/`unit_price_usd`/
+  `graded_unit_price` take an explicit `variant`; entries carry `variant` (part of stack identity),
+  pulls carry `variant` (set at roll from the base printing) → `price_at_pull`, vault current value,
+  and leaderboard `total_value` all follow the printing. `CardRead.variants[]` = per-printing
+  TCG-USD + CM-EUR + `diverges` (≥2.5× in common currency).
+- **Migrations (session pooler, psycopg v3):** `d5b7e9f1a2c3` adds `collection_entries.variant` +
+  `pack_pulls.variant` (**applied**). Chained BEFORE the acquired_price drop (re-pointed
+  `c4e6a8b02d3f.down_revision`). Head now `d5b7e9f1a2c3`.
+- **Manual refresh:** `POST /cards/{id}/refresh` (auth, per-user 20s cooldown) re-fetches one card
+  via the ingest httpx client (UA+key clears Cloudflare — verified: base1-4 → $773.51) with capped
+  retries so it fails fast; frontend "↻ Refresh price" button on the card. No scraping.
+- **Frontend:** card detail per-printing table (TCG USD / CM EUR + ⚠ verify-edition flag); the add
+  form's foil checkbox → an **Edition/variant picker** (from the card's TCG variants), sent + stored;
+  types gained `Card.variants`, entry/pull `variant`.
+- **Track B recommendation:** pursue **PriceCharting** (~$59/yr, self-serve, adds graded PSA/BGS/CGC
+  — the real gap). TCGplayer + Cardmarket APIs are **closed to new applicants**; aggregators are
+  scrapers (excluded). No integration built — awaiting go-ahead.
+
+**Verified (local drive):** base1-4 detail shows Holofoil $773.51 USD / €4,184.60 EUR + verify-edition
+flag; sm11-6 shows Normal (flagged) + Reverse Holofoil (aligned); variant picker + refresh present;
+zero console errors.
+
+---
+
+## 2026-07-14 — Swipe-to-decide reveal · acquired-price removed · manual Total spent · profile cards ⏳ (in progress, not yet committed)
+
+Local branch work; frontend `pnpm build`/`lint`/`tsc` clean, backend `ruff` clean + pure tests
+pass, driven end-to-end against a **local** backend (frontend → `localhost:8000`) on the live
+Supabase DB. Additive migration applied to the pooler; the destructive `acquired_price` drop was
+subsequently **run** (user-authorized) — see the update note at the end of this entry.
+
+- **Simulator reveal → swipe-to-decide (replaces tap-to-flip + keep/discard summary):**
+  `PackReveal` now auto-reveals cards one at a time (best/hit last) and decides each by swipe/drag
+  (right = keep → vault, left = discard) via native Pointer Events + transforms (no gesture lib);
+  directional Keep/Discard affordances, off-screen fling, visible Keep/Discard buttons, ←/→ keys,
+  and a brief **Undo** (covers the last card). The old `summary` phase + `discarded` grid are gone;
+  `SimulatorOpenPage` is `idle → revealing → recap`. Kept `card.id`s are accumulated and POSTed
+  **once** to `/keep` at end of pack (backend keeps a pack only once — 409 on a second keep), so a
+  batch-at-end commit is the only correct option; discards never persist. Finale: the hit card
+  **zooms in** (`sim-zoom`) over the existing section dim with a new **original synthesized jackpot
+  flourish** (`playJackpot` in `sfx.ts`, ~0.8s, oscillator/noise only — imitates no real jingle),
+  replacing the old shockwave/shake burst. Earlier cards keep the flip + rare tells + whoosh.
+  reduced-motion → instant decide, no zoom/fling (sound still governed by the mute toggle).
+- **`acquired_price` removed entirely:** dropped from the ORM (`CollectionEntry`), all collection
+  schemas, valuation serializer, `add_or_increment`, CSV import/export (parser synonyms, `_parse_price`,
+  export column), the Edit-card dialog, the CardDetail add form, and the collection card "acquired
+  at $X" line. Migration `c4e6a8b02d3f` drops the column — **written but NOT applied** (destructive).
+- **Total spent → manual override only:** new nullable `users.total_spent_override` (Numeric(13,2),
+  0–99,999,999,999; migration `b3d5f7a91c2e`, **applied**). `CollectionSummary.total_cost` is now
+  this value (or null) — no `SUM(acquired_price×qty)`. Dashboard tile gained a pencil (left of the
+  eye) → inline editor (raw-while-typing, clamp-on-commit) that PATCHes `/me`; null → "Set amount"
+  empty state; Clear resets to null. No "reset to calculated" / manual-vs-auto indicator (there is
+  no calculated value). `UserProfileUpdate` uses `model_fields_set` so `null` truly clears.
+- **Dashboard featured box:** taller (`h-64`→`h-96`) so the (object-contain) card shows in full with
+  the name/set/value beneath. Layout only.
+- **Public profile `/u/:handle`:** subtle "@handle's real card collection — not their simulator
+  pulls" caption; cards now render the **same badges as the owner's Collection card** via a shared
+  `CardBadgeOverlay` (foil ✦ / ×N brand pill / **grade badge**) + live current value. Added `grade`
+  to the public `PublicEntry` serializer/type (public-safe display field; still no cost/notes). Fixed
+  a duplicate-React-key on the public grid (same card_id across raw+graded entries).
+
+**Follow-up fixes (same session):**
+- **Dashboard layout swap:** By-set moved UP into the top row as a narrow, fixed-height tile
+  (aligned to hero/stats height, inner list scrolls) beside hero + Total spent/Total cards +
+  Featured; the "Portfolio value over time" chart moved DOWN to full-width. 4-across only at `lg`+
+  (tablets/mobile stack: hero, stats, featured, By-set, chart). Layout only. NOTE: at ~1024–1200px
+  the hero value wraps to two lines (legible); clean at ≥1280px. (If the hero must never wrap, the
+  alternative is hero+stats on top, Featured+By-set on a second row — offered to the user.)
+- **Wishlist alerts de-duped:** target-hit is now logged only on a NEW crossing to at/below target
+  (prior snapshot above), not every day it stays there (`alerts.detect_and_log_alerts`); and
+  `list_alerts` collapses consecutive-day runs per (card, kind) to the latest, preserving episodes
+  separated by a recovery. Verified: synthetic Jun 1/2/3 + Jun 12 → 2 episodes (Jun 3, Jun 12).
+- **Deck target is a hard cap:** `deck.add_card` / `set_card_quantity` never let total cards exceed
+  `target_size` (adds only what fits; no-op when full). Verified: target 40 → +30, +30 (→40), +5
+  (→40).
+- **Public profile caption** moved into the header box (below the stats row, thin divider, muted
+  footnote): "This is @{handle}'s real card collection." Verified on `/u/red`.
+- **Swipe reveal tap-freeze:** a plain tap on the card set `animating=true` with no matching
+  swipe-end and never reset it → `canDecide` went false → buttons/keys disabled ("frozen"). Now a
+  tap (travel < `TAP_SLOP` 6px) is a pure no-op; a small drag snaps back and clears `animating`;
+  `pointercancel` resets without ever deciding (never derives direction from an unreliable cancel
+  clientX). Only a real swipe past the commit threshold decides. Verified: 4 taps → no advance/no
+  freeze, buttons + mouse-drag swipe still work.
+- **Total spent not updating live:** the tile reads `summary.total_cost`, but the save only
+  invalidated `/collection/summary` → the pooler refetch lag made it look unchanged (and Clear
+  appeared to do nothing). `useUpdateProfile` now optimistically patches the cached
+  `summary.total_cost` from the PATCH's returned `user.total_spent_override`, then reconciles.
+  Verified: Save → instant value, Clear → instant "Set amount", both persist across reload.
+
+**Update:** the destructive `acquired_price` **drop was run** (user-authorized) — migration
+`c4e6a8b02d3f` applied on the session pooler; 2 of 19 rows' non-null values destroyed; column gone,
+`variant` intact, table healthy (19 rows). **DB head is now `c4e6a8b02d3f`.** ⚠️ The currently
+DEPLOYED (old) backend still maps `acquired_price`, so its collection queries will 500 until the new
+code is deployed — deploy the matching backend. Code still uncommitted on `main`.
+
+---
+
+## 2026-07-13 — Dashboard hero + featured card, pack-limit override, reveal juice ✅ (shipped to main)
+
+Two commits to main (`2a39f25`, `57bf81c`); Render + Vercel deploys green; migration head now
+`a2c4e6f80b1d` (applied to prod, session pooler).
+
+- **Simulator — per-account daily pack cap (`2a39f25`):** nullable `users.daily_pack_limit` overrides
+  the default 2/UTC-day (NULL = default). Quota resolves the effective cap via
+  `effective_daily_pack_limit(user)` — **no hardcoded username**; `/simulator/quota` now returns
+  `daily_limit` and the "Packs left today" banner shows the effective cap (was a hardcoded `/ 2`).
+  Migration `a2c4e6f80b1d` adds the column + seeds handle `ash`→100 (testing). Tests added.
+- **Dashboard revamp (`57bf81c`):** hero stat layout — emphasized **Portfolio value** tile
+  (golden-ratio column, larger number, faint Pokéball emblem) with **Total spent / Total cards**
+  stacked beside it; Portfolio is **non-clickable**, Total cards → collection **grid**. Cohesion pass
+  (shared `rounded-xl`/border/`shadow-sm` across tiles + chart + By-set table; tightened rhythm). Chart
+  tile sized to the hero's column (`PriceChart` gained an optional `className`).
+- **Featured card (new `FeaturedCard.tsx`):** auto-rotating box filling the column beside the chart —
+  shuffled playlist (1 collection + 1 vault + 3 random catalog, topped to 5; re-rolls each loop),
+  ~6.5s **cross-fade**, hover/focus pause, position dots, click→`/cards/:id`, next-image preload. Random
+  catalog via random offsets (no backend change); reduced-motion → instant swap. Mobile: full-width
+  below the chart.
+- **Pack reveal juice (`57bf81c`, additive, transform/opacity only, reduced-motion aware):** card back's
+  static 36-ray sunburst → a slowly **rotating vortex swirl** (14 blades, CSS `transform-box:view-box`,
+  ~42s; static under reduced-motion; `CardBack` §7 note updated). Idle bob + cursor-parallax tilt;
+  spring-overshoot flip + synthesized "whoosh"; a rare+ **anticipation shimmer** before the flip lands;
+  bigger finale (shockwave ring + screen-shake + crescendo chime) + a running **pack-value** tally.
+- **Tooling:** added `playwright` as a dev dependency (local UI verification); this normalized
+  `pnpm-lock.yaml`'s quote style (one-time cosmetic churn).
+
+**Open item:** custom Resend SMTP for signup emails still pending (unchanged).
+
+---
+
 ## 2026-07-13 — Feature round + consistency pass ✅ (shipped to main across several commits)
 
 Built on the simulator base below. All deployed via Render/Vercel; migrations on the session

@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.core.limits import MAX_CARD_QTY, MAX_MONEY, MIN_CARD_QTY, MIN_MONEY
+from app.core.limits import MAX_CARD_QTY, MIN_CARD_QTY
 
 
 class CollectionEntryBase(BaseModel):
@@ -16,20 +16,20 @@ class CollectionEntryBase(BaseModel):
     condition: str | None = None  # e.g. NM, LP
     grade: str | None = None  # e.g. "PSA 10"
     is_foil: bool = False
-    acquired_price: Decimal | None = None
+    # The TCGPlayer printing owned (normal, holofoil, reverseHolofoil, 1stEdition, …); its
+    # market price is what values this copy. None = legacy (value derived from is_foil).
+    variant: str | None = None
 
 
 class CollectionEntryCreate(CollectionEntryBase):
     quantity: int = Field(default=1, ge=MIN_CARD_QTY, le=MAX_CARD_QTY)
-    acquired_price: Decimal | None = Field(default=None, ge=MIN_MONEY, le=MAX_MONEY)
 
 
 class CollectionEntryUpdate(BaseModel):
-    # is_foil is part of the stack identity and is intentionally not editable.
+    # is_foil + variant are part of the stack identity and are intentionally not editable here.
     quantity: int | None = Field(default=None, ge=MIN_CARD_QTY, le=MAX_CARD_QTY)
     condition: str | None = None
     grade: str | None = None
-    acquired_price: Decimal | None = Field(default=None, ge=MIN_MONEY, le=MAX_MONEY)
 
 
 class CollectionEntryRead(CollectionEntryBase):
@@ -63,6 +63,7 @@ class CollectionSummary(BaseModel):
     total_quantity: int
     total_distinct_cards: int
     total_market_value: Decimal
-    total_cost: Decimal
+    # "Total spent" — the user's manual override, or None when they haven't set one.
+    total_cost: Decimal | None = None
     currency: str = "USD"
     sets: list[SetHolding] = []

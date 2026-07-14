@@ -14,10 +14,15 @@ from sqlalchemy import Integer, case, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.config import settings
 from app.models.card import Card, Set
 from app.models.price import CardPriceCurrent
-from app.schemas.card import CardPriceRead, CardRead
+from app.schemas.card import CardPriceRead, CardRead, CardVariantPrice
 from app.services.fx import to_usd
+
+# Two markets for the same variant "diverge" (likely an edition mismatch) when, converted to a
+# common currency, the higher is at least this multiple of the lower → a "verify edition" flag.
+DIVERGENCE_RATIO = Decimal("2.5")
 
 # Sort options exposed by the catalog list endpoint.
 CardSort = Literal["number", "name", "rarity", "price_desc", "price_asc"]
@@ -41,6 +46,14 @@ def _is_holo_rarity(rarity: str | None) -> bool:
 def _base_variant_order(rarity: str | None) -> tuple[str, ...]:
     """Variant preference for the card's base printing, keyed off its rarity."""
     return _HOLO_VARIANT_ORDER if _is_holo_rarity(rarity) else _NONHOLO_VARIANT_ORDER
+
+
+def base_variant_for_rarity(rarity: str | None) -> str:
+    """The card's base TCGPlayer printing variant: holofoil for holo rarities, else normal.
+
+    Used to assign a concrete variant to simulator pulls so a pull is valued at its own printing.
+    """
+    return "holofoil" if _is_holo_rarity(rarity) else "normal"
 
 
 def _collector_number_order() -> tuple:
@@ -86,34 +99,67 @@ def select_display_price(
     *,
     rarity: str | None = None,
 ) -> tuple[Decimal, str] | None:
-    """Headline ``(market_price, currency)`` for catalog display.
+    """Headline ``(market_price, "USD")`` for catalog display — always canonical USD.
 
-    Prefers the rarity-appropriate TCGPlayer USD market price; then falls back to a
-    CardMarket (EUR) market price, then a TCGPlayer ``mid``/``low`` estimate — so any card
-    that carries *some* price data shows a value instead of a blank. Returns ``None`` only
-    when the card has no usable price at all.
-
-    Display only. Portfolio valuation stays single-currency TCGPlayer-USD (see
-    ``market_price_for_entry``); this must not feed collection totals or the EUR fallback
-    would corrupt them.
+    Prefers the rarity-appropriate TCGPlayer USD market price; then falls back to a CardMarket
+    (EUR) market price **converted to USD** (via the stored FX rate), then a TCGPlayer
+    ``mid``/``low`` estimate — so any card that carries *some* price data shows a value, and the
+    number is always USD (never a EUR magnitude mislabeled as the display currency). Returns
+    ``None`` only when the card has no usable price at all.
     """
     prices = list(prices)
     primary = select_primary_price(prices, rarity=rarity)
     if primary is not None:
-        return primary.market, primary.currency
-    # Fallback 1: CardMarket market price (EUR) — cards with no TCGPlayer market row.
+        return primary.market, "USD"
+    # Fallback 1: CardMarket market (EUR) → USD, so the headline stays single-currency.
     cardmarket = next(
         (p for p in prices if p.source == "cardmarket" and p.market is not None), None
     )
     if cardmarket is not None:
-        return cardmarket.market, cardmarket.currency
+        usd = to_usd(cardmarket.market, cardmarket.currency, settings.EUR_USD_RATE)
+        if usd is not None:
+            return usd, "USD"
     # Fallback 2: a TCGPlayer row lacking market but carrying a mid/low estimate (USD).
     by_variant = {p.variant: p for p in prices if p.source == "tcgplayer"}
     for variant in _base_variant_order(rarity):
         row = by_variant.get(variant)
         if row is not None and (row.mid is not None or row.low is not None):
-            return (row.mid if row.mid is not None else row.low), row.currency
+            return (row.mid if row.mid is not None else row.low), "USD"
     return None
+
+
+def _variant_prices(
+    prices: Iterable[CardPriceCurrent], *, rarity: str | None
+) -> list[CardVariantPrice]:
+    """Pair the two markets per printing for the detail view, flagging divergences.
+
+    Ordered base-printing-first (rarity-aware), then any remaining variants. A variant appears
+    if either market has a row for it; ``diverges`` is set only when both are present and, in a
+    common currency, one is ≥ DIVERGENCE_RATIO× the other.
+    """
+    prices = list(prices)
+    tcg = {p.variant: p for p in prices if p.source == "tcgplayer"}
+    cm = {p.variant: p for p in prices if p.source == "cardmarket"}
+    ordered = list(dict.fromkeys([*_base_variant_order(rarity), *tcg, *cm]))
+    out: list[CardVariantPrice] = []
+    for v in ordered:
+        t, c = tcg.get(v), cm.get(v)
+        if t is None and c is None:
+            continue
+        tcg_usd = t.market if t else None
+        cm_eur = c.market if c else None
+        diverges = False
+        if tcg_usd is not None and cm_eur is not None:
+            cm_usd = to_usd(cm_eur, "EUR", settings.EUR_USD_RATE)
+            if cm_usd and tcg_usd:
+                hi, lo = max(tcg_usd, cm_usd), min(tcg_usd, cm_usd)
+                diverges = lo > 0 and (hi / lo) >= DIVERGENCE_RATIO
+        out.append(
+            CardVariantPrice(
+                variant=v, tcgplayer_usd=tcg_usd, cardmarket_eur=cm_eur, diverges=diverges
+            )
+        )
+    return out
 
 
 def _to_card_read(card: Card) -> CardRead:
@@ -127,6 +173,7 @@ def _to_card_read(card: Card) -> CardRead:
         rarity=card.rarity,
         image_url=card.image_small,
         prices=[CardPriceRead.model_validate(p) for p in card.prices_current],
+        variants=_variant_prices(card.prices_current, rarity=card.rarity),
         market_price=market_price,
         currency=currency,
     )
@@ -241,33 +288,45 @@ async def get_card(session: AsyncSession, card_id: str) -> CardRead | None:
     return _to_card_read(card) if card is not None else None
 
 
-def market_price_for_entry(prices: Iterable[CardPriceCurrent], *, is_foil: bool) -> Decimal | None:
-    """Unit TCGPlayer USD market price for a collection entry.
+def _entry_variant(*, is_foil: bool, variant: str | None) -> str:
+    """The TCGPlayer variant to price a copy at: its explicit ``variant`` if recorded, else
+    derived from the legacy ``is_foil`` flag (holofoil if foil, else normal)."""
+    return variant or ("holofoil" if is_foil else "normal")
 
-    Foil copies prefer the ``holofoil`` variant; non-foil prefer ``normal``. Both
-    fall back through the standard variant priority.
+
+def market_price_for_entry(
+    prices: Iterable[CardPriceCurrent], *, is_foil: bool, variant: str | None = None
+) -> Decimal | None:
+    """Unit TCGPlayer USD market price for a collection entry / vault pull.
+
+    Prices at the copy's exact ``variant`` when recorded (e.g. reverseHolofoil, 1stEdition),
+    else derives it from ``is_foil``. Falls back through the standard variant priority.
     """
-    primary = select_primary_price(prices, prefer="holofoil" if is_foil else "normal")
+    primary = select_primary_price(prices, prefer=_entry_variant(is_foil=is_foil, variant=variant))
     return primary.market if primary else None
 
 
 def unit_price_usd(
-    prices: Iterable[CardPriceCurrent], *, is_foil: bool, eur_usd_rate: float
+    prices: Iterable[CardPriceCurrent],
+    *,
+    is_foil: bool,
+    eur_usd_rate: float,
+    variant: str | None = None,
 ) -> Decimal | None:
-    """Unit market price in **USD** for a collection entry, for portfolio valuation.
+    """Unit market price in **USD** for a copy, at its variant, for portfolio/vault valuation.
 
-    Prefers the TCGPlayer USD market price (``market_price_for_entry``); when a card has no
-    TCGPlayer market price, falls back to its CardMarket (EUR) market price, converted to USD
-    first (see ``services/fx.to_usd``) so currencies are never mixed in a total. Returns
-    ``None`` only when the card has no usable price in either source.
+    Prefers the TCGPlayer USD market price for the copy's variant (``market_price_for_entry``);
+    when TCGPlayer has none, falls back to the CardMarket (EUR) price of the SAME variant (else
+    any CardMarket market), converted to USD (``services/fx.to_usd``) so currencies are never
+    mixed in a total. Returns ``None`` only when the card has no usable price in either source.
     """
     prices = list(prices)
-    tcg = market_price_for_entry(prices, is_foil=is_foil)
+    tcg = market_price_for_entry(prices, is_foil=is_foil, variant=variant)
     if tcg is not None:
         return tcg
-    cardmarket = next(
-        (p for p in prices if p.source == "cardmarket" and p.market is not None), None
-    )
+    prefer = _entry_variant(is_foil=is_foil, variant=variant)
+    cms = [p for p in prices if p.source == "cardmarket" and p.market is not None]
+    cardmarket = next((p for p in cms if p.variant == prefer), None) or (cms[0] if cms else None)
     if cardmarket is None:
         return None
     return to_usd(cardmarket.market, cardmarket.currency, eur_usd_rate)

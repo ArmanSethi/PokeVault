@@ -153,28 +153,45 @@ _Keep this section updated as the project evolves._
 **Live on Render (API) + Vercel (SPA) + Supabase (Postgres/Auth), all free tier.** Backend is
 covered by pytest against the live Supabase DB; frontend `pnpm build`/`lint` clean. Migrations run
 on the Supabase **session pooler** (`+asyncpg` app / `+psycopg` v3 Alembic); current head is
-`a2c4e6f80b1d`. Table is `collection_entries` (code-is-truth).
+`c4e6a8b02d3f`. Table is `collection_entries` (code-is-truth).
 
 Shipped features:
 
 - **Catalog** — full English catalog (~173 sets / ~20k cards) from pokemontcg.io; browse/search,
-  current TCGPlayer (USD) prices, rarity filter + sort.
+  rarity filter + sort.
+- **Pricing (per card × variant)** — `card_prices_current` keyed `(card, source, variant)`. TCGPlayer
+  gives one row per printing (normal/holofoil/reverseHolofoil/1stEdition/…, USD, from `market`);
+  Cardmarket (EUR, `trendPrice`→`averageSellPrice`) is mapped onto the card's base printing so the
+  two markets pair per variant, plus a `reverseHolofoil` row from its `reverseHolo*` fields. Card
+  detail shows each printing's **TCGPlayer USD** + **Cardmarket EUR** with a **"verify edition"**
+  flag when they diverge ≥2.5× (usually an upstream edition mismatch). Canonical value is
+  **TCGPlayer USD** (Cardmarket EUR→USD via `settings.EUR_USD_RATE` only when a variant lacks a
+  TCGPlayer price); missing → null (never 0). Daily snapshot refresh + a rate-limited per-card
+  **manual refresh** (`POST /cards/{id}/refresh`). No scraping — pokemontcg.io only.
 - **Auth** — Supabase JWTs verified via JWKS (`app/core/security.py`); thin `users` mirror.
-- **Collection & portfolio** — per-user CRUD (quantity, condition, grade, foil, per-unit
-  `acquired_price`). Dashboard: portfolio value, **total spent** (Σ `acquired_price`×qty, IRL only,
-  nulls skipped), per-set breakdown, and portfolio-value-over-time (per-user `portfolio_value_daily`).
+- **Collection & portfolio** — per-user CRUD (quantity, condition, grade, foil, **variant/printing**
+  — a proper edition picker; each stack is valued at its own variant's price). Dashboard:
+  portfolio value, **total spent** (a manual figure the user types — a nullable
+  `users.total_spent_override`; no auto-calculation, empty state when unset), per-set breakdown,
+  and portfolio-value-over-time (per-user `portfolio_value_daily`). (The old per-unit
+  `acquired_price` / cost-basis concept was removed entirely.)
 - **Price history** — owned + wishlist + pull card IDs snapshotted daily (GitHub Actions) into
   `price_history`; card + portfolio series endpoints.
 - **Scan** — Tesseract OCR proposes catalog matches (propose-only; the Docker image ships Tesseract).
 - **Wishlist + alerts**; **Deck** (dream-deck builder).
 - **Pack simulator** — its own `/simulator/*` shell (SimulatorLayout); server-authoritative roll
   (`pack_opens` + `rolled_cards`, 2 packs/day UTC quota — overridable per account via a nullable
-  `users.daily_pack_limit`; `/quota` returns the effective `daily_limit`), flip-stack reveal + original card back +
+  `users.daily_pack_limit`; `/quota` returns the effective `daily_limit`), **swipe-to-decide reveal**
+  (cards auto-reveal one at a time, best/hit last; swipe right = keep, left = discard, with
+  Keep/Discard buttons + ←/→ keys + brief Undo; the hit card zooms in with an original synthesized
+  jackpot flourish; kept ids POSTed once to `/keep` at end of pack) + original card back +
   sound/mute + reduced-motion. **Vault** (`pack_pulls`, fully separate from the IRL collection;
-  duplicates stack ×N). **Best-pulls leaderboard** — daily worldwide top-10 `best_single`;
+  duplicates stack ×N; each pull records its `variant` so its value follows that printing). **Best-pulls leaderboard** — daily worldwide top-10 `best_single`;
   day/month/all-time windows for `total_value`; a dedicated `leaderboard_opt_in` (separate from
   `is_public`), first-simulator-entry handle gate.
-- **Public showcase** `/u/:handle` + comments. (No report feature — removed everywhere.)
+- **Public showcase** `/u/:handle` + comments — a "real collection, not sim vault" caption + cards
+  that mirror the owner's Collection card (image, name, set/number, grade badge, live current value,
+  ×N, foil) via public-safe fields only (no cost/notes). (No report feature — removed everywhere.)
 - **Friends + 1:1 direct messaging** — mutual-friend gated (request → accept → message),
   manual-refresh (no realtime), text-only, block/unblock; paper-plane nav + unread badge →
   `/messages` (Chats / Requests).

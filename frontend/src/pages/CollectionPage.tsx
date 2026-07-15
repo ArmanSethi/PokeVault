@@ -147,7 +147,7 @@ export function CollectionPage() {
               <tr>
                 <th className="px-4 py-2">Card</th>
                 <th className="px-4 py-2">Qty</th>
-                <th className="px-4 py-2">Condition / Grade</th>
+                <th className="px-4 py-2 text-center">Condition / Grade</th>
                 <th className="px-4 py-2 text-right">Value</th>
                 <th className="px-4 py-2" />
               </tr>
@@ -165,8 +165,9 @@ export function CollectionPage() {
                     {e.is_foil && <span className="ml-2 text-xs text-accent-500">✦ foil</span>}
                   </td>
                   <td className="px-4 py-2">×{e.quantity}</td>
-                  {/* One column: the grade for graded cards, else the raw condition — never both. */}
-                  <td className="px-4 py-2">
+                  {/* One column: the grade for graded cards, else the raw condition — never both.
+                      Centered (header + cell) so it sits midway between Qty and Value. */}
+                  <td className="px-4 py-2 text-center">
                     {e.grade ? (
                       <span className="inline-flex items-center gap-1">
                         <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium dark:bg-slate-800">

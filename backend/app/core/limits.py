@@ -17,6 +17,10 @@ MAX_CARD_QTY = 99
 MIN_DECK_TARGET = 1
 MAX_DECK_TARGET = 100
 
+# Sealed product quantity (packs/boxes can be held in larger numbers than single-card stacks).
+MIN_SEALED_QTY = 1
+MAX_SEALED_QTY = 9999
+
 # Money fields (e.g. wishlist target price). Cards can be worth thousands, so this is
 # deliberately high — not a 99 cap — while still fitting Numeric(10,2).
 MIN_MONEY = 0

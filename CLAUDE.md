@@ -153,7 +153,7 @@ _Keep this section updated as the project evolves._
 **Live on Render (API) + Vercel (SPA) + Supabase (Postgres/Auth), all free tier.** Backend is
 covered by pytest against the live Supabase DB; frontend `pnpm build`/`lint` clean. Migrations run
 on the Supabase **session pooler** (`+asyncpg` app / `+psycopg` v3 Alembic); current head is
-`d7f9b1c3e5a8`. Table is `collection_entries` (code-is-truth).
+`f1a3d5b7c9e2`. Table is `collection_entries` (code-is-truth).
 
 Shipped features:
 
@@ -175,6 +175,15 @@ Shipped features:
   `users.total_spent_override`; no auto-calculation, empty state when unset), per-set breakdown,
   and portfolio-value-over-time (per-user `portfolio_value_daily`). (The old per-unit
   `acquired_price` / cost-basis concept was removed entirely.)
+- **Sealed products** — a wholly separate `sealed_items` domain (packs, booster boxes, ETBs,
+  bundles, other; `product_type` is a plain `String` validated by a Pydantic `Literal`, no DB
+  enum), managed in a Collection **"Sealed" tab** (`?tab=cards|sealed`). Optional set link
+  (nullable FK, `SET NULL`); **manual `value` only** (nullable → shows "—", contributes 0; no
+  auto-pricing — pokemontcg.io prices singles, not sealed). Items don't stack (each is its own
+  managed row). Value shows as a **separate "Sealed value" dashboard total**, never folded into
+  the card portfolio value (which the public showcase reuses). A per-set **cards-vs-sealed
+  summary page** (`/dashboard/sets-summary`: Set · Total cards · Total packs · Total booster
+  boxes, plus a "No set" row) is reachable only from the dashboard "Total cards" tile.
 - **Price history** — daily (GitHub Actions, UTC) `price_history` snapshot for **collection ∪
   wishlist** card/variant IDs only (vault pulls are excluded from history); card + portfolio series
   endpoints read only from it. Distinct from the nightly **current-price** refresh, which

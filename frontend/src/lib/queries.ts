@@ -13,6 +13,8 @@ import type {
   CollectionEntryCreate,
   CollectionEntryUpdate,
   CollectionSummary,
+  SealedItemCreate,
+  SealedItemUpdate,
   DeckCardCreate,
   DeckCreate,
   DeckUpdate,
@@ -40,6 +42,7 @@ export const qk = {
   card: (id: string) => ["card", id] as const,
   cardHistory: (id: string) => ["cardHistory", id] as const,
   collection: ["collection"] as const,
+  sealed: ["sealed"] as const,
   summary: ["summary"] as const,
   portfolioHistory: ["portfolioHistory"] as const,
   me: ["me"] as const,
@@ -201,6 +204,41 @@ export function useCollection() {
 
 export function useSummary() {
   return useQuery({ queryKey: qk.summary, queryFn: () => api.summary(), staleTime: 0 });
+}
+
+// ---- sealed products ----
+
+export function useSealedItems() {
+  return useQuery({ queryKey: qk.sealed, queryFn: () => api.listSealed(), staleTime: 0 });
+}
+
+function invalidateSealed(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: qk.sealed });
+}
+
+export function useAddSealed() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: SealedItemCreate) => api.addSealed(data),
+    onSuccess: () => invalidateSealed(qc),
+  });
+}
+
+export function useUpdateSealed() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: SealedItemUpdate }) =>
+      api.updateSealed(id, data),
+    onSuccess: () => invalidateSealed(qc),
+  });
+}
+
+export function useDeleteSealed() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.deleteSealed(id),
+    onSuccess: () => invalidateSealed(qc),
+  });
 }
 
 export function usePortfolioHistory() {

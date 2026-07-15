@@ -96,6 +96,38 @@ export interface CollectionSummary {
   sets: SetHolding[];
 }
 
+// ---- sealed products (packs, boxes, ETBs, …) — a domain separate from card singles ----
+
+export type ProductType = "pack" | "booster_box" | "etb" | "bundle" | "other";
+
+export interface SealedItem {
+  id: number;
+  product_type: ProductType;
+  set_id: string | null;
+  set_name: string | null; // resolved from the linked set, if any
+  name: string | null; // optional free-text label
+  quantity: number;
+  value: string | null; // manual value (USD); null = no value → shows "—", contributes 0
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SealedItemCreate {
+  product_type: ProductType;
+  set_id?: string | null;
+  name?: string | null;
+  quantity?: number;
+  value?: number | null;
+}
+
+export interface SealedItemUpdate {
+  product_type?: ProductType;
+  set_id?: string | null;
+  name?: string | null;
+  quantity?: number;
+  value?: number | null;
+}
+
 export interface PriceHistoryPoint {
   date: string;
   market_price: string | null;

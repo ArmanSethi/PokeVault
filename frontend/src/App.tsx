@@ -24,6 +24,9 @@ const CardDetailPage = lazy(() =>
 const SetDetailPage = lazy(() =>
   import("./pages/SetDetailPage").then((m) => ({ default: m.SetDetailPage })),
 );
+const SetProgressPage = lazy(() =>
+  import("./pages/SetProgressPage").then((m) => ({ default: m.SetProgressPage })),
+);
 const ShowcasePage = lazy(() =>
   import("./pages/ShowcasePage").then((m) => ({ default: m.ShowcasePage })),
 );
@@ -109,6 +112,9 @@ export default function App() {
             }
           >
             <Route index element={<DashboardPage />} />
+            {/* Per-set "cards left to collect" — reachable ONLY from the dashboard "By set"
+                tile (deliberately absent from the top nav). */}
+            <Route path="dashboard/set/:setId" element={<SetProgressPage />} />
             <Route path="catalog" element={<CatalogPage />} />
             <Route path="collection" element={<CollectionPage />} />
             <Route path="deck" element={<DeckPage />} />

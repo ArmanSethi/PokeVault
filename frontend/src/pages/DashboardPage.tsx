@@ -319,7 +319,7 @@ export function DashboardPage() {
                 {summary.data.sets.map((h) => (
                   <Link
                     key={h.set_id}
-                    to={`/catalog?set=${h.set_id}`}
+                    to={`/dashboard/set/${h.set_id}`}
                     className="flex items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 last:border-b-0 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50"
                   >
                     <span className="min-w-0 truncate text-sm font-medium text-brand-600 dark:text-brand-400">

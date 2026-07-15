@@ -303,11 +303,15 @@ export function DashboardPage() {
               />
             </div>
 
-            {/* Bottom-left: By set — CONSTANT height (h-72 / md:h-full anchored to the bottom
-                row); the set list scrolls WITHIN via the inner overflow-y-auto, so the tile's
-                footprint never grows with the number of sets. Each row: set name (left) +
-                owned/total completion count (right). */}
-            <div className={`flex h-72 flex-col overflow-hidden md:h-full ${PANEL}`}>
+            {/* Bottom-left: By set — FIXED height so the tile never grows with the set count.
+                Must be a DEFINITE height (h-72 mobile / md:h-96 desktop, matching the Featured
+                tile so the bottom row stays aligned) — NOT md:h-full: `height:100%` can't resolve
+                against this grid row's `auto` height, so the tile fell back to content height and
+                grew with the list. With a definite height here, the header stays pinned and only
+                the inner list scrolls (that child is `flex-1 min-h-0 overflow-y-auto`; min-h-0 is
+                what lets it shrink below its content and actually engage the scroll). Each row:
+                set name (left) + owned/total completion count (right). */}
+            <div className={`flex h-72 flex-col overflow-hidden md:h-96 ${PANEL}`}>
               <div className="border-b border-slate-200 px-3 py-2 text-sm font-semibold dark:border-slate-800">
                 By set
               </div>

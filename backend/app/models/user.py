@@ -29,12 +29,9 @@ class User(Base):
     # touched by the per-request upsert in api/deps.py, so they survive normal auth traffic.
     handle: Mapped[str | None] = mapped_column(String(30), unique=True, index=True, default=None)
     is_public: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
-    # Owner toggle for comments on their public showcase (default on).
-    comments_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
-    # Explicit opt-in to the best-pulls leaderboard (default off). Independent of `is_public`:
-    # a user can appear on the leaderboard without exposing their showcase, and vice versa.
-    # (Renamed from the vestigial `show_value_on_leaderboard` column — see migration.)
-    leaderboard_opt_in: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    # NB: comments on public showcases are always enabled (no per-user toggle), and best-pulls
+    # leaderboard eligibility is simply "has a handle + ≥1 kept pull" — neither is gated by a
+    # user column anymore. The old `comments_enabled` / `leaderboard_opt_in` columns were dropped.
     # Per-user override for the daily pack-open cap. NULL = use the default (see
     # simulator.DAILY_PACK_LIMIT); a value overrides it for this account only. Lets us grant a
     # higher limit (e.g. testing) without hardcoding a username in the quota logic. Not touched by

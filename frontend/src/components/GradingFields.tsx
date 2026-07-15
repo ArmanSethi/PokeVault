@@ -98,29 +98,47 @@ export function GradingFields({ condition, grade, onChange }: Props) {
     onChange({ condition: c, grade: "" });
   }
 
+  // `contents` so these fields flow into the parent's grid: the primary field (Condition when
+  // raw, Grading company when graded) sits beside Quantity, and the "Graded card" toggle takes
+  // its own full-width line beneath the Quantity/primary row.
   return (
-    <div className="col-span-2 space-y-3">
-      <label className="flex items-center gap-2 text-sm">
+    <div className="contents">
+      {graded ? (
+        <label className="text-sm">
+          <span className="mb-1 block">Grading company</span>
+          <select
+            value={company}
+            onChange={(e) => changeCompany(e.target.value)}
+            className={inputClass}
+          >
+            {GRADING_COMPANIES.map((c) => (
+              <option key={c} value={c}>
+                {c === "BGS" ? "BGS (Beckett)" : c}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <label className="text-sm">
+          <span className="mb-1 block">Condition</span>
+          <select value={cond} onChange={(e) => changeCond(e.target.value)} className={inputClass}>
+            <option value="">—</option>
+            {CONDITIONS.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      <label className="col-span-2 flex items-center gap-2 text-sm">
         <input type="checkbox" checked={graded} onChange={(e) => toggle(e.target.checked)} />
         Graded card
       </label>
 
-      {graded ? (
-        <div className="grid grid-cols-2 gap-3">
-          <label className="text-sm">
-            <span className="mb-1 block">Grading company</span>
-            <select
-              value={company}
-              onChange={(e) => changeCompany(e.target.value)}
-              className={inputClass}
-            >
-              {GRADING_COMPANIES.map((c) => (
-                <option key={c} value={c}>
-                  {c === "BGS" ? "BGS (Beckett)" : c}
-                </option>
-              ))}
-            </select>
-          </label>
+      {graded && (
+        <>
           <label className="text-sm">
             <span className="mb-1 block">Grade</span>
             <select
@@ -141,19 +159,7 @@ export function GradingFields({ condition, grade, onChange }: Props) {
               applied. PSA/BGS/CGC/SGC get an estimated graded premium.
             </p>
           )}
-        </div>
-      ) : (
-        <label className="block text-sm">
-          <span className="mb-1 block">Condition</span>
-          <select value={cond} onChange={(e) => changeCond(e.target.value)} className={inputClass}>
-            <option value="">—</option>
-            {CONDITIONS.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
+        </>
       )}
     </div>
   );

@@ -17,9 +17,11 @@ from app.core.config import settings
 from app.ingest.snapshot_prices import _snapshot_statement, snapshot_portfolio_values
 from app.models.card import Card, Set
 from app.models.collection import CollectionEntry
+from app.models.pack_pull import PackPull
 from app.models.portfolio import PortfolioValueDaily
 from app.models.price import CardPriceCurrent, PriceHistory
 from app.models.user import User
+from app.models.wishlist import WishlistItem
 from app.services.portfolio import compute_portfolio_values_usd
 
 _ISSUER = "https://test.supabase.co/auth/v1"
@@ -171,6 +173,54 @@ async def test_snapshot_job_owned_only_and_idempotent(db_session, cards):
         )
     )
     assert price == Decimal("1.00")
+
+
+async def test_snapshot_excludes_vault_only_cards(db_session, cards):
+    """History-write set = collection ∪ wishlist ONLY; vault-only (pack_pulls) cards are excluded.
+
+    A card that's only in the vault gets NO price_history row (its current price is still kept
+    fresh by the whole-catalog sync_catalog refresh — a separate concern from history).
+    """
+    uid = uuid.uuid4()
+    db_session.add(User(id=uid, email="vault@pokevault.dev"))
+    await db_session.flush()
+    # tst1-1 is WISHLISTED (history-eligible); tst1-2 is ONLY in the vault (history-excluded).
+    db_session.add(WishlistItem(user_id=uid, card_id="tst1-1"))
+    db_session.add(PackPull(user_id=uid, card_id="tst1-2", variant="normal"))
+    db_session.add_all(
+        [
+            CardPriceCurrent(
+                card_id="tst1-1",
+                source="tcgplayer",
+                variant="normal",
+                market=Decimal("1.00"),
+                currency="USD",
+            ),
+            CardPriceCurrent(
+                card_id="tst1-2",
+                source="tcgplayer",
+                variant="normal",
+                market=Decimal("5.00"),
+                currency="USD",
+            ),
+        ]
+    )
+    await db_session.flush()
+
+    await db_session.execute(_snapshot_statement())
+
+    async def _today_count(card_id: str) -> int:
+        return await db_session.scalar(
+            select(func.count())
+            .select_from(PriceHistory)
+            .where(
+                PriceHistory.snapshot_date == func.current_date(),
+                PriceHistory.card_id == card_id,
+            )
+        )
+
+    assert await _today_count("tst1-1") == 1  # wishlisted → snapshotted
+    assert await _today_count("tst1-2") == 0  # vault-only → NOT snapshotted
 
 
 async def test_card_history_default_and_variant(auth_client, history_rows):

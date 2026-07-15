@@ -153,7 +153,7 @@ _Keep this section updated as the project evolves._
 **Live on Render (API) + Vercel (SPA) + Supabase (Postgres/Auth), all free tier.** Backend is
 covered by pytest against the live Supabase DB; frontend `pnpm build`/`lint` clean. Migrations run
 on the Supabase **session pooler** (`+asyncpg` app / `+psycopg` v3 Alembic); current head is
-`c4e6a8b02d3f`. Table is `collection_entries` (code-is-truth).
+`d7f9b1c3e5a8`. Table is `collection_entries` (code-is-truth).
 
 Shipped features:
 
@@ -175,8 +175,11 @@ Shipped features:
   `users.total_spent_override`; no auto-calculation, empty state when unset), per-set breakdown,
   and portfolio-value-over-time (per-user `portfolio_value_daily`). (The old per-unit
   `acquired_price` / cost-basis concept was removed entirely.)
-- **Price history** — owned + wishlist + pull card IDs snapshotted daily (GitHub Actions) into
-  `price_history`; card + portfolio series endpoints.
+- **Price history** — daily (GitHub Actions, UTC) `price_history` snapshot for **collection ∪
+  wishlist** card/variant IDs only (vault pulls are excluded from history); card + portfolio series
+  endpoints read only from it. Distinct from the nightly **current-price** refresh, which
+  `sync_catalog` runs over the whole catalog (⊇ collection ∪ wishlist ∪ vault) so vault current
+  values + the "total pulled value" leaderboard stay fresh.
 - **Scan** — Tesseract OCR proposes catalog matches (propose-only; the Docker image ships Tesseract).
 - **Wishlist + alerts**; **Deck** (dream-deck builder).
 - **Pack simulator** — its own `/simulator/*` shell (SimulatorLayout); server-authoritative roll
@@ -187,8 +190,8 @@ Shipped features:
   jackpot flourish; kept ids POSTed once to `/keep` at end of pack) + original card back +
   sound/mute + reduced-motion. **Vault** (`pack_pulls`, fully separate from the IRL collection;
   duplicates stack ×N; each pull records its `variant` so its value follows that printing). **Best-pulls leaderboard** — daily worldwide top-10 `best_single`;
-  day/month/all-time windows for `total_value`; a dedicated `leaderboard_opt_in` (separate from
-  `is_public`), first-simulator-entry handle gate.
+  day/month/all-time windows for `total_value`. Eligibility is simply a set handle + ≥1 kept
+  pull (no opt-in gate); a name links to `/u/:handle` only when `is_public`.
 - **Public showcase** `/u/:handle` + comments — a "real collection, not sim vault" caption + cards
   that mirror the owner's Collection card (image, name, set/number, grade badge, live current value,
   ×N, foil) via public-safe fields only (no cost/notes). (No report feature — removed everywhere.)

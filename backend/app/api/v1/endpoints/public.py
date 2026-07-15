@@ -54,15 +54,11 @@ async def list_comments(handle: str, session: SessionDep, viewer: OptionalUser) 
 async def post_comment(
     handle: str, session: SessionDep, user: CurrentUser, data: CommentCreate
 ) -> CommentRead:
-    """Post a comment (auth required). 403 if comments are disabled; 429 if rate-limited."""
+    """Post a comment (auth required). 404 if the showcase isn't public; 429 if rate-limited."""
     try:
         return await comment_service.add_comment(session, handle, user, data)
     except comment_service.ProfileNotPublic:
         raise HTTPException(status_code=404, detail="Showcase not found") from None
-    except comment_service.CommentsDisabled:
-        raise HTTPException(
-            status_code=403, detail="Comments are turned off for this showcase."
-        ) from None
     except comment_service.RateLimited:
         raise HTTPException(
             status_code=429, detail="You're commenting too fast — try again in a moment."

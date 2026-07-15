@@ -188,6 +188,7 @@ export function ImportExportPanel({ onClose }: { onClose: () => void }) {
                         {row.status === "matched" && (
                           <span className="text-emerald-600 dark:text-emerald-400">
                             {row.candidates[0]?.name} #{row.candidates[0]?.number}
+                            <span className="text-slate-400"> ({row.candidates[0]?.set_id})</span>
                           </span>
                         )}
                         {row.status === "ambiguous" && (

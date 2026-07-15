@@ -1,8 +1,8 @@
 """Virtual pull collection + leaderboard tests (real DB via db_session).
 
 Gates covered: total separation from the IRL collection, server-authoritative keep (only the
-stored roll is trusted), the 2-packs/UTC-day quota, frozen-vs-live value, and the opt-in-gated
-leaderboard.
+stored roll is trusted), the 2-packs/UTC-day quota, frozen-vs-live value, and the leaderboard
+(eligibility = handle + ≥1 pull; showcase visibility separate).
 """
 
 from __future__ import annotations
@@ -24,13 +24,12 @@ from app.services import pulls as svc
 from app.services import simulator as sim
 
 
-async def _user(db_session, *, opt_in=True, public=False, handle=True) -> User:
+async def _user(db_session, *, public=False, handle=True) -> User:
     u = User(
         id=uuid.uuid4(),
         email=f"{uuid.uuid4().hex[:8]}@pokevault.dev",
         handle=("u" + uuid.uuid4().hex[:12]) if handle else None,
         is_public=public,
-        leaderboard_opt_in=opt_in,
     )
     db_session.add(u)
     await db_session.flush()
@@ -251,37 +250,39 @@ async def test_current_value_diverges_from_frozen(db_session):
     assert row.current_value == Decimal("80.00")  # live
 
 
-# ---- leaderboard (opt-in gated; showcase visibility separate) -------------------------------
+# ---- leaderboard (eligibility = handle + ≥1 pull; showcase visibility separate) -------------
 
 
-async def test_best_single_requires_optin_and_excludes_null(db_session):
-    a = await _user(db_session, opt_in=True, public=True)
-    b = await _user(db_session, opt_in=True, public=False)
-    optout = await _user(db_session, opt_in=False, public=True)  # public but NOT opted in
+async def test_best_single_requires_handle_and_excludes_null(db_session):
+    a = await _user(db_session, public=True)
+    b = await _user(db_session, public=False)
+    nohandle = await _user(db_session, public=True, handle=False)  # no handle → excluded
     c10 = await _card(db_session, "10.00")
     c99 = await _card(db_session, "99.00")
+    c77 = await _card(db_session, "77.00")
     cnull = await _card(db_session, None)
     await _add_pull(db_session, a.id, c99.id, "99.00")
     await _add_pull(db_session, a.id, c10.id, "10.00")
     await _add_pull(db_session, b.id, c10.id, "10.00")
-    await _add_pull(db_session, optout.id, c99.id, "99.00")  # opted out → excluded
+    await _add_pull(db_session, nohandle.id, c77.id, "77.00")  # no handle → excluded
     await _add_pull(db_session, a.id, cnull.id, None)  # null → never the max
 
     board = await svc.leaderboard(db_session, "best_single", "all_time")
     handles = [e.handle for e in board]
-    assert optout.handle not in handles  # opt-in required even though public
+    assert all(h is not None for h in handles)  # handle-less puller excluded
+    assert not any(e.score == Decimal("77.00") for e in board)  # its pull never surfaced
     top = next(e for e in board if e.handle == a.handle)
     assert top.score == Decimal("99.00") and top.card.card_id == c99.id
     assert top.showcase_public is True  # a is public → linkable to /u/{handle}
     b_entry = next(e for e in board if e.handle == b.handle)
-    assert b_entry.showcase_public is False  # opted in but private → unlinked
+    assert b_entry.showcase_public is False  # has a handle but private → unlinked
     assert handles.index(a.handle) < handles.index(b.handle)
 
 
 async def test_best_single_is_daily(db_session):
     """best_single is a UTC-daily board: pulls from prior days are excluded (window ignored)."""
-    today_user = await _user(db_session, opt_in=True, public=True)
-    stale_user = await _user(db_session, opt_in=True, public=True)
+    today_user = await _user(db_session, public=True)
+    stale_user = await _user(db_session, public=True)
     big = await _card(db_session, "999.00")
     small = await _card(db_session, "5.00")
     yesterday = dt.datetime.now(dt.UTC) - dt.timedelta(days=1)
@@ -299,7 +300,7 @@ async def test_best_single_is_daily(db_session):
 
 
 async def test_total_value_and_monthly_window(db_session):
-    u = await _user(db_session, opt_in=True, public=False)
+    u = await _user(db_session, public=False)
     c10 = await _card(db_session, "10.00")
     c40 = await _card(db_session, "40.00")
     cnull = await _card(db_session, None)

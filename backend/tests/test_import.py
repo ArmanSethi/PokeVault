@@ -21,7 +21,8 @@ from app.core.config import settings
 from app.models.card import Card, Set
 from app.models.price import CardPriceCurrent
 from app.schemas.importer import ImportCandidate
-from app.services.import_export import _classify, parse_csv
+from app.services.import_export import _classify, parse_csv, preview_import
+from app.services.matching import match_card
 
 _COL = f"{settings.API_V1_PREFIX}/collection"
 
@@ -71,21 +72,114 @@ def test_parse_empty_or_headerless() -> None:
     assert parse_csv(b"name,number\n") == []
 
 
-def _cand(card_id: str, conf: float) -> ImportCandidate:
-    return ImportCandidate(card_id=card_id, name="X", set_id="s", number="1", confidence=conf)
+def _cand(card_id: str, conf: float, set_id: str = "s") -> ImportCandidate:
+    return ImportCandidate(card_id=card_id, name="X", set_id=set_id, number="1", confidence=conf)
 
 
-def test_classify_matched_ambiguous_unmatched() -> None:
-    assert _classify([]) == ("unmatched", None)
+def test_classify_no_set_matched_ambiguous_unmatched() -> None:
+    """CSV without a set → original cross-set name/number behavior."""
+    kw = {"csv_set_id": None, "set_specified": False}
+    assert _classify([], **kw) == ("unmatched", None)
     # Strong + clear lead → matched.
-    status, sel = _classify([_cand("a", 0.95), _cand("b", 0.5)])
+    status, sel = _classify([_cand("a", 0.95), _cand("b", 0.5)], **kw)
     assert (status, sel) == ("matched", "a")
     # Strong but close runner-up → ambiguous.
-    status, _ = _classify([_cand("a", 0.95), _cand("b", 0.90)])
+    status, _ = _classify([_cand("a", 0.95), _cand("b", 0.90)], **kw)
     assert status == "ambiguous"
     # Weak top → ambiguous.
-    status, _ = _classify([_cand("a", 0.6)])
+    status, _ = _classify([_cand("a", 0.6)], **kw)
     assert status == "ambiguous"
+
+
+def test_classify_set_specified_auto_matches_same_set_only() -> None:
+    """When the CSV names a set, only a strong SAME-SET hit auto-matches."""
+    # Same-set top (base1) with a tying other-set runner-up (base4) → still auto-matches base1,
+    # because the exact set disambiguates (this is the core reported bug).
+    status, sel = _classify(
+        [_cand("base1-1", 0.95, "base1"), _cand("base4-1", 0.95, "base4")],
+        csv_set_id="base1",
+        set_specified=True,
+    )
+    assert (status, sel) == ("matched", "base1-1")
+
+    # Best candidate is a DIFFERENT set than the CSV says → never auto-pick; leave for the user.
+    status, sel = _classify(
+        [_cand("base4-1", 1.0, "base4"), _cand("base6-1", 1.0, "base6")],
+        csv_set_id="base1",
+        set_specified=True,
+    )
+    assert (status, sel) == ("ambiguous", None)
+
+    # Set named in the CSV but not in our DB (unresolved) → never auto-pick.
+    status, sel = _classify(
+        [_cand("base4-1", 1.0, "base4")],
+        csv_set_id=None,
+        set_specified=True,
+    )
+    assert (status, sel) == ("ambiguous", None)
+
+    # Two same-set candidates tying → ambiguous within the set.
+    status, _ = _classify(
+        [_cand("base1-1", 0.95, "base1"), _cand("base1-1b", 0.95, "base1")],
+        csv_set_id="base1",
+        set_specified=True,
+    )
+    assert status == "ambiguous"
+
+
+# ---------------------------------------------------------- DB-backed set-aware matching
+#
+# These run against the live catalog via the rollback ``db_session`` (skipped without a DB).
+# They reproduce the reported bug: the CSV set must drive the match, never another set's
+# same-name/number printing.
+
+
+async def _preview(db_session, csv: str):
+    """Preview a one-row CSV and return that row (mimicking our own export's set-id column)."""
+    prev = await preview_import(db_session, csv.encode())
+    assert prev.rows, "no rows parsed"
+    return prev.rows[0]
+
+
+async def test_import_alakazam_base1_auto_matches_base1(db_session) -> None:
+    """'Alakazam #1 · base1' resolves to base1 — not base4/base6/ecard1 (the reported bug)."""
+    row = await _preview(db_session, "name,number,set\nAlakazam,1,base1\n")
+    assert row.status == "matched", row
+    assert row.selected_card_id == "base1-1", row.candidates
+    # Dropdown ordering: same-set (base1) ranks first, above equal-name other-set printings.
+    assert row.candidates[0].set_id == "base1"
+    other_sets = {c.set_id for c in row.candidates[1:]}
+    assert other_sets & {"base4", "base6", "ecard1"}, "other-set alternatives should still appear"
+
+
+async def test_import_dark_dragonite_base5_not_base6(db_session) -> None:
+    """'Dark Dragonite #5 · base5' resolves to base5, not base6 (same name+number)."""
+    row = await _preview(db_session, "name,number,set\nDark Dragonite,5,base5\n")
+    assert row.status == "matched", row
+    assert row.selected_card_id == "base5-5", row.candidates
+
+
+async def test_import_mega_starmie_me3_stays_me3(db_session) -> None:
+    """'Mega Starmie ex #102 · me3' stays on me3."""
+    row = await _preview(db_session, "name,number,set\nMega Starmie ex,102,me3\n")
+    assert row.status == "matched", row
+    assert row.selected_card_id == "me3-102", row.candidates
+
+
+async def test_import_unknown_set_never_snaps_to_wrong_set(db_session) -> None:
+    """A CSV set that doesn't exist here → not auto-matched to a wrong-set card."""
+    row = await _preview(db_session, "name,number,set\nAlakazam,1,zzz-nonexistent\n")
+    assert row.status != "matched", row
+    assert row.selected_card_id is None
+
+
+async def test_match_card_same_set_outranks_perfect_other_set(db_session) -> None:
+    """match_card: the CSV's set ranks #1 even though other sets have identical name+number."""
+    res = await match_card(db_session, "Alakazam", "1", set_id="base1", limit=5)
+    assert res, "no candidates"
+    assert res[0].card_id == "base1-1", [m.card_id for m in res]
+    # Cross-set alternatives are retained below the same-set hit.
+    assert any(m.set_id != "base1" for m in res[1:])
 
 
 # ---------------------------------------------------------------- DB-backed flow

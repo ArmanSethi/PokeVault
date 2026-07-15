@@ -1,7 +1,7 @@
 """Virtual vault (kept pulls) + best-pulls leaderboard endpoints.
 
 Mounted under /simulator. The vault reads only pack_pulls (never the IRL collection). The
-leaderboard is public and reads only leaderboard-opt-in profiles.
+leaderboard is public and lists any profile with a handle + ≥1 kept pull (no opt-in).
 """
 
 from __future__ import annotations

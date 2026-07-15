@@ -5,6 +5,52 @@ Detailed rationale lives in `docs/`.
 
 ---
 
+## 2026-07-15 — Price-history wipe + re-scope (history = collection ∪ wishlist only) ⏳
+
+Split the nightly price job into two DISTINCT scopes so vault pulls no longer pollute price
+history but their current values stay fresh.
+
+- **Wipe (authorized, destructive):** cleared `price_history` — **53,769 rows** (earliest
+  2026-07-06, latest 2026-07-15) → 0. The "value over time" chart now rebuilds from today.
+- **History-write set = collection ∪ wishlist ONLY.** Dropped `PackPull` from `_tracked` in
+  `app/ingest/snapshot_prices.py`, so `price_history` (and everything that reads it — the card
+  chart, portfolio series, wishlist alerts) covers only owned/wishlisted card+variant IDs. A card
+  that leaves both collection and wishlist stops getting new rows; old rows are left (already wiped).
+- **Current-price refresh set = full catalog** (⊇ collection ∪ wishlist ∪ vault), unchanged:
+  `sync_catalog` still upserts `card_prices_current` for every card nightly, so vault current
+  values + the "total pulled value" leaderboard never go stale. The two sets run in the same
+  nightly workflow but are deliberately separate jobs — documented in `snapshot_prices.py` and
+  `daily-snapshot.yml` (fixed a stale comment there that claimed sync_catalog writes history).
+- Daily UTC cadence, no new reset job. Added `test_history.py::test_snapshot_excludes_vault_only_cards`.
+
+---
+
+## 2026-07-15 — Removed leaderboard opt-in gate + showcase comments toggle ⏳
+
+Dropped two settings toggles and their backing `users` columns.
+
+- **Leaderboard opt-in removed.** New eligibility = **a set handle + ≥1 kept pull** (no opt-in);
+  `≥1 pull` is enforced structurally by the leaderboard's join to `pack_pulls`, so the only
+  user-column filter is a non-null handle (`services/pulls.py`). Unchanged: handle still required,
+  a name links to `/u/{handle}` only when `is_public`, nulls excluded from `best_single` / 0 for
+  `total_value`. Removed `leaderboard_opt_in` from the model / `UserRead` / `UserProfileUpdate` /
+  `profile` service and the Settings toggle.
+- **Comments toggle removed — comments are now always on for every public showcase.** Chose to
+  **remove the `comments_enabled` flag entirely** (cleaner than a vestigial always-true column):
+  dropped it from the model / schemas / `profile` + `comments` + `public` services (the
+  `CommentsDisabled` path and its 403 are gone), `PublicProfile.comments_enabled`,
+  `CommentList.comments_enabled`, and the Settings toggle + the "comments are turned off" branch on
+  the showcase. The comments feature, its `showcase_comments` table, and its display are untouched.
+- **Migration `d7f9b1c3e5a8`** (DESTRUCTIVE): drops `users.leaderboard_opt_in` +
+  `users.comments_enabled`; downgrade re-adds with original defaults but can't restore values.
+  Pre-drop counts reported first (1 opt-in = true, 0 comments = false, of 3 users).
+  **APPLIED to the live session pooler** (head now `d7f9b1c3e5a8`); both columns confirmed gone.
+- Tests updated + re-run green on the new schema (`test_pulls.py`, `test_comments.py`); frontend
+  types trimmed (`User` / `ProfileUpdate` / `PublicProfile` / `CommentList`). CLAUDE.md head note
+  updated to `d7f9b1c3e5a8`.
+
+---
+
 ## 2026-07-14 — Per-(card,variant) pricing fix + licensed-API eval ⏳ (in progress, not yet committed)
 
 Track A (fix pokemontcg.io reading) implemented + verified against a local backend on the live

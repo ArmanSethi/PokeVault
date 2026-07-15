@@ -2,11 +2,8 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { TableSkeleton } from "../components/Skeleton";
 import { ErrorState } from "../components/States";
-import { useToast } from "../components/Toast";
-import { useAuth } from "../context/AuthContext";
 import { useCurrency } from "../context/CurrencyContext";
-import { ApiError } from "../lib/api";
-import { useMe, usePullLeaderboard, useUpdateProfile } from "../lib/queries";
+import { usePullLeaderboard } from "../lib/queries";
 import type { LeaderboardMode, LeaderboardWindow } from "../types";
 
 const MODES: { value: LeaderboardMode; label: string }[] = [
@@ -43,46 +40,9 @@ function Toggle<T extends string>({
   );
 }
 
-/** Signed-in viewers who aren't opted in get a one-click prompt (opt-in is separate from the
- * public showcase). Mounted only when a session exists, so /me is never called for anon viewers. */
-function OptInBanner() {
-  const me = useMe();
-  const update = useUpdateProfile();
-  const toast = useToast();
-
-  if (!me.data || me.data.leaderboard_opt_in) return null;
-
-  async function enable() {
-    try {
-      await update.mutateAsync({ leaderboard_opt_in: true });
-      toast.success("You're on the leaderboard! (You'll show once you've kept a pull.)");
-    } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : "Could not update your settings.");
-    }
-  }
-
-  return (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
-      <span>You're not on the leaderboard. Opt in to show your best pulls.</span>
-      <div className="flex items-center gap-3">
-        <button
-          onClick={enable}
-          disabled={update.isPending}
-          className="rounded-lg bg-amber-400 px-3 py-1.5 font-semibold text-slate-900 hover:bg-amber-300 disabled:opacity-50"
-        >
-          {update.isPending ? "Saving…" : "Show my pulls"}
-        </button>
-        <Link to="/settings" className="font-medium underline">
-          Settings
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-/** Public best-pulls leaderboard. Ranking is by real market price (frozen or live). */
+/** Public best-pulls leaderboard. Ranking is by real market price (frozen or live). Anyone with
+ * a handle and at least one kept pull appears automatically — there is no opt-in. */
 export function LeaderboardPage() {
-  const { session } = useAuth();
   const [mode, setMode] = useState<LeaderboardMode>("best_single");
   const [window, setWindow] = useState<LeaderboardWindow>("monthly");
   const board = usePullLeaderboard(mode, window);
@@ -103,8 +63,6 @@ export function LeaderboardPage() {
       <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
         Top pack pulls from collectors on the board — ranked by market value.
       </p>
-
-      {session && <OptInBanner />}
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <Toggle options={MODES} value={mode} onChange={setMode} />

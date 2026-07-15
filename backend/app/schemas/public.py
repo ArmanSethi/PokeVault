@@ -24,7 +24,6 @@ class PublicProfile(BaseModel):
     total_market_value: Decimal
     currency: str = "USD"
     sets_completed: int
-    comments_enabled: bool = True  # whether this showcase accepts comments
     sets: list[SetHolding] = []  # per-set breakdown (market value only — no cost basis)
 
 

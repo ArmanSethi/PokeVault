@@ -20,8 +20,9 @@ price visibility) are free here.
 - **Wishlist & alerts** and a **dream-deck builder**.
 - **Pack simulator** — server-rolled packs (approximate odds) with a **swipe-to-decide** reveal
   (swipe right to keep, left to discard; the hit card zooms in with a jackpot flourish), a
-  virtual **Vault** (kept pulls, fully separate from your real collection), and an opt-in
-  **best-pulls leaderboard** (daily worldwide top-10 + total-value day/month/all-time windows).
+  virtual **Vault** (kept pulls, fully separate from your real collection), and a
+  **best-pulls leaderboard** (daily worldwide top-10 + total-value day/month/all-time windows;
+  you appear once you have a handle and a kept pull).
 - **Public showcase** at `/u/:handle` with comments.
 - **Friends & direct messaging** — mutual-friend-gated 1:1 text chat (manual refresh), with block.
 - **Free OCR scanning** — upload a photo; Tesseract + fuzzy matching propose catalog candidates

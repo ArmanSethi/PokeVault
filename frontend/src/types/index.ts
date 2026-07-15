@@ -239,8 +239,6 @@ export interface User {
   email: string | null;
   handle?: string | null;
   is_public?: boolean;
-  comments_enabled?: boolean;
-  leaderboard_opt_in?: boolean;
   // Manual "Total spent" the user typed; null/undefined when unset.
   total_spent_override?: string | null;
 }
@@ -300,7 +298,6 @@ export interface PublicProfile {
   total_market_value: string;
   currency: string;
   sets_completed: number;
-  comments_enabled: boolean;
   sets: SetHolding[];
 }
 
@@ -326,8 +323,6 @@ export interface PublicCollection {
 export interface ProfileUpdate {
   handle?: string | null;
   is_public?: boolean | null;
-  comments_enabled?: boolean | null;
-  leaderboard_opt_in?: boolean | null;
   // Set a number to override Total spent; send null to clear back to the empty state.
   total_spent_override?: number | null;
 }
@@ -343,7 +338,6 @@ export interface Comment {
 }
 
 export interface CommentList {
-  comments_enabled: boolean;
   comments: Comment[];
 }
 

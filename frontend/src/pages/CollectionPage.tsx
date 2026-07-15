@@ -147,9 +147,7 @@ export function CollectionPage() {
               <tr>
                 <th className="px-4 py-2">Card</th>
                 <th className="px-4 py-2">Qty</th>
-                <th className="px-4 py-2">Condition</th>
-                <th className="px-4 py-2">Grade</th>
-                <th className="px-4 py-2 text-right">Unit</th>
+                <th className="px-4 py-2 text-center">Condition / Grade</th>
                 <th className="px-4 py-2 text-right">Value</th>
                 <th className="px-4 py-2" />
               </tr>
@@ -167,8 +165,9 @@ export function CollectionPage() {
                     {e.is_foil && <span className="ml-2 text-xs text-accent-500">✦ foil</span>}
                   </td>
                   <td className="px-4 py-2">×{e.quantity}</td>
-                  <td className="px-4 py-2">{e.condition ?? "—"}</td>
-                  <td className="px-4 py-2">
+                  {/* One column: the grade for graded cards, else the raw condition — never both.
+                      Centered (header + cell) so it sits midway between Qty and Value. */}
+                  <td className="px-4 py-2 text-center">
                     {e.grade ? (
                       <span className="inline-flex items-center gap-1">
                         <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium dark:bg-slate-800">
@@ -184,10 +183,9 @@ export function CollectionPage() {
                         )}
                       </span>
                     ) : (
-                      "—"
+                      (e.condition ?? "—")
                     )}
                   </td>
-                  <td className="px-4 py-2 text-right">{format(e.market_price)}</td>
                   <td className="px-4 py-2 text-right font-medium">{format(e.market_value)}</td>
                   <td className="px-4 py-2 text-right whitespace-nowrap">
                     <button
@@ -231,7 +229,12 @@ export function CollectionPage() {
                 ) : (
                   <span className="text-4xl opacity-30">🃏</span>
                 )}
-                <CardBadgeOverlay isFoil={e.is_foil} quantity={e.quantity} grade={e.grade} />
+                <CardBadgeOverlay
+                  isFoil={e.is_foil}
+                  quantity={e.quantity}
+                  grade={e.grade}
+                  condition={e.condition}
+                />
               </Link>
               <div className="flex flex-1 flex-col p-3">
                 <div className="flex items-start justify-between gap-2">

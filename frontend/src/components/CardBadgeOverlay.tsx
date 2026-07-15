@@ -10,11 +10,17 @@ export function CardBadgeOverlay({
   isFoil,
   quantity,
   grade,
+  condition,
 }: {
   isFoil: boolean;
   quantity: number;
   grade?: string | null;
+  condition?: string | null;
 }) {
+  // A card is either graded (show the grade, e.g. "PSA 10") or raw (show the condition, e.g.
+  // "NM") — never both. Grade takes precedence if somehow both are present.
+  const graded = Boolean(grade);
+  const badge = graded ? grade : condition || null;
   return (
     <>
       {isFoil && <span className="absolute left-1.5 top-1.5 text-xs text-accent-400">✦</span>}
@@ -22,12 +28,12 @@ export function CardBadgeOverlay({
         <span className="rounded-full bg-brand-600 px-2 py-0.5 text-xs font-bold text-white shadow">
           ×{quantity}
         </span>
-        {grade && (
+        {badge && (
           <span
-            title={gradedButRaw(grade) ? RAW_GRADE_NOTE : undefined}
+            title={graded && gradedButRaw(grade) ? RAW_GRADE_NOTE : undefined}
             className="rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white"
           >
-            {grade}
+            {badge}
           </span>
         )}
       </div>

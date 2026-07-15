@@ -9,6 +9,9 @@ import type {
   CollectionEntryCreate,
   CollectionEntryUpdate,
   CollectionSummary,
+  SealedItem,
+  SealedItemCreate,
+  SealedItemUpdate,
   Comment,
   CommentList,
   Deck,
@@ -172,6 +175,19 @@ export const api = {
   summary: () => request<CollectionSummary>("/collection/summary", {}, { auth: true }),
   portfolioHistory: (params: { days?: number } = {}) =>
     request<PortfolioValueSeries>(`/collection/history${qs(params)}`, {}, { auth: true }),
+
+  // ---- sealed items (auth) ----
+  listSealed: () => request<SealedItem[]>("/sealed", {}, { auth: true }),
+  addSealed: (data: SealedItemCreate) =>
+    request<SealedItem>("/sealed", { method: "POST", body: JSON.stringify(data) }, { auth: true }),
+  updateSealed: (id: number, data: SealedItemUpdate) =>
+    request<SealedItem>(
+      `/sealed/${id}`,
+      { method: "PATCH", body: JSON.stringify(data) },
+      { auth: true },
+    ),
+  deleteSealed: (id: number) =>
+    request<void>(`/sealed/${id}`, { method: "DELETE" }, { auth: true }),
 
   // ---- wishlist + alerts (auth) ----
   listWishlist: () => request<WishlistItem[]>("/wishlist", {}, { auth: true }),

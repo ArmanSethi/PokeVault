@@ -187,17 +187,17 @@ export function VaultPage() {
             <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
               <table className="w-full text-sm">
                 <thead className="bg-slate-100 text-left dark:bg-slate-800">
+                  {/* Three columns, each an equal third so they spread evenly across the table. */}
                   <tr>
-                    <th className="px-4 py-2">Card</th>
-                    <th className="px-4 py-2">Set</th>
-                    <th className="px-4 py-2 text-right">Qty</th>
-                    <th className="px-4 py-2 text-right">Current value</th>
+                    <th className="w-1/3 px-4 py-2">Card</th>
+                    <th className="w-1/3 px-4 py-2 text-right">Qty</th>
+                    <th className="w-1/3 px-4 py-2 text-right">Current value</th>
                   </tr>
                 </thead>
                 <tbody>
                   {view.map((s) => (
                     <tr key={s.card_id} className="border-t border-slate-100 dark:border-slate-800">
-                      <td className="px-4 py-2">
+                      <td className="w-1/3 px-4 py-2">
                         <Link
                           to={`/cards/${encodeURIComponent(s.card_id)}`}
                           className="font-medium text-brand-600 hover:underline"
@@ -205,11 +205,8 @@ export function VaultPage() {
                           {s.name}
                         </Link>
                       </td>
-                      <td className="px-4 py-2">
-                        {s.set_id} · #{s.number}
-                      </td>
-                      <td className="px-4 py-2 text-right">×{s.count}</td>
-                      <td className="px-4 py-2 text-right font-medium">
+                      <td className="w-1/3 px-4 py-2 text-right">×{s.count}</td>
+                      <td className="w-1/3 px-4 py-2 text-right font-medium">
                         {s.currentEach !== null ? format(s.totalCurrent) : "—"}
                       </td>
                     </tr>

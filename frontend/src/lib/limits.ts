@@ -2,6 +2,7 @@
  *  of truth (rejects/clamps out-of-range); these drive inline UX (input max + clamping). */
 export const LIMITS = {
   cardQty: { min: 1, max: 99 }, // card copies: collection stacks + deck cards
+  sealedQty: { min: 1, max: 9999 }, // sealed product quantity (packs / boxes)
   deckTarget: { min: 1, max: 100 }, // dream-deck target size
   money: { min: 0, max: 1_000_000 }, // acquired price, wishlist target — decimals allowed
 } as const;

@@ -20,6 +20,7 @@ from app.api.v1.endpoints import (
     public,
     pulls,
     scan,
+    sealed,
     sets,
     simulator,
     wishlist,
@@ -49,6 +50,7 @@ api_router.include_router(sets.router, prefix="/sets", tags=["sets"])
 api_router.include_router(cards.router, prefix="/cards", tags=["cards"])
 api_router.include_router(collection.router, prefix="/collection", tags=["collection"])
 api_router.include_router(importer.router, prefix="/collection", tags=["collection"])
+api_router.include_router(sealed.router, prefix="/sealed", tags=["sealed"])
 api_router.include_router(scan.router, prefix="/scan", tags=["scan"])
 api_router.include_router(wishlist.router, prefix="/wishlist", tags=["wishlist"])
 api_router.include_router(deck.router, prefix="/decks", tags=["decks"])

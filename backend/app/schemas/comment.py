@@ -24,5 +24,4 @@ class CommentRead(BaseModel):
 
 
 class CommentList(BaseModel):
-    comments_enabled: bool
     comments: list[CommentRead] = []

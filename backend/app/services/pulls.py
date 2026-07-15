@@ -198,13 +198,15 @@ def _day_start():
 async def leaderboard(
     session: AsyncSession, mode: LeaderboardMode, window: LeaderboardWindow
 ) -> list[PullLeaderboardEntry]:
-    """Top pullers. Eligibility = leaderboard opt-in + a handle + ≥1 pull; ranked by real market
-    price. ``showcase_public`` tells the UI whether it may link the handle to /u/{handle}.
+    """Top pullers. Eligibility = a handle + ≥1 kept pull (no opt-in); ranked by real market
+    price. The "≥1 pull" half is enforced structurally by the join to ``pack_pulls`` below, so
+    the only user-column filter is a non-null handle. ``showcase_public`` tells the UI whether it
+    may link the handle to /u/{handle}.
 
     ``best_single`` is the worldwide DAILY top 10 (today, UTC; ignores ``window``) — it resets at
     UTC midnight so the top spot stays competitive. ``total_value`` honors ``window`` (daily /
     monthly / all_time)."""
-    eligible = (User.leaderboard_opt_in.is_(True), User.handle.is_not(None))
+    eligible = (User.handle.is_not(None),)
     if window == "daily":
         window_filter = [PackPull.pulled_at >= _day_start()]
     elif window == "monthly":

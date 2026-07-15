@@ -24,7 +24,6 @@ from sqlalchemy.dialects.postgresql import insert
 import app.db.base  # noqa: F401
 from app.db.session import SessionLocal
 from app.models.collection import CollectionEntry
-from app.models.pack_pull import PackPull
 from app.models.portfolio import PortfolioValueDaily
 from app.models.price import CardPriceCurrent, PriceHistory
 from app.models.wishlist import WishlistItem
@@ -33,14 +32,22 @@ from app.services.portfolio import compute_portfolio_values_usd
 
 logger = logging.getLogger("app.ingest.snapshot_prices")
 
-# Snapshot only cards someone owns OR wishlists. price_history is consumed for owned-card
-# charts + the portfolio series, and now also to detect wishlist price drops; snapshotting
-# the whole ~52k-card catalog daily would just burn the Supabase free-tier quota (~30 MB/day).
-# Wishlisted cards add negligible volume and keep alert prices fresh.
+# HISTORY-WRITE SCOPE — snapshot price_history ONLY for cards a user OWNS (collection) or
+# WISHLISTS (distinct card ids, unioned + deduped). price_history feeds the owned-card charts,
+# the portfolio-value series, and wishlist drop alerts; the chart / history display reads
+# EXCLUSIVELY from it. Snapshotting the whole ~52k-card catalog daily would burn the Supabase
+# free-tier quota, so it stays scoped to these.
+#
+# Vault (pack_pulls) cards are DELIBERATELY EXCLUDED here — we do not build price *history* for
+# them. Their CURRENT prices are still kept fresh nightly by the whole-catalog refresh in
+# app/ingest/sync_catalog.py (which upserts card_prices_current for every card), so vault current
+# values and the "total pulled value" leaderboard never go stale. The two sets are distinct:
+#   • history-write set        = collection ∪ wishlist            (this job)
+#   • current-price refresh set = full catalog ⊇ collection ∪ wishlist ∪ vault  (sync_catalog)
+# A card that leaves both collection and wishlist simply stops getting new history rows.
 _tracked = union(
     select(CollectionEntry.card_id.label("card_id")),
     select(WishlistItem.card_id.label("card_id")),
-    select(PackPull.card_id.label("card_id")),  # virtual pull collection — keep its prices fresh
 ).subquery()
 _owned_card_ids = select(_tracked.c.card_id)
 

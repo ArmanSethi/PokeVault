@@ -218,19 +218,25 @@ export function FeaturedCard() {
     return () => clearTimeout(id);
   }, [prev]);
 
-  // h-72 aligns with the top-row tiles (hero / stats / By-set) while still giving the
-  // (object-contain) card image room to show in full with the name/set/value block beneath.
-  // Full-width when stacked on mobile.
+  // h-96: a big box (bottom-right quadrant) that anchors the bottom row's height and gives the
+  // (object-contain) card image generous room, with the name/set/value block beneath. Full-width
+  // when stacked on mobile.
   const box =
-    "group relative flex h-72 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900";
+    "group relative flex h-96 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900";
+  // Inner content column: centered and capped at roughly the card's own width so the (portrait)
+  // card image hugs its container with only a small, even gutter — no big dead space on either
+  // side of the wide box. The header dots + name/set/value align to this same column.
+  const col = "mx-auto flex h-full w-full max-w-[15rem] flex-col";
 
   if (!cur) {
     return (
       <div className={box} aria-busy="true">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-          Featured
-        </span>
-        <div className="mt-2 flex-1 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+        <div className={col}>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            Featured
+          </span>
+          <div className="mt-2 flex-1 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+        </div>
       </div>
     );
   }
@@ -255,42 +261,46 @@ export function FeaturedCard() {
       onBlur={() => setPaused(false)}
       aria-label={`Featured card: ${cur.name}. Open card details.`}
     >
-      <div className="mb-1 flex items-center justify-between">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-          Featured
-        </span>
-        {items.length > 1 && (
-          <div className="flex gap-1">
-            {items.map((_, i) => (
-              <span
-                key={i}
-                className={`h-1.5 w-1.5 rounded-full transition-colors ${
-                  i === pos ? "bg-brand-500" : "bg-slate-300 dark:bg-slate-700"
-                }`}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Image stage: outgoing layer fades out under the incoming layer fading in (cross-fade). */}
-      <div className="relative min-h-0 flex-1">
-        {prev && !reduced && renderImg(prev, "feat-out")}
-        {renderImg(cur, reduced ? "" : "feat-in")}
-      </div>
-
-      <div key={cur.id} className={reduced ? "mt-2" : "mt-2 feat-in"}>
-        <p className="truncate text-sm font-medium" title={cur.name}>
-          {cur.name}
-        </p>
-        <p className="flex items-center justify-between gap-2 text-xs">
-          <span className="truncate text-slate-500 dark:text-slate-400">{setName(cur.setId)}</span>
-          {hasPrice(cur.value) && (
-            <span className="shrink-0 font-semibold text-brand-600 dark:text-brand-400">
-              {format(cur.value)}
-            </span>
+      <div className={col}>
+        <div className="mb-1 flex items-center justify-between">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            Featured
+          </span>
+          {items.length > 1 && (
+            <div className="flex gap-1">
+              {items.map((_, i) => (
+                <span
+                  key={i}
+                  className={`h-1.5 w-1.5 rounded-full transition-colors ${
+                    i === pos ? "bg-brand-500" : "bg-slate-300 dark:bg-slate-700"
+                  }`}
+                />
+              ))}
+            </div>
           )}
-        </p>
+        </div>
+
+        {/* Image stage: outgoing layer fades out under the incoming layer fading in (cross-fade). */}
+        <div className="relative min-h-0 flex-1">
+          {prev && !reduced && renderImg(prev, "feat-out")}
+          {renderImg(cur, reduced ? "" : "feat-in")}
+        </div>
+
+        <div key={cur.id} className={reduced ? "mt-2" : "mt-2 feat-in"}>
+          <p className="truncate text-sm font-medium" title={cur.name}>
+            {cur.name}
+          </p>
+          <p className="flex items-center justify-between gap-2 text-xs">
+            <span className="truncate text-slate-500 dark:text-slate-400">
+              {setName(cur.setId)}
+            </span>
+            {hasPrice(cur.value) && (
+              <span className="shrink-0 font-semibold text-brand-600 dark:text-brand-400">
+                {format(cur.value)}
+              </span>
+            )}
+          </p>
+        </div>
       </div>
     </Link>
   );

@@ -16,13 +16,12 @@ def _h() -> str:
     return "u" + uuid.uuid4().hex[:12]
 
 
-async def _user(db_session, *, public=True, comments_enabled=True) -> User:
+async def _user(db_session, *, public=True) -> User:
     u = User(
         id=uuid.uuid4(),
         email=f"{uuid.uuid4().hex[:8]}@pokevault.dev",
         handle=_h(),
         is_public=public,
-        comments_enabled=comments_enabled,
     )
     db_session.add(u)
     await db_session.flush()
@@ -45,7 +44,7 @@ async def test_post_list_newest_first_and_body_verbatim(db_session):
     xss = "<img src=x onerror=alert(1)>"  # stored raw; the frontend escapes on render
     await svc.add_comment(db_session, owner.handle, author, CommentCreate(body=xss))
     lst = await svc.list_comments(db_session, owner.handle, viewer=author)
-    assert lst is not None and lst.comments_enabled is True
+    assert lst is not None
     assert [c.body for c in lst.comments] == [xss, "first"]  # newest first, verbatim
     assert lst.comments[0].author_handle == author.handle
     assert all(c.can_delete for c in lst.comments)  # author can delete own
@@ -60,11 +59,8 @@ async def test_rate_limit(db_session):
         await svc.add_comment(db_session, owner.handle, author, CommentCreate(body="one too many"))
 
 
-async def test_disabled_and_not_public(db_session):
-    off = await _user(db_session, comments_enabled=False)
+async def test_not_public(db_session):
     author = await _user(db_session)
-    with pytest.raises(svc.CommentsDisabled):
-        await svc.add_comment(db_session, off.handle, author, CommentCreate(body="nope"))
     private = await _user(db_session, public=False)
     assert await svc.list_comments(db_session, private.handle, viewer=None) is None
     with pytest.raises(svc.ProfileNotPublic):

@@ -245,23 +245,53 @@ export function CardDetailPage() {
                   }
                 />
               </div>
-              <label className="block text-sm">
+              <div className="block text-sm">
                 <span className="mb-1 block">Edition / variant</span>
-                <select
-                  value={selectedVariant}
-                  onChange={(e) => setForm({ ...form, variant: e.target.value })}
-                  className={inputClass}
-                >
-                  {availableVariants.map((v) => (
-                    <option key={v} value={v}>
-                      {variantLabel(v)}
-                    </option>
-                  ))}
-                </select>
-                <span className="mt-1 block text-xs text-slate-400">
+                {/* Tick-box picker: one checkable box per printing, but single-select (radio
+                    behavior) — ticking one unticks the rest. Still bound to form.variant so the
+                    card is valued at the chosen printing. */}
+                <div role="radiogroup" aria-label="Edition / variant" className="flex flex-wrap gap-2">
+                  {availableVariants.map((v) => {
+                    const checked = v === selectedVariant;
+                    return (
+                      <button
+                        key={v}
+                        type="button"
+                        role="radio"
+                        aria-checked={checked}
+                        onClick={() => setForm({ ...form, variant: v })}
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition ${
+                          checked
+                            ? "border-brand-500 bg-brand-50 font-medium text-brand-700 dark:border-brand-500 dark:bg-brand-500/10 dark:text-brand-300"
+                            : "border-slate-300 text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600"
+                        }`}
+                      >
+                        {checked && (
+                          <svg
+                            width="13"
+                            height="13"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            aria-hidden="true"
+                          >
+                            <path
+                              d="M20 6 9 17l-5-5"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        )}
+                        {variantLabel(v)}
+                      </button>
+                    );
+                  })}
+                </div>
+                <span className="mt-2 block text-xs text-slate-400">
                   Priced at this printing&apos;s market value.
                 </span>
-              </label>
+              </div>
               <button
                 type="submit"
                 disabled={addEntry.isPending}

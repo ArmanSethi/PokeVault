@@ -82,7 +82,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # sync_catalog refreshes card_prices_current AND writes today's price_history
-          # inline; snapshot_prices then guarantees every priced row has today's history row.
+          # Two DISTINCT scopes, in order:
+          #   1. sync_catalog refreshes card_prices_current for the WHOLE catalog (current prices
+          #      only — it writes NO history). This keeps every card fresh, including vault pulls,
+          #      so vault current values + the "total pulled value" leaderboard never go stale.
+          #   2. snapshot_prices writes today's price_history rows ONLY for cards in a collection
+          #      or wishlist (the history-write set) and upserts the per-user portfolio value.
           uv run python -m app.ingest.sync_catalog
           uv run python -m app.ingest.snapshot_prices

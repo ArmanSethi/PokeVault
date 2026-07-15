@@ -262,12 +262,14 @@ export function DashboardPage() {
         </>
       ) : (
         <>
-          {/* TOP ROW: Portfolio hero + Total spent/Total cards stats + Featured + By-set, all
-              aligned to one height (md:h-72). By-set is a narrow tile whose inner list scrolls if
-              longer than the row. On mobile everything stacks: hero, stats, featured, By-set. */}
-          <div className="grid grid-cols-1 gap-3 lg:h-72 lg:grid-cols-[1.5fr_1fr_1fr_1.1fr]">
-            {/* Portfolio value — HERO. Intentionally NON-clickable (no navigation). */}
-            <div className="relative flex h-full flex-col justify-center overflow-hidden rounded-xl border border-transparent bg-gradient-to-br from-brand-600 to-brand-800 p-6 text-white shadow-sm sm:p-8">
+          {/* TOP AREA — 2x2 quadrant grid: [Portfolio hero | Total spent + Total cards] over
+              [By set | Featured]. Equal-width columns; the top row (hero / stats) aligns in height
+              (anchored by the hero's md:h-48) and the bottom row (By set / Featured) aligns in
+              height (anchored by the big Featured box). On mobile it stacks in order: Portfolio,
+              Total spent, Total cards, By set, Featured. */}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {/* Top-left: Portfolio value HERO. Intentionally NON-clickable (no navigation). */}
+            <div className="relative flex flex-col justify-center overflow-hidden rounded-xl border border-transparent bg-gradient-to-br from-brand-600 to-brand-800 p-6 text-white shadow-sm sm:p-8 md:h-48">
               <PokeballMark className="pointer-events-none absolute -right-8 -top-8 h-44 w-44 text-white/10" />
               <div className="relative z-10">
                 <p className="text-xs font-medium uppercase tracking-wider text-brand-200">
@@ -289,8 +291,8 @@ export function DashboardPage() {
               </button>
             </div>
 
-            {/* Total spent (top) + Total cards (bottom): side by side on mobile, stacked on desktop. */}
-            <div className="grid grid-cols-2 gap-3 lg:h-full lg:grid-cols-1 lg:grid-rows-2">
+            {/* Top-right: Total spent (top) + Total cards (bottom), stacked; fills the top row. */}
+            <div className="grid grid-cols-1 gap-3 md:h-full md:grid-rows-2">
               {/* Total spent — a manually-entered figure (pencil to edit, eye to hide). */}
               <TotalSpentTile value={summary.data.total_cost} />
               {/* Total cards → Collection in GRID view (forces grid over any stored preference). */}
@@ -301,11 +303,11 @@ export function DashboardPage() {
               />
             </div>
 
-            {/* Featured card. */}
-            <FeaturedCard />
-
-            {/* By set — narrow tile, fixed to the row height with its own internal scroll. */}
-            <div className={`flex h-72 flex-col overflow-hidden lg:h-full ${PANEL}`}>
+            {/* Bottom-left: By set — CONSTANT height (h-72 / md:h-full anchored to the bottom
+                row); the set list scrolls WITHIN via the inner overflow-y-auto, so the tile's
+                footprint never grows with the number of sets. Each row: set name (left) +
+                owned/total completion count (right). */}
+            <div className={`flex h-72 flex-col overflow-hidden md:h-full ${PANEL}`}>
               <div className="border-b border-slate-200 px-3 py-2 text-sm font-semibold dark:border-slate-800">
                 By set
               </div>
@@ -316,22 +318,20 @@ export function DashboardPage() {
                     to={`/catalog?set=${h.set_id}`}
                     className="flex items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 last:border-b-0 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50"
                   >
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-brand-600 dark:text-brand-400">
-                        {h.set_name}
-                      </span>
-                      <span className="text-xs text-slate-400">
-                        {h.distinct_cards_owned}
-                        {h.set_size ? ` / ${h.set_size}` : ""}
-                      </span>
+                    <span className="min-w-0 truncate text-sm font-medium text-brand-600 dark:text-brand-400">
+                      {h.set_name}
                     </span>
-                    <span className="shrink-0 text-sm font-medium tabular-nums">
-                      {format(h.market_value)}
+                    <span className="shrink-0 text-sm font-medium tabular-nums text-slate-500 dark:text-slate-400">
+                      {h.distinct_cards_owned}
+                      {h.set_size ? ` / ${h.set_size}` : ""}
                     </span>
                   </Link>
                 ))}
               </div>
             </div>
+
+            {/* Bottom-right: Featured card (big box — anchors the bottom-row height). */}
+            <FeaturedCard />
           </div>
 
           {/* BELOW: full-width portfolio-value-over-time chart (moved down from where By-set was). */}

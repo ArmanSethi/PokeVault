@@ -25,9 +25,9 @@ def test_card_quantity_bounds():
 
 def test_total_spent_override_bounds():
     # Manual "Total spent": 0 up to 99,999,999,999 (11 digits), decimals allowed, and clearable.
-    assert UserProfileUpdate(
-        total_spent_override=Decimal("12.34")
-    ).total_spent_override == Decimal("12.34")
+    assert UserProfileUpdate(total_spent_override=Decimal("12.34")).total_spent_override == Decimal(
+        "12.34"
+    )
     UserProfileUpdate(total_spent_override=Decimal("99999999999"))  # cap ok
     assert UserProfileUpdate(total_spent_override=None).total_spent_override is None
     with pytest.raises(ValidationError):

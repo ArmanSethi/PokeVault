@@ -59,9 +59,7 @@ async def _upsert_prices(session: AsyncSession, rows: list[dict]) -> None:
     await session.execute(stmt.on_conflict_do_update(index_elements=list(key), set_=update))
 
 
-async def refresh_card(
-    session: AsyncSession, user_id: uuid.UUID, card_id: str
-) -> CardRead | None:
+async def refresh_card(session: AsyncSession, user_id: uuid.UUID, card_id: str) -> CardRead | None:
     """Re-fetch one card's prices from pokemontcg.io and upsert them.
 
     Returns the updated card, or None if the card isn't in our catalog. Raises

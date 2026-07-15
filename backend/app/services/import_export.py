@@ -165,8 +165,21 @@ def parse_csv(data: bytes) -> list[ParsedRow]:
     return rows
 
 
-def _classify(candidates: list[ImportCandidate]) -> tuple[str, str | None]:
-    """Decide a row's status from its ranked candidates. Pure."""
+def _classify(
+    candidates: list[ImportCandidate],
+    *,
+    csv_set_id: str | None,
+    set_specified: bool,
+) -> tuple[str, str | None]:
+    """Decide a row's status from its ranked candidates. Pure.
+
+    ``set_specified`` — the CSV row named a set (blank/absent → False). ``csv_set_id`` — that
+    set resolved to a catalog id (None when the set is blank OR names a set we don't have).
+
+    Auto-match rule: when the CSV names a set we only ever auto-pick a candidate from THAT set;
+    if the best candidate is in a different set (or the named set doesn't exist here) we leave
+    the row for the user to pick rather than confidently snapping to the wrong-set printing.
+    """
     if not candidates:
         return "unmatched", None
     top = candidates[0]
@@ -174,6 +187,19 @@ def _classify(candidates: list[ImportCandidate]) -> tuple[str, str | None]:
     # coincidental name overlaps (e.g. a junk row) — surface it as unmatched, not a suggestion.
     if top.confidence < _VIABLE:
         return "unmatched", None
+
+    if set_specified:
+        # The CSV said which set. Only a strong SAME-SET hit auto-matches; anything else is left
+        # for the user (candidates still shown, ordered same-set first, so a pick is one click).
+        if csv_set_id is not None and top.set_id == csv_set_id and top.confidence >= _STRONG:
+            # (set + number) is ~unique, so ambiguity only matters among same-set candidates.
+            same_set = [c for c in candidates if c.set_id == csv_set_id]
+            runner = same_set[1].confidence if len(same_set) > 1 else 0.0
+            if (top.confidence - runner) >= _LEAD:
+                return "matched", top.card_id
+        return "ambiguous", None
+
+    # No set in the CSV → original name/number cross-set behavior.
     runner = candidates[1].confidence if len(candidates) > 1 else 0.0
     if top.confidence >= _STRONG and (top.confidence - runner) >= _LEAD:
         return "matched", top.card_id
@@ -181,16 +207,33 @@ def _classify(candidates: list[ImportCandidate]) -> tuple[str, str | None]:
 
 
 async def _resolve_set_id(session: AsyncSession, set_name: str | None) -> str | None:
-    """Best-effort map a CSV set name to a catalog set id (exact-ish, case-insensitive)."""
+    """Best-effort map a CSV "set" cell to a catalog set id (case-insensitive).
+
+    The cell may be a set **id** (our own export writes ``e.card.set_id``, e.g. ``base1``) or a
+    set **name** (Collectr / TCG Collector exports, e.g. ``Base``). Try the id first — it's the
+    exact, unambiguous key — then an exact name, then a name contains-match as a last resort.
+    """
     if not set_name:
         return None
-    stmt = select(Set.id).where(Set.name.ilike(set_name.strip())).limit(1)
-    exact = (await session.execute(stmt)).scalar_one_or_none()
+    key = set_name.strip()
+    if not key:
+        return None
+    # 1. Direct set-id match (our export round-trips the set id).
+    by_id = (
+        await session.execute(select(Set.id).where(Set.id.ilike(key)).limit(1))
+    ).scalar_one_or_none()
+    if by_id:
+        return by_id
+    # 2. Exact set-name match.
+    exact = (
+        await session.execute(select(Set.id).where(Set.name.ilike(key)).limit(1))
+    ).scalar_one_or_none()
     if exact:
         return exact
-    # Fall back to a contains match (handles "Base" vs "Base Set" style differences).
-    stmt = select(Set.id).where(Set.name.ilike(f"%{set_name.strip()}%")).limit(1)
-    return (await session.execute(stmt)).scalar_one_or_none()
+    # 3. Contains match (handles "Base" vs "Base Set" style differences).
+    return (
+        await session.execute(select(Set.id).where(Set.name.ilike(f"%{key}%")).limit(1))
+    ).scalar_one_or_none()
 
 
 async def preview_import(session: AsyncSession, data: bytes) -> ImportPreview:
@@ -200,6 +243,7 @@ async def preview_import(session: AsyncSession, data: bytes) -> ImportPreview:
     counts = {"matched": 0, "ambiguous": 0, "unmatched": 0}
 
     for pr in parsed:
+        set_specified = bool(pr.set_name and pr.set_name.strip())
         set_id = await _resolve_set_id(session, pr.set_name)
         matches = await match_card(session, pr.name, pr.number, set_id=set_id, limit=5)
         candidates = [
@@ -213,7 +257,7 @@ async def preview_import(session: AsyncSession, data: bytes) -> ImportPreview:
             )
             for m in matches
         ]
-        status, selected = _classify(candidates)
+        status, selected = _classify(candidates, csv_set_id=set_id, set_specified=set_specified)
         counts[status] += 1
         rows.append(
             ImportRow(

@@ -2,8 +2,8 @@
 
 Boundary: this service reads and writes ONLY ``showcase_comments`` rows, plus a single
 ``users`` lookup (reusing ``public._public_user``) to resolve the handle, enforce the
-public-only rule, read the owner's ``comments_enabled`` flag, and authorize deletes. It never
-touches collection / cost or any other private data.
+public-only rule, and authorize deletes. It never touches collection / cost or any other
+private data. Comments are always enabled on a public showcase — there is no per-owner toggle.
 """
 
 from __future__ import annotations
@@ -25,10 +25,6 @@ RATE_WINDOW = timedelta(seconds=60)
 
 class ProfileNotPublic(Exception):
     """The handle doesn't resolve to a public profile (→ 404)."""
-
-
-class CommentsDisabled(Exception):
-    """The owner has turned comments off for their showcase (→ 403)."""
 
 
 class RateLimited(Exception):
@@ -64,18 +60,16 @@ async def list_comments(
     for c, author_handle in rows:
         can_delete = viewer is not None and viewer.id in (c.author_user_id, profile.id)
         out.append(_to_read(c, author_handle, can_delete))
-    return CommentList(comments_enabled=profile.comments_enabled, comments=out)
+    return CommentList(comments=out)
 
 
 async def add_comment(
     session: AsyncSession, handle: str, author: User, data: CommentCreate
 ) -> CommentRead:
-    """Post a comment. Raises ProfileNotPublic / CommentsDisabled / RateLimited."""
+    """Post a comment. Raises ProfileNotPublic / RateLimited."""
     profile = await _public_user(session, handle)
     if profile is None:
         raise ProfileNotPublic
-    if not profile.comments_enabled:
-        raise CommentsDisabled
 
     cutoff = datetime.now(UTC) - RATE_WINDOW
     recent = await session.scalar(

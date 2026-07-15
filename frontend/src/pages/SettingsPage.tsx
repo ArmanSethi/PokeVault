@@ -21,15 +21,11 @@ export function SettingsPage() {
   const navigate = useNavigate();
   const [handle, setHandle] = useState("");
   const [isPublic, setIsPublic] = useState(false);
-  const [commentsEnabled, setCommentsEnabled] = useState(true);
-  const [leaderboardOptIn, setLeaderboardOptIn] = useState(false);
 
   useEffect(() => {
     if (me.data) {
       setHandle(me.data.handle ?? "");
       setIsPublic(Boolean(me.data.is_public));
-      setCommentsEnabled(me.data.comments_enabled ?? true);
-      setLeaderboardOptIn(Boolean(me.data.leaderboard_opt_in));
     }
   }, [me.data]);
 
@@ -46,8 +42,6 @@ export function SettingsPage() {
       await update.mutateAsync({
         handle: handle || null,
         is_public: isPublic,
-        comments_enabled: commentsEnabled,
-        leaderboard_opt_in: leaderboardOptIn,
       });
       toast.success("Profile saved.");
     } catch (e) {
@@ -104,31 +98,6 @@ export function SettingsPage() {
             onChange={(e) => setIsPublic(e.target.checked)}
           />
           Make my collection showcase public
-        </label>
-
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={commentsEnabled}
-            onChange={(e) => setCommentsEnabled(e.target.checked)}
-          />
-          Allow comments on my showcase
-        </label>
-
-        <label className="flex items-start gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={leaderboardOptIn}
-            onChange={(e) => setLeaderboardOptIn(e.target.checked)}
-            className="mt-1"
-          />
-          <span>
-            Show my pulls on the simulator leaderboard
-            <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
-              Ranks your best pulls publicly by handle. Independent of your showcase — your
-              collection stays private unless you make it public above.
-            </span>
-          </span>
         </label>
 
         <button

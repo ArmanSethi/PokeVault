@@ -122,8 +122,8 @@ rule and surface the conflict to the user.
   — daily / monthly / all-time — with the day + month LABELS computed LIVE from the current UTC
   date (never hardcoded), cap top 100. Every window is derived at query time from `pulled_at` — no
   cron/reset job. Nulls are excluded from `best_single` and contribute 0 to `total_value`.
-  **Eligibility = the explicit `leaderboard_opt_in` flag (default off) + a handle + ≥1 pull**,
-  SEPARATE from `is_public`; link a name to `/u/{handle}` ONLY when that user's showcase is public.
+  **Eligibility = a set handle + ≥1 kept pull** (no opt-in gate). Eligibility is SEPARATE from
+  `is_public`; link a name to `/u/{handle}` ONLY when that user's showcase is public.
 - **Friends + direct messaging:** mutual-friend gated (request → accept → message); 1:1, text only;
   **manual refresh only (no websockets/polling)**. The send guard is re-checked server-side on
   EVERY send — an accepted friendship AND no block in either direction, else 403. Block = unfriend
@@ -134,9 +134,10 @@ rule and surface the conflict to the user.
   at 99. Enforce min values too (no negatives). Clamped inputs use the shared **`NumberField`**:
   edit RAW while typing (empty/partial allowed), normalize on blur + Enter — never clamp on every
   keystroke; quantity blank → 1, money blank → null (not 0).
-- **Privacy:** public pages (profile, leaderboard/simulator if public) read ONLY public,
-  opt-in data — never private collections, never another user's data. Rank/compute
-  server-side; never ship private data to the client. Portfolio value defaults to hidden.
+- **Privacy:** public pages (profile, leaderboard) read ONLY public-safe data — a handle, the
+  leaderboard score/card, and a `/u/{handle}` link gated on `is_public` — never private
+  collections, never another user's data. Rank/compute server-side; never ship private data to
+  the client. Portfolio value defaults to hidden.
 - **Copyright:** abstract Pokémon-themed motifs and type colors only in decorative UI —
   no copyrighted character art or logos.
 

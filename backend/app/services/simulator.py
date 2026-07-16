@@ -36,9 +36,18 @@ UNCOMMON = "uncommon"
 DAILY_PACK_LIMIT = 2
 
 
-def effective_daily_pack_limit(user: User) -> int:
-    """This user's daily pack cap: their per-account override if set, else the default."""
-    return user.daily_pack_limit if user.daily_pack_limit is not None else DAILY_PACK_LIMIT
+def effective_daily_pack_limit(user: User) -> int | None:
+    """This user's daily pack cap, or None for unlimited.
+
+    Precedence: an explicit per-account ``daily_pack_limit`` override always wins (e.g. a granted
+    100/day), regardless of tier — so @red's 100 holds even without Pro. Otherwise Pro is unlimited
+    (None); otherwise the free default (2).
+    """
+    if user.daily_pack_limit is not None:
+        return user.daily_pack_limit
+    if user.is_pro:
+        return None
+    return DAILY_PACK_LIMIT
 
 
 class QuotaExceeded(Exception):
@@ -190,8 +199,11 @@ async def opens_today_count(session: AsyncSession, user_id: uuid.UUID) -> int:
 
 
 async def packs_remaining_today(
-    session: AsyncSession, user_id: uuid.UUID, limit: int = DAILY_PACK_LIMIT
-) -> int:
+    session: AsyncSession, user_id: uuid.UUID, limit: int | None = DAILY_PACK_LIMIT
+) -> int | None:
+    """Packs left today, or None when the cap is unlimited (Pro)."""
+    if limit is None:
+        return None
     return max(0, limit - await opens_today_count(session, user_id))
 
 
@@ -203,16 +215,16 @@ def _price_at_open(card: Card, variant: str) -> Decimal | None:
 
 
 async def open_pack(
-    session: AsyncSession, user_id: uuid.UUID, set_id: str, limit: int = DAILY_PACK_LIMIT
+    session: AsyncSession, user_id: uuid.UUID, set_id: str, limit: int | None = DAILY_PACK_LIMIT
 ) -> PackResult | None:
     """Open one pack for ``set_id``, persisting the authoritative roll.
 
     Returns None if the set is unknown or has no cards. Raises ``QuotaExceeded`` if the user has
-    already used their daily allowance (``limit``, the caller-resolved effective cap). The rolled
-    result (with open-time prices) is stored so the keep step trusts only the server, never the
-    client.
+    already used their daily allowance (``limit``, the caller-resolved effective cap; None =
+    unlimited, e.g. Pro). The rolled result (with open-time prices) is stored so the keep step
+    trusts only the server, never the client.
     """
-    if await opens_today_count(session, user_id) >= limit:
+    if limit is not None and await opens_today_count(session, user_id) >= limit:
         raise QuotaExceeded
 
     set_obj = await session.get(Set, set_id)

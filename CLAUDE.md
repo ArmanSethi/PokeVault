@@ -153,7 +153,7 @@ _Keep this section updated as the project evolves._
 **Live on Render (API) + Vercel (SPA) + Supabase (Postgres/Auth), all free tier.** Backend is
 covered by pytest against the live Supabase DB; frontend `pnpm build`/`lint` clean. Migrations run
 on the Supabase **session pooler** (`+asyncpg` app / `+psycopg` v3 Alembic); current head is
-`f1a3d5b7c9e2`. Table is `collection_entries` (code-is-truth).
+`b4d6f8a0c2e5`. Table is `collection_entries` (code-is-truth).
 
 Shipped features:
 
@@ -174,22 +174,33 @@ Shipped features:
   portfolio value, **total spent** (a manual figure the user types — a nullable
   `users.total_spent_override`; no auto-calculation, empty state when unset), per-set breakdown,
   and portfolio-value-over-time (per-user `portfolio_value_daily`). (The old per-unit
-  `acquired_price` / cost-basis concept was removed entirely.)
+  `acquired_price` / cost-basis concept was removed entirely.) The dashboard "Total cards" tile
+  opens the Collection page in table view.
+- **Plans (free/Pro)** — a single `users.is_pro` flag (default false; granted manually in the DB /
+  admin — no self-serve upgrade and no payment integration yet; a future Stripe hook will set the
+  same flag). Gates are enforced **server-side** (the frontend mirrors them but the API is the
+  source of truth): Free = 2 packs/day, 50 scans/day (both UTC-reset, counted query-time from
+  `pack_opens` / the `scans` table — no reset job), max 5 decks, no collection export; Pro lifts all
+  four (unlimited / export allowed). A per-user `daily_pack_limit` override still wins for packs
+  regardless of tier — precedence is **override → Pro unlimited → Free 2**. Settings shows the tier
+  + a "Pro — coming soon" note.
 - **Sealed products** — a wholly separate `sealed_items` domain (packs, booster boxes, ETBs,
   bundles, other; `product_type` is a plain `String` validated by a Pydantic `Literal`, no DB
-  enum), managed in a Collection **"Sealed" tab** (`?tab=cards|sealed`). Optional set link
-  (nullable FK, `SET NULL`); **manual `value` only** (nullable → shows "—", contributes 0; no
-  auto-pricing — pokemontcg.io prices singles, not sealed). Items don't stack (each is its own
-  managed row). Value shows as a **separate "Sealed value" dashboard total**, never folded into
-  the card portfolio value (which the public showcase reuses). A per-set **cards-vs-sealed
-  summary page** (`/dashboard/sets-summary`: Set · Total cards · Total packs · Total booster
-  boxes, plus a "No set" row) is reachable only from the dashboard "Total cards" tile.
+  enum), managed in a Collection **"Sealed" tab** (`?tab=cards|sealed`) at feature-parity with the
+  Cards tab: **table + grid** views, **sort** (type/set/quantity/value), **filter by set** (incl. a
+  "No set" group), add/edit/delete (a row/tile opens its editor — no card page). Generic
+  per-product-type **SVG icons** (original line art; no user photos, no copyrighted product art).
+  Optional set link (nullable FK, `SET NULL`). `value` is reserved for a future price source — no
+  manual entry today, so it shows "—" everywhere and the **separate "Sealed value" dashboard
+  total** (never folded into card portfolio value) is "—" until pricing lands. Items don't stack.
 - **Price history** — daily (GitHub Actions, UTC) `price_history` snapshot for **collection ∪
   wishlist** card/variant IDs only (vault pulls are excluded from history); card + portfolio series
   endpoints read only from it. Distinct from the nightly **current-price** refresh, which
   `sync_catalog` runs over the whole catalog (⊇ collection ∪ wishlist ∪ vault) so vault current
   values + the "total pulled value" leaderboard stay fresh.
-- **Scan** — Tesseract OCR proposes catalog matches (propose-only; the Docker image ships Tesseract).
+- **Scan** — Tesseract OCR proposes catalog matches (propose-only; the Docker image ships
+  Tesseract). Requires auth and is quota-gated (Free 50 scans/UTC-day, counted from a `scans`
+  table; Pro unlimited).
 - **Wishlist + alerts**; **Deck** (dream-deck builder).
 - **Pack simulator** — its own `/simulator/*` shell (SimulatorLayout); server-authoritative roll
   (`pack_opens` + `rolled_cards`, 2 packs/day UTC quota — overridable per account via a nullable

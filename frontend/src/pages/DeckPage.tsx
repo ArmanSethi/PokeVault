@@ -5,13 +5,15 @@ import {
   useCreateDeck,
   useDecks,
   useDeleteDeck,
+  useMe,
   useRemoveDeckCard,
   useSets,
   useUpdateDeck,
   useUpdateDeckCard,
 } from "../lib/queries";
 import { useCurrency } from "../context/CurrencyContext";
-import { LIMITS, clampInt } from "../lib/limits";
+import { ApiError } from "../lib/api";
+import { FREE_DECK_LIMIT, LIMITS, clampInt } from "../lib/limits";
 import { NumberField } from "../components/NumberField";
 import { EmptyState, ErrorState } from "../components/States";
 import { TableSkeleton } from "../components/Skeleton";
@@ -24,7 +26,12 @@ const inputClass =
 export function DeckPage() {
   const decks = useDecks();
   const create = useCreateDeck();
+  const me = useMe();
   const toast = useToast();
+
+  // Free tier is capped at FREE_DECK_LIMIT decks (server-enforced; mirrored here for UX).
+  const deckLimitReached =
+    !(me.data?.is_pro ?? false) && (decks.data?.length ?? 0) >= FREE_DECK_LIMIT;
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [newName, setNewName] = useState("");
@@ -49,8 +56,8 @@ export function DeckPage() {
       setNewName("");
       setNewSize(60);
       toast.success(`Created deck "${deck.name}".`);
-    } catch {
-      toast.error("Could not create deck.");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not create deck.");
     }
   }
 
@@ -87,12 +94,19 @@ export function DeckPage() {
         </label>
         <button
           type="submit"
-          disabled={create.isPending || !newName.trim()}
+          disabled={create.isPending || !newName.trim() || deckLimitReached}
           className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
         >
           {create.isPending ? "Creating…" : "New deck"}
         </button>
       </form>
+
+      {deckLimitReached && (
+        <p className="mb-6 -mt-3 text-sm text-amber-600 dark:text-amber-400">
+          Free plan is limited to {FREE_DECK_LIMIT} decks — delete one, or upgrade to Pro (coming
+          soon) for unlimited decks.
+        </p>
+      )}
 
       {decks.data.length === 0 ? (
         <EmptyState

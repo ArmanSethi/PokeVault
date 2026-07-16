@@ -29,7 +29,16 @@ async def list_decks(user: CurrentUser, session: SessionDep) -> list[DeckRead]:
 @router.post("", response_model=DeckRead, status_code=status.HTTP_201_CREATED)
 async def create_deck(user: CurrentUser, session: SessionDep, data: DeckCreate) -> DeckRead:
     """Create a new named deck with a user-defined target size."""
-    return await deck_service.create_deck(session, user.id, data)
+    try:
+        return await deck_service.create_deck(session, user.id, data, is_pro=user.is_pro)
+    except deck_service.DeckLimitReached:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"Free plan is limited to {deck_service.FREE_DECK_LIMIT} decks. "
+                "Upgrade to Pro for unlimited decks."
+            ),
+        ) from None
 
 
 @router.get("/{deck_id}", response_model=DeckRead)

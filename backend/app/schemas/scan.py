@@ -26,3 +26,9 @@ class ScanResult(BaseModel):
     detected_name: str | None = None
     detected_number: str | None = None
     candidates: list[ScanCandidate] = []
+
+
+class ScanQuotaRead(BaseModel):
+    # None = unlimited (Pro); a number = scans left today / this user's effective daily cap.
+    scans_remaining_today: int | None = None
+    daily_limit: int | None = None

@@ -305,11 +305,11 @@ export function DashboardPage() {
             <div className="grid grid-cols-1 gap-3 md:h-full md:grid-rows-2">
               {/* Total spent — a manually-entered figure (pencil to edit, eye to hide). */}
               <TotalSpentTile value={summary.data.total_cost} />
-              {/* Total cards → per-set cards-vs-sealed summary (no nav link; only from here). */}
+              {/* Total cards → Collection in TABLE view (forces table over any stored preference). */}
               <Stat
                 label="Total cards"
                 value={String(summary.data.total_quantity)}
-                to="/dashboard/sets-summary"
+                to="/collection?view=table"
               />
             </div>
 

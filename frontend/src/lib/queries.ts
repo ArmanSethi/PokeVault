@@ -465,6 +465,14 @@ export function useQuota() {
   });
 }
 
+export function useScanQuota() {
+  return useQuery({
+    queryKey: ["scan-quota"],
+    queryFn: () => api.scanQuota(),
+    staleTime: 0,
+  });
+}
+
 // ---- virtual vault + leaderboard ----
 
 export function useKeepFromOpen() {

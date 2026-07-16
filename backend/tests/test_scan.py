@@ -7,19 +7,57 @@ skip if the Tesseract binary is not installed; ``parse_ocr`` is unit-tested with
 
 from __future__ import annotations
 
+import datetime as dt
 import io
+import uuid
 from decimal import Decimal
+from types import SimpleNamespace
 
+import jwt
 import pytesseract
 import pytest
+from cryptography.hazmat.primitives.asymmetric import ec
 from PIL import Image, ImageDraw, ImageFont
 
+from app.core import security
 from app.core.config import settings
 from app.models.card import Card, Set
 from app.models.price import CardPriceCurrent
 from app.services.scan import parse_ocr
 
 _SCAN = f"{settings.API_V1_PREFIX}/scan"
+_ISSUER = "https://test.supabase.co/auth/v1"
+
+
+@pytest.fixture
+def signing_key(monkeypatch):
+    """Local ES256 key so scan requests (now auth-gated) can carry a valid bearer token."""
+    priv = ec.generate_private_key(ec.SECP256R1())
+    monkeypatch.setattr(security.settings, "SUPABASE_URL", "https://test.supabase.co")
+    monkeypatch.setattr(
+        security,
+        "_jwk_client",
+        SimpleNamespace(get_signing_key_from_jwt=lambda _t: SimpleNamespace(key=priv.public_key())),
+    )
+    return priv
+
+
+def _headers(priv) -> dict[str, str]:
+    now = dt.datetime.now(dt.UTC)
+    token = jwt.encode(
+        {
+            "sub": str(uuid.uuid4()),
+            "email": "scan@pokevault.dev",
+            "role": "authenticated",
+            "aud": "authenticated",
+            "iss": _ISSUER,
+            "iat": now,
+            "exp": now + dt.timedelta(hours=1),
+        },
+        priv,
+        algorithm="ES256",
+    )
+    return {"Authorization": f"Bearer {token}"}
 
 
 def _tesseract_available() -> bool:
@@ -143,9 +181,11 @@ def test_parse_ocr_name_hint_disambiguates_top_lines():
 
 
 @requires_tesseract
-async def test_scan_clear_photo_ranks_correct_card(auth_client, scan_catalog):
+async def test_scan_clear_photo_ranks_correct_card(auth_client, scan_catalog, signing_key):
     resp = await auth_client.post(
-        _SCAN, files={"file": ("zzybax.png", _card_image("Zzybax", "4/102"), "image/png")}
+        _SCAN,
+        files={"file": ("zzybax.png", _card_image("Zzybax", "4/102"), "image/png")},
+        headers=_headers(signing_key),
     )
     assert resp.status_code == 200
     body = resp.json()
@@ -161,31 +201,43 @@ async def test_scan_clear_photo_ranks_correct_card(auth_client, scan_catalog):
 
 
 @requires_tesseract
-async def test_scan_blank_image_returns_no_candidates(auth_client, scan_catalog):
-    resp = await auth_client.post(_SCAN, files={"file": ("blank.png", _blank_image(), "image/png")})
+async def test_scan_blank_image_returns_no_candidates(auth_client, scan_catalog, signing_key):
+    resp = await auth_client.post(
+        _SCAN,
+        files={"file": ("blank.png", _blank_image(), "image/png")},
+        headers=_headers(signing_key),
+    )
     assert resp.status_code == 200
     body = resp.json()
     assert body["candidates"] == []
 
 
 @requires_tesseract
-async def test_scan_name_only_photo_still_matches(auth_client, scan_catalog):
+async def test_scan_name_only_photo_still_matches(auth_client, scan_catalog, signing_key):
     # No collector number rendered — must still fuzzy-match on name alone.
     resp = await auth_client.post(
-        _SCAN, files={"file": ("qwortle.png", _card_image("Qwortle", ""), "image/png")}
+        _SCAN,
+        files={"file": ("qwortle.png", _card_image("Qwortle", ""), "image/png")},
+        headers=_headers(signing_key),
     )
     assert resp.status_code == 200
     ids = [c["card_id"] for c in resp.json()["candidates"]]
     assert "scn1-2" in ids
 
 
-async def test_scan_rejects_non_image(auth_client, scan_catalog):
+async def test_scan_rejects_non_image(auth_client, scan_catalog, signing_key):
     resp = await auth_client.post(
-        _SCAN, files={"file": ("notes.txt", b"this is not an image", "text/plain")}
+        _SCAN,
+        files={"file": ("notes.txt", b"this is not an image", "text/plain")},
+        headers=_headers(signing_key),
     )
     assert resp.status_code == 422
 
 
-async def test_scan_rejects_empty_upload(auth_client, scan_catalog):
-    resp = await auth_client.post(_SCAN, files={"file": ("empty.png", b"", "image/png")})
+async def test_scan_rejects_empty_upload(auth_client, scan_catalog, signing_key):
+    resp = await auth_client.post(
+        _SCAN,
+        files={"file": ("empty.png", b"", "image/png")},
+        headers=_headers(signing_key),
+    )
     assert resp.status_code == 422

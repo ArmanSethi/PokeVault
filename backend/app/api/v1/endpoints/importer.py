@@ -72,7 +72,12 @@ async def import_confirm(
 
 @router.get("/export")
 async def export_collection(user: CurrentUser, session: SessionDep) -> StreamingResponse:
-    """Download the user's collection as CSV (round-trips through import)."""
+    """Download the user's collection as CSV (round-trips through import). Pro-only."""
+    if not user.is_pro:
+        raise HTTPException(
+            status_code=403,
+            detail="Collection export is a Pro feature. Upgrade to Pro to export your collection.",
+        )
     body = await import_service.export_csv(session, user.id)
     return StreamingResponse(
         iter([body]),

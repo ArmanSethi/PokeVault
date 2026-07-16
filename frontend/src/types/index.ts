@@ -105,9 +105,8 @@ export interface SealedItem {
   product_type: ProductType;
   set_id: string | null;
   set_name: string | null; // resolved from the linked set, if any
-  name: string | null; // optional free-text label
   quantity: number;
-  value: string | null; // manual value (USD); null = no value → shows "—", contributes 0
+  value: string | null; // future price-tracked value (USD); null = no value → shows "—"
   created_at: string;
   updated_at: string;
 }
@@ -115,17 +114,13 @@ export interface SealedItem {
 export interface SealedItemCreate {
   product_type: ProductType;
   set_id?: string | null;
-  name?: string | null;
   quantity?: number;
-  value?: number | null;
 }
 
 export interface SealedItemUpdate {
   product_type?: ProductType;
   set_id?: string | null;
-  name?: string | null;
   quantity?: number;
-  value?: number | null;
 }
 
 export interface PriceHistoryPoint {
@@ -206,7 +201,7 @@ export interface PackResult {
   set_name: string;
   template: string;
   disclaimer: string;
-  packs_remaining_today: number;
+  packs_remaining_today: number | null; // null = unlimited (Pro)
   cards: PulledCard[];
 }
 
@@ -216,8 +211,15 @@ export interface KeepResult {
 }
 
 export interface Quota {
-  packs_remaining_today: number;
-  daily_limit: number; // effective daily cap for the current user (override, else default)
+  // null = unlimited (Pro); a number = packs left today / this user's effective daily cap.
+  packs_remaining_today: number | null;
+  daily_limit: number | null;
+}
+
+export interface ScanQuota {
+  // null = unlimited (Pro); a number = scans left today / this user's effective daily cap.
+  scans_remaining_today: number | null;
+  daily_limit: number | null;
 }
 
 // ---- virtual pull collection + leaderboard ----
@@ -271,6 +273,8 @@ export interface User {
   email: string | null;
   handle?: string | null;
   is_public?: boolean;
+  // Pro entitlement (free/Pro tier). Granted manually server-side; never editable from the client.
+  is_pro?: boolean;
   // Manual "Total spent" the user typed; null/undefined when unset.
   total_spent_override?: string | null;
 }

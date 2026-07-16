@@ -19,9 +19,10 @@ ProductType = Literal["pack", "booster_box", "etb", "bundle", "other"]
 class SealedItemBase(BaseModel):
     product_type: ProductType
     set_id: str | None = None  # None = not tied to a set
-    name: str | None = None  # optional free-text label, e.g. "Base Set Booster Box"
     quantity: int = 1
-    value: Decimal | None = None  # manual value (USD); None = no value
+    # Manual value (USD). Not user-entered for now (no input in the form) — reserved for a future
+    # price-tracking source; always None today → shows "—" and contributes 0 to any total.
+    value: Decimal | None = None
 
 
 class SealedItemCreate(SealedItemBase):
@@ -32,7 +33,6 @@ class SealedItemCreate(SealedItemBase):
 class SealedItemUpdate(BaseModel):
     product_type: ProductType | None = None
     set_id: str | None = None
-    name: str | None = None
     quantity: int | None = Field(default=None, ge=MIN_SEALED_QTY, le=MAX_SEALED_QTY)
     value: Decimal | None = Field(default=None, ge=MIN_MONEY, le=MAX_MONEY)
 

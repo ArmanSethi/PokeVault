@@ -12,13 +12,16 @@ from __future__ import annotations
 
 import io
 import re
+import uuid
 
 import pytesseract
 from PIL import Image, ImageOps
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.price import CardPriceCurrent
+from app.models.scan import Scan
+from app.models.user import User
 from app.schemas.scan import ScanCandidate, ScanResult
 from app.services.cards import select_primary_price
 from app.services.matching import match_card
@@ -27,6 +30,48 @@ from app.services.matching import match_card
 _NUMBER_RE = re.compile(r"\b(\d{1,3})\s*/\s*(\d{1,4})\b")
 # Keep letters, spaces, and the few punctuation marks that appear in Pokémon names.
 _NAME_CLEAN_RE = re.compile(r"[^A-Za-z '\-.]")
+
+# Free-tier daily scan cap (Pro is unlimited). Counted query-time from UTC timestamps in the
+# ``scans`` table — no reset job — the same pattern as the pack-open quota.
+DAILY_SCAN_LIMIT = 50
+
+
+def effective_daily_scan_limit(user: User) -> int | None:
+    """This user's daily scan cap, or None for unlimited (Pro)."""
+    return None if user.is_pro else DAILY_SCAN_LIMIT
+
+
+def _utc_day_start():
+    """Postgres date_trunc('day', now() AT TIME ZONE 'UTC') — start of the current UTC day."""
+    return func.date_trunc("day", func.timezone("UTC", func.now()))
+
+
+async def scans_today_count(session: AsyncSession, user_id: uuid.UUID) -> int:
+    """How many scans the user has run so far this UTC day (query-time, no reset job)."""
+    return (
+        await session.scalar(
+            select(func.count())
+            .select_from(Scan)
+            .where(Scan.user_id == user_id, Scan.scanned_at >= _utc_day_start())
+        )
+        or 0
+    )
+
+
+async def scans_remaining_today(
+    session: AsyncSession, user_id: uuid.UUID, limit: int | None
+) -> int | None:
+    """Scans left today, or None when the cap is unlimited (Pro)."""
+    if limit is None:
+        return None
+    return max(0, limit - await scans_today_count(session, user_id))
+
+
+async def record_scan(session: AsyncSession, user_id: uuid.UUID) -> None:
+    """Persist one scan event (recorded only for daily-quota counting)."""
+    session.add(Scan(user_id=user_id))
+    await session.commit()
+
 
 # Noise lines that are never a card name.
 _STOPWORDS = {

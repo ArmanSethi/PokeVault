@@ -191,8 +191,11 @@ Shipped features:
   "No set" group), add/edit/delete (a row/tile opens its editor — no card page). Generic
   per-product-type **SVG icons** (original line art; no user photos, no copyrighted product art).
   Optional set link (nullable FK, `SET NULL`). `value` is reserved for a future price source — no
-  manual entry today, so it shows "—" everywhere and the **separate "Sealed value" dashboard
-  total** (never folded into card portfolio value) is "—" until pricing lands. Items don't stack.
+  manual entry today, so it shows "—" everywhere. Sealed value **folds into the dashboard Portfolio
+  value** (`total_market_value` = cards + Σ sealed quantity×value, via `collection_summary(...,
+  include_sealed=True)`; empty values count as 0, so it's a no-op until pricing lands). The public
+  showcase total stays cards-only (it doesn't list sealed). Sealed is **not** import/export-able —
+  the CSV import/export is cards-only. Items don't stack.
 - **Price history** — daily (GitHub Actions, UTC) `price_history` snapshot for **collection ∪
   wishlist** card/variant IDs only (vault pulls are excluded from history); card + portfolio series
   endpoints read only from it. Distinct from the nightly **current-price** refresh, which

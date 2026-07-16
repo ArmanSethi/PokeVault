@@ -48,8 +48,8 @@ async def add_entry(
 
 @router.get("/summary", response_model=CollectionSummary)
 async def collection_summary(user: CurrentUser, session: SessionDep) -> CollectionSummary:
-    """Portfolio value, manual Total spent, and per-set breakdown with completion (USD)."""
-    return await valuation_service.collection_summary(session, user.id)
+    """Portfolio value (cards + sealed), manual Total spent, and per-set breakdown (USD)."""
+    return await valuation_service.collection_summary(session, user.id, include_sealed=True)
 
 
 @router.get("/history", response_model=PortfolioValueSeries)

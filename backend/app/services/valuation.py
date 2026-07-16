@@ -17,6 +17,7 @@ from app.models.user import User
 from app.schemas.collection import CollectionEntryRead, CollectionSummary, SetHolding
 from app.services.cards import market_price_for_entry
 from app.services.grading import grade_multiplier, graded_unit_price
+from app.services.sealed import sealed_value_total
 
 
 def _to_entry_read(entry: CollectionEntry) -> CollectionEntryRead:
@@ -76,7 +77,7 @@ class _SetAgg:
 
 
 async def collection_summary(
-    session: AsyncSession, user_id: uuid.UUID, *, graded: bool = True
+    session: AsyncSession, user_id: uuid.UUID, *, graded: bool = True, include_sealed: bool = False
 ) -> CollectionSummary:
     """Portfolio totals plus a per-set breakdown with completion (TCGPlayer USD).
 
@@ -84,6 +85,11 @@ async def collection_summary(
     ``graded=False`` (the public showcase) uses raw prices so the headline total, the
     per-set values, and the per-card values shown publicly all agree — grading is not
     revealed publicly.
+
+    ``include_sealed=True`` (the owner dashboard only) folds the user's sealed-product value
+    (Σ quantity × value; empty values count as 0) into ``total_market_value`` so Portfolio value =
+    cards + sealed. The public showcase leaves it False — sealed isn't shown there, so its total
+    stays cards-only. The per-set breakdown is unaffected either way (it's card completion).
     """
     entries = await _load_entries(session, user_id)
 
@@ -132,6 +138,11 @@ async def collection_summary(
         for set_id, agg in by_set.items()
     ]
     sets.sort(key=lambda s: s.market_value, reverse=True)
+
+    # Fold sealed-product value into the portfolio total (owner dashboard only). Cards + sealed;
+    # never vault/pack_pulls. No-op on the number today since sealed values are still empty.
+    if include_sealed:
+        total_market_value += await sealed_value_total(session, user_id)
 
     # "Total spent" is the owner's manual override (no auto-calculation); None when unset. It is
     # never surfaced publicly — the public showcase reads PublicProfile, which omits total_cost.

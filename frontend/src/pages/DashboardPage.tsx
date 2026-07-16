@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useSummary, usePortfolioHistory, useUpdateProfile, useSealedItems } from "../lib/queries";
+import { useSummary, usePortfolioHistory, useUpdateProfile } from "../lib/queries";
 import { useCurrency } from "../context/CurrencyContext";
 import { HIDDEN_MASK, useHideValue } from "../lib/useHideValue";
 import { PriceChart } from "../components/PriceChart";
@@ -228,18 +228,8 @@ function TotalSpentTile({ value }: { value: string | null }) {
 export function DashboardPage() {
   const summary = useSummary();
   const history = usePortfolioHistory();
-  const sealed = useSealedItems();
   const { format } = useCurrency();
   const { hidden, toggle } = useHideValue();
-
-  // Sealed value — SUM(value × quantity) over sealed items with a value (blank = 0). Tracked
-  // separately from the card portfolio; shown "—" when nothing is valued yet.
-  const sealedItems = sealed.data ?? [];
-  const sealedValue = sealedItems.reduce(
-    (sum, i) => sum + (i.value == null ? 0 : Number(i.value) * i.quantity),
-    0,
-  );
-  const hasSealedValue = sealedItems.some((i) => i.value != null);
 
   return (
     <>
@@ -347,21 +337,6 @@ export function DashboardPage() {
             {/* Bottom-right: Featured card (big box — anchors the bottom-row height). */}
             <FeaturedCard />
           </div>
-
-          {/* Sealed value — user-owned sealed product (manual value). Tracked SEPARATELY from the
-              card Portfolio value above (never summed in); links to the Collection "Sealed" tab. */}
-          <Link
-            to="/collection?tab=sealed"
-            className={`mt-3 flex items-center justify-between gap-3 ${PANEL} cursor-pointer p-4 transition hover:border-brand-300 hover:shadow-md`}
-          >
-            <span className="text-sm text-slate-500 dark:text-slate-400">
-              Sealed value
-              <span className="ml-1 text-xs text-slate-400">· tracked separately</span>
-            </span>
-            <span className="text-2xl font-bold tabular-nums">
-              {hasSealedValue ? format(sealedValue) : "—"}
-            </span>
-          </Link>
 
           {/* BELOW: full-width portfolio-value-over-time chart (moved down from where By-set was). */}
           <h2 className="mb-3 mt-8 text-lg font-semibold">Portfolio value over time</h2>

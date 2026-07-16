@@ -9,8 +9,9 @@ place via update.
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -22,6 +23,17 @@ from app.schemas.sealed import SealedItemCreate, SealedItemRead, SealedItemUpdat
 
 class UnknownSet(Exception):
     """Raised when a create/update references a set id that isn't in the catalog."""
+
+
+async def sealed_value_total(session: AsyncSession, user_id: uuid.UUID) -> Decimal:
+    """SUM(quantity × value) over the user's sealed items; items with no value contribute 0
+    (SQL ``SUM`` skips NULL terms). Folded into the dashboard portfolio total — cards + sealed."""
+    total = await session.scalar(
+        select(func.coalesce(func.sum(SealedItem.quantity * SealedItem.value), 0)).where(
+            SealedItem.user_id == user_id
+        )
+    )
+    return Decimal(total) if total is not None else Decimal("0")
 
 
 def to_read(item: SealedItem) -> SealedItemRead:

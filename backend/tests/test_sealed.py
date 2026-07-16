@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 import uuid
+from decimal import Decimal
 from types import SimpleNamespace
 
 import jwt
@@ -14,6 +15,8 @@ from httpx import AsyncClient
 from app.core import security
 from app.core.config import settings
 from app.models.card import Set
+from app.models.sealed_item import SealedItem
+from app.models.user import User
 
 _ISSUER = "https://test.supabase.co/auth/v1"
 _SEALED = f"{settings.API_V1_PREFIX}/sealed"
@@ -160,3 +163,33 @@ async def test_ownership_isolation(auth_client, seed, signing_key) -> None:
     # A's item is untouched.
     a_list = (await auth_client.get(_SEALED, headers=a)).json()
     assert len(a_list) == 1 and a_list[0]["quantity"] == 1
+
+
+async def test_sealed_value_folds_into_portfolio_summary(
+    auth_client, seed, signing_key, db_session
+) -> None:
+    """Sealed value (Σ quantity × value) folds into the dashboard portfolio total (cards + sealed).
+    With no cards here, the total is exactly the sealed value; empty-value items count as 0."""
+    sub = uuid.uuid4()
+    db_session.add(User(id=sub))  # user must exist before the sealed FK insert
+    await db_session.flush()
+    db_session.add_all(
+        [
+            SealedItem(
+                user_id=sub,
+                product_type="booster_box",
+                set_id="tst1",
+                quantity=2,
+                value=Decimal("50.00"),
+            ),
+            SealedItem(user_id=sub, product_type="pack", quantity=9, value=None),  # counts as 0
+        ]
+    )
+    await db_session.flush()
+
+    summary = (
+        await auth_client.get(
+            f"{settings.API_V1_PREFIX}/collection/summary", headers=_headers(signing_key, sub)
+        )
+    ).json()
+    assert float(summary["total_market_value"]) == 100.00  # 2 × 50 (+ the no-value pack = 0)

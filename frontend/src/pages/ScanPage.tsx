@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
-import { useAddEntry, useScanQuota } from "../lib/queries";
-import { useToast } from "../components/Toast";
+import { useScanQuota } from "../lib/queries";
 import { CameraScanner } from "../components/CameraScanner";
 import { ScanResults } from "../components/ScanResults";
 import type { ScanResult } from "../types";
@@ -15,11 +15,9 @@ export function ScanPage() {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [added, setAdded] = useState<Record<string, boolean>>({});
   const inputRef = useRef<HTMLInputElement>(null);
-  const addEntry = useAddEntry();
   const scanQuota = useScanQuota();
-  const toast = useToast();
+  const navigate = useNavigate();
 
   // Free tier is capped at 50 scans/UTC-day (server-enforced); Pro is unlimited (daily_limit null).
   const scansRemaining = scanQuota.data?.scans_remaining_today ?? null;
@@ -31,14 +29,12 @@ export function ScanPage() {
     setMode(next);
     setResult(null);
     setError(null);
-    setAdded({});
   }
 
   function pick(f: File | null) {
     setFile(f);
     setResult(null);
     setError(null);
-    setAdded({});
     setPreview(f ? URL.createObjectURL(f) : null);
   }
 
@@ -62,14 +58,18 @@ export function ScanPage() {
     }
   }
 
-  async function addCandidate(cardId: string, name: string) {
-    try {
-      await addEntry.mutateAsync({ card_id: cardId, quantity: 1 });
-      setAdded((prev) => ({ ...prev, [cardId]: true }));
-      toast.success(`Added ${name} to your collection.`);
-    } catch {
-      toast.error("Could not add card.");
-    }
+  // Picking a candidate is selection only — hand off to the existing add-to-collection form on the
+  // card page (pre-filled with that card). Nothing is added until the user confirms there.
+  function pickCandidate(cardId: string) {
+    navigate(`/cards/${encodeURIComponent(cardId)}`);
+  }
+
+  // "None of these" / no confident match — clear back to a fresh scan (never auto-add).
+  function resetScan() {
+    setResult(null);
+    setFile(null);
+    setPreview(null);
+    setError(null);
   }
 
   const tabClass = (active: boolean) =>
@@ -83,8 +83,9 @@ export function ScanPage() {
     <>
       <h1 className="mb-1 text-2xl font-bold">Scan a card</h1>
       <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-        Upload a clear photo of a single card, or use your camera to identify a card live. We read
-        the name and number and propose matches — nothing is added until you confirm.
+        Upload a clear photo of a single card, or use your camera to identify a card live. We
+        propose matches — you pick the right one, then set quantity and edition on the add form.
+        Nothing is added until you confirm there.
       </p>
 
       {scanQuota.data && (
@@ -167,7 +168,7 @@ export function ScanPage() {
             </div>
           )}
 
-          {result && <ScanResults result={result} added={added} onAdd={addCandidate} />}
+          {result && <ScanResults result={result} onPick={pickCandidate} onReject={resetScan} />}
         </div>
       </div>
     </>

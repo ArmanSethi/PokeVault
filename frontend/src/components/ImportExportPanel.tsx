@@ -1,11 +1,13 @@
 import { useRef, useState } from "react";
-import { useConfirmImport, useImportPreview } from "../lib/queries";
+import { useConfirmImport, useImportPreview, useMe } from "../lib/queries";
 import { useToast } from "./Toast";
 import type { ImportConfirmRow, ImportPreview, ImportRow } from "../types";
 
 /** Import (CSV → preview → confirm) and export controls for the collection page. */
 export function ImportExportPanel({ onClose }: { onClose: () => void }) {
   const toast = useToast();
+  const me = useMe();
+  const isPro = me.data?.is_pro ?? false; // export is a Pro feature (server-enforced)
   const fileRef = useRef<HTMLInputElement>(null);
   const preview = useImportPreview();
   const confirm = useConfirmImport();
@@ -107,12 +109,27 @@ export function ImportExportPanel({ onClose }: { onClose: () => void }) {
           <p className="text-sm text-slate-500 dark:text-slate-400">
             Import a CSV from Collectr, TCG Collector, or any spreadsheet — you own your data.
           </p>
-          <button
-            onClick={doExport}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
-          >
-            Export my collection ↓
-          </button>
+          {isPro ? (
+            <button
+              onClick={doExport}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+            >
+              Export my collection ↓
+            </button>
+          ) : (
+            <div className="text-right">
+              <button
+                disabled
+                title="Collection export is a Pro feature"
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium opacity-50 dark:border-slate-700"
+              >
+                Export my collection ↓
+              </button>
+              <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                Pro feature — coming soon.
+              </p>
+            </div>
+          )}
         </div>
 
         {!data && (

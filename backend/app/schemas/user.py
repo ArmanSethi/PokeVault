@@ -19,6 +19,9 @@ class UserRead(BaseModel):
     email: str | None = None
     handle: str | None = None
     is_public: bool = False
+    # Pro entitlement (free/Pro tier). Read-only here — granted manually in the DB/admin, never
+    # via PATCH /me (no self-serve upgrade). The frontend shows the tier + gates features on it.
+    is_pro: bool = False
     # Manual Total spent; NULL when the user hasn't set one (dashboard shows an empty state).
     total_spent_override: Decimal | None = None
     created_at: datetime

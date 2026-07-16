@@ -33,7 +33,7 @@ class PackResult(BaseModel):
     set_name: str
     template: str  # human description of the slot template used
     disclaimer: str
-    packs_remaining_today: int
+    packs_remaining_today: int | None = None  # None = unlimited (Pro)
     cards: list[PulledCard] = []
 
 
@@ -50,5 +50,6 @@ class KeepResult(BaseModel):
 
 
 class QuotaRead(BaseModel):
-    packs_remaining_today: int
-    daily_limit: int  # effective cap for this user (per-account override, else the default)
+    # None = unlimited (Pro); a number = packs left today / this user's effective daily cap.
+    packs_remaining_today: int | None = None
+    daily_limit: int | None = None

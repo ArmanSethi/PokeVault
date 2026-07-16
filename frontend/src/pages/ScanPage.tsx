@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { api, ApiError } from "../lib/api";
-import { useAddEntry } from "../lib/queries";
+import { useAddEntry, useScanQuota } from "../lib/queries";
 import { useToast } from "../components/Toast";
 import { CameraScanner } from "../components/CameraScanner";
 import { ScanResults } from "../components/ScanResults";
@@ -18,7 +18,13 @@ export function ScanPage() {
   const [added, setAdded] = useState<Record<string, boolean>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   const addEntry = useAddEntry();
+  const scanQuota = useScanQuota();
   const toast = useToast();
+
+  // Free tier is capped at 50 scans/UTC-day (server-enforced); Pro is unlimited (daily_limit null).
+  const scansRemaining = scanQuota.data?.scans_remaining_today ?? null;
+  const scanUnlimited = !!scanQuota.data && scanQuota.data.daily_limit === null;
+  const scanLimitReached = !scanUnlimited && scansRemaining === 0;
 
   function switchMode(next: Mode) {
     if (next === mode) return;
@@ -42,6 +48,7 @@ export function ScanPage() {
     setError(null);
     try {
       setResult(await api.scan(file));
+      scanQuota.refetch();
     } catch (e) {
       if (e instanceof ApiError && e.status === 503) {
         setError(
@@ -80,6 +87,26 @@ export function ScanPage() {
         the name and number and propose matches — nothing is added until you confirm.
       </p>
 
+      {scanQuota.data && (
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+          {scanUnlimited ? (
+            <>
+              Scans today: <span className="font-medium">Unlimited</span>
+            </>
+          ) : (
+            <>
+              Scans left today: <span className="font-medium tabular-nums">{scansRemaining}</span> /{" "}
+              {scanQuota.data.daily_limit}
+              {scanLimitReached && (
+                <span className="ml-2 text-amber-600 dark:text-amber-400">
+                  Daily limit reached — upgrade to Pro (coming soon) for unlimited scans.
+                </span>
+              )}
+            </>
+          )}
+        </p>
+      )}
+
       <div className="mb-6 inline-flex gap-1 rounded-xl border border-slate-200 p-1 dark:border-slate-800">
         <button onClick={() => switchMode("upload")} className={tabClass(mode === "upload")}>
           Upload
@@ -98,7 +125,11 @@ export function ScanPage() {
                 className="flex aspect-[3/4] w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-white text-center text-sm text-slate-400 hover:border-brand-400 dark:border-slate-700 dark:bg-slate-900"
               >
                 {preview ? (
-                  <img src={preview} alt="Upload preview" className="h-full w-full object-contain" />
+                  <img
+                    src={preview}
+                    alt="Upload preview"
+                    className="h-full w-full object-contain"
+                  />
                 ) : (
                   <span className="px-4">Click to choose a card photo</span>
                 )}
@@ -113,14 +144,19 @@ export function ScanPage() {
               />
               <button
                 onClick={scan}
-                disabled={!file || scanning}
+                disabled={!file || scanning || scanLimitReached}
                 className="mt-3 w-full rounded-lg bg-brand-600 py-2 font-medium text-white hover:bg-brand-700 disabled:opacity-50"
               >
                 {scanning ? "Scanning…" : "Scan"}
               </button>
             </>
           ) : (
-            <CameraScanner onResult={setResult} />
+            <CameraScanner
+              onResult={(r) => {
+                setResult(r);
+                scanQuota.refetch();
+              }}
+            />
           )}
         </div>
 

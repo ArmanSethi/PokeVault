@@ -110,6 +110,33 @@ export function SettingsPage() {
       </div>
 
       <div className="mt-4 rounded-xl border border-slate-200 p-5 dark:border-slate-800">
+        <p className="text-sm font-medium">Plan</p>
+        <div className="mt-1.5">
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-sm font-semibold ${
+              me.data?.is_pro
+                ? "bg-brand-100 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300"
+                : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+            }`}
+          >
+            {me.data?.is_pro ? "Pro" : "Free"}
+          </span>
+        </div>
+        {me.data?.is_pro ? (
+          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+            You have unlimited packs, decks, and scans, plus collection export.
+          </p>
+        ) : (
+          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+            Free plan: 2 packs/day, 50 scans/day, up to 5 decks, and no collection export.{" "}
+            <span className="font-medium text-slate-600 dark:text-slate-300">
+              Pro — coming soon.
+            </span>
+          </p>
+        )}
+      </div>
+
+      <div className="mt-4 rounded-xl border border-slate-200 p-5 dark:border-slate-800">
         <label className="block text-sm">
           <span className="mb-1 block font-medium">Display currency</span>
           <select

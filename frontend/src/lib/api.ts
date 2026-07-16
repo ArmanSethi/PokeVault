@@ -33,6 +33,7 @@ import type {
   PublicCollection,
   PublicProfile,
   ScanResult,
+  ScanQuota,
   User,
   WishlistItem,
   WishlistItemCreate,
@@ -258,6 +259,7 @@ export const api = {
       { auth: true },
     );
   },
+  scanQuota: () => request<ScanQuota>("/scan/quota", {}, { auth: true }),
 
   // ---- import / export ----
   importPreview: (file: File) => {

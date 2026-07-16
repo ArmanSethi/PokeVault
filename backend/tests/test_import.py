@@ -272,8 +272,14 @@ async def test_import_preview_and_confirm_roundtrip(auth_client, seed, signing_k
     assert listing[0]["quantity"] == 2
 
 
-async def test_export_after_import(auth_client, seed, signing_key) -> None:
-    a = _headers(signing_key, uuid.uuid4())
+async def test_export_after_import(auth_client, seed, signing_key, db_session) -> None:
+    from app.models.user import User
+
+    # Export is a Pro feature — make this user Pro (the per-request auth upsert preserves it).
+    sub = uuid.uuid4()
+    db_session.add(User(id=sub, is_pro=True))
+    await db_session.flush()
+    a = _headers(signing_key, sub)
     await auth_client.post(_COL, json={"card_id": "tst1-1", "quantity": 3}, headers=a)
 
     r = await auth_client.get(f"{_COL}/export", headers=a)

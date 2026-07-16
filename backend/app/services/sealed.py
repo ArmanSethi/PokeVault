@@ -31,7 +31,6 @@ def to_read(item: SealedItem) -> SealedItemRead:
         product_type=item.product_type,
         set_id=item.set_id,
         set_name=item.set.name if item.set is not None else None,
-        name=item.name,
         quantity=item.quantity,
         value=item.value,
         created_at=item.created_at,
@@ -70,7 +69,6 @@ async def create_item(
         user_id=user_id,
         product_type=data.product_type,
         set_id=data.set_id,
-        name=data.name,
         quantity=clamp_int(data.quantity, MIN_SEALED_QTY, MAX_SEALED_QTY),
         value=data.value,
     )

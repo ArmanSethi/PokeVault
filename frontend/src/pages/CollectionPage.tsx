@@ -23,6 +23,7 @@ import { useToast } from "../components/Toast";
 import { ImportExportPanel } from "../components/ImportExportPanel";
 import { GradingFields } from "../components/GradingFields";
 import { CollectionFilters, type SortKey } from "../components/CollectionFilters";
+import { SealedIcon } from "../components/SealedIcon";
 import type { CollectionEntry, ProductType, SealedItem } from "../types";
 
 const LAYOUT_KEY = "pv-collection-view";
@@ -37,6 +38,12 @@ const PRODUCT_LABELS: Record<ProductType, string> = {
   bundle: "Bundle",
   other: "Other",
 };
+
+// Sealed-tab view state (mirrors the Cards tab). "No set" needs its own sentinel because ""
+// already means "All sets" in the filter.
+type SealedSortKey = "type" | "set" | "quantity" | "value";
+const SEALED_VIEW_KEY = "pv-sealed-view";
+const NO_SET = "__none__";
 
 export function CollectionPage() {
   const entries = useCollection();
@@ -469,8 +476,10 @@ function EditModal({
 
 /**
  * The "Sealed" tab body — the user's sealed product (packs, boxes, ETBs, bundles, other). Wholly
- * separate from card singles: its own list, add/edit form, and a "Sealed value" subtotal (sum of
- * value × quantity over items that have a value; blank values contribute 0).
+ * separate from card singles. Mirrors the Cards tab (table + grid views, sort, filter by set) but
+ * adapted for sealed: no condition/grade, no foil filter; generic per-type icons stand in for
+ * images (no card page — a row/tile opens its editor). Value is empty for now (pricing later),
+ * so the value column/subtotal show "—" and value-sort treats empty as last.
  */
 function SealedSection() {
   const items = useSealedItems();
@@ -479,8 +488,54 @@ function SealedSection() {
   const { format } = useCurrency();
   const [editing, setEditing] = useState<SealedItem | null>(null);
   const [adding, setAdding] = useState(false);
+  const [layout, setLayout] = useState<"table" | "grid">(() =>
+    localStorage.getItem(SEALED_VIEW_KEY) === "grid" ? "grid" : "table",
+  );
+  useEffect(() => {
+    localStorage.setItem(SEALED_VIEW_KEY, layout);
+  }, [layout]);
+  const [sort, setSort] = useState<SealedSortKey>("type");
+  const [setFilter, setSetFilter] = useState("");
 
-  const rows = items.data ?? [];
+  const rows = useMemo(() => items.data ?? [], [items.data]);
+
+  // Distinct sets present (for the filter) + whether any set-less items exist.
+  const setOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const i of rows) if (i.set_id) map.set(i.set_id, i.set_name ?? i.set_id);
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [rows]);
+  const hasNoSet = useMemo(() => rows.some((i) => i.set_id == null), [rows]);
+
+  const view = useMemo(() => {
+    let r = rows;
+    if (setFilter === NO_SET) r = r.filter((i) => i.set_id == null);
+    else if (setFilter) r = r.filter((i) => i.set_id === setFilter);
+    const typeIdx = (t: ProductType) => PRODUCT_TYPES.indexOf(t);
+    const setName = (i: SealedItem) => i.set_name ?? "";
+    const val = (i: SealedItem) => (i.value == null ? null : Number(i.value));
+    return [...r].sort((a, b) => {
+      if (sort === "quantity") return b.quantity - a.quantity;
+      if (sort === "type")
+        return (
+          typeIdx(a.product_type) - typeIdx(b.product_type) || setName(a).localeCompare(setName(b))
+        );
+      if (sort === "set") {
+        if ((a.set_id == null) !== (b.set_id == null)) return a.set_id == null ? 1 : -1; // No set last
+        return (
+          setName(a).localeCompare(setName(b)) || typeIdx(a.product_type) - typeIdx(b.product_type)
+        );
+      }
+      // value: real values desc, empty (null) last
+      const av = val(a);
+      const bv = val(b);
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      return bv - av;
+    });
+  }, [rows, setFilter, sort]);
+
   const sealedValue = rows.reduce(
     (sum, i) => sum + (i.value == null ? 0 : Number(i.value) * i.quantity),
     0,
@@ -488,8 +543,8 @@ function SealedSection() {
   const hasAnyValue = rows.some((i) => i.value != null);
 
   function remove(item: SealedItem) {
-    const label = item.name || PRODUCT_LABELS[item.product_type];
-    if (!confirm(`Remove ${label} from your sealed products?`)) return;
+    if (!confirm(`Remove this ${PRODUCT_LABELS[item.product_type]} from your sealed products?`))
+      return;
     del.mutate(item.id, {
       onSuccess: () => toast.success("Removed."),
       onError: () => toast.error("Could not remove."),
@@ -500,6 +555,9 @@ function SealedSection() {
   if (items.isError)
     return <ErrorState message={(items.error as Error).message} onRetry={() => items.refetch()} />;
 
+  const selectClass =
+    "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800";
+
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -508,14 +566,63 @@ function SealedSection() {
           <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-100">
             {hasAnyValue ? format(sealedValue) : "—"}
           </span>
-          <span className="ml-1 text-xs text-slate-400">· separate from portfolio value</span>
+          <span className="ml-1 text-xs text-slate-400">· pricing coming soon</span>
         </p>
-        <button
-          onClick={() => setAdding(true)}
-          className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700"
-        >
-          + Add sealed product
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {rows.length > 0 && (
+            <>
+              {/* Table / grid view toggle (persisted) */}
+              <div className="flex overflow-hidden rounded-lg border border-slate-300 dark:border-slate-700">
+                {(["table", "grid"] as const).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => setLayout(v)}
+                    aria-pressed={layout === v}
+                    aria-label={`${v} view`}
+                    className={`px-3 py-2 text-sm font-medium ${
+                      layout === v
+                        ? "bg-brand-600 text-white"
+                        : "hover:bg-slate-100 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    {v === "table" ? "▤ Table" : "▦ Grid"}
+                  </button>
+                ))}
+              </div>
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SealedSortKey)}
+                aria-label="Sort"
+                className={selectClass}
+              >
+                <option value="type">Sort: type</option>
+                <option value="set">Sort: set</option>
+                <option value="quantity">Sort: quantity</option>
+                <option value="value">Sort: value</option>
+              </select>
+              <select
+                value={setFilter}
+                onChange={(e) => setSetFilter(e.target.value)}
+                aria-label="Filter by set"
+                className={selectClass}
+              >
+                <option value="">All sets</option>
+                {hasNoSet && <option value={NO_SET}>No set</option>}
+                {setOptions.map(([id, name]) => (
+                  <option key={id} value={id}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+          <button
+            onClick={() => setAdding(true)}
+            className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            + Add sealed product
+          </button>
+        </div>
       </div>
 
       {rows.length === 0 ? (
@@ -523,11 +630,12 @@ function SealedSection() {
           title="No sealed product yet"
           hint="Track packs, booster boxes, ETBs and bundles you own — add one to get started."
         />
-      ) : (
+      ) : layout === "table" ? (
         <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
           <table className="w-full text-sm">
             <thead className="bg-slate-100 text-left dark:bg-slate-800">
               <tr>
+                <th className="px-4 py-2" />
                 <th className="px-4 py-2">Product</th>
                 <th className="px-4 py-2">Set</th>
                 <th className="px-4 py-2">Qty</th>
@@ -536,24 +644,36 @@ function SealedSection() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((i) => (
-                <tr key={i.id} className="border-t border-slate-100 dark:border-slate-800">
+              {view.map((i) => (
+                <tr
+                  key={i.id}
+                  onClick={() => setEditing(i)}
+                  className="cursor-pointer border-t border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50"
+                >
                   <td className="px-4 py-2">
-                    <span className="font-medium">{PRODUCT_LABELS[i.product_type]}</span>
-                    {i.name && <span className="text-slate-400"> · {i.name}</span>}
+                    <span className="flex h-9 w-9 items-center justify-center rounded-md bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                      <SealedIcon type={i.product_type} className="h-5 w-5" />
+                    </span>
                   </td>
+                  <td className="px-4 py-2 font-medium">{PRODUCT_LABELS[i.product_type]}</td>
                   <td className="px-4 py-2">{i.set_name ?? "—"}</td>
                   <td className="px-4 py-2">×{i.quantity}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{format(i.value)}</td>
                   <td className="px-4 py-2 text-right whitespace-nowrap">
                     <button
-                      onClick={() => setEditing(i)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditing(i);
+                      }}
                       className="mr-3 text-brand-600 hover:underline"
                     >
                       Edit
                     </button>
                     <button
-                      onClick={() => remove(i)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        remove(i);
+                      }}
                       aria-label="Delete sealed product"
                       title="Delete this sealed product"
                       className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-danger-100 text-danger-600 hover:bg-danger-200 dark:bg-danger-600/20 dark:text-danger-400 dark:hover:bg-danger-600/30"
@@ -565,6 +685,56 @@ function SealedSection() {
               ))}
             </tbody>
           </table>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          {view.map((i) => (
+            <div
+              key={i.id}
+              onClick={() => setEditing(i)}
+              className="flex cursor-pointer flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition hover:border-brand-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+            >
+              <div className="flex aspect-square items-center justify-center bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+                <SealedIcon type={i.product_type} className="h-16 w-16" />
+              </div>
+              <div className="flex flex-1 flex-col p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{PRODUCT_LABELS[i.product_type]}</p>
+                    <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                      {i.set_name ?? "No set"}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold tabular-nums">
+                      {format(i.value)}{" "}
+                      <span className="text-xs font-normal text-slate-400">×{i.quantity}</span>
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-2 text-sm">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditing(i);
+                      }}
+                      className="text-brand-600 hover:underline"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        remove(i);
+                      }}
+                      aria-label="Delete sealed product"
+                      title="Delete this sealed product"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-danger-100 text-danger-600 hover:bg-danger-200 dark:bg-danger-600/20 dark:text-danger-400 dark:hover:bg-danger-600/30"
+                    >
+                      🗑
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -604,11 +774,7 @@ function SealedFormModal({
 
   const [productType, setProductType] = useState<ProductType>(item?.product_type ?? "pack");
   const [setId, setSetId] = useState<string>(item?.set_id ?? "");
-  const [name, setName] = useState(item?.name ?? "");
   const [quantity, setQuantity] = useState(item?.quantity ?? LIMITS.sealedQty.min);
-  const [value, setValue] = useState<number | null>(
-    item?.value == null ? null : Number(item.value),
-  );
 
   useEffect(() => {
     firstRef.current?.focus();
@@ -627,13 +793,7 @@ function SealedFormModal({
   );
 
   async function save() {
-    const payload = {
-      product_type: productType,
-      set_id: setId || null,
-      name: name.trim() || null,
-      quantity,
-      value,
-    };
+    const payload = { product_type: productType, set_id: setId || null, quantity };
     try {
       if (item) await update.mutateAsync({ id: item.id, data: payload });
       else await add.mutateAsync(payload);
@@ -668,6 +828,12 @@ function SealedFormModal({
           </button>
         </div>
 
+        <div className="mb-4 flex justify-center">
+          <span className="flex h-16 w-16 items-center justify-center rounded-lg bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+            <SealedIcon type={productType} className="h-9 w-9" />
+          </span>
+        </div>
+
         <div className="space-y-3 text-sm">
           <label className="block">
             <span className="mb-1 block">Product type</span>
@@ -698,41 +864,16 @@ function SealedFormModal({
           </label>
 
           <label className="block">
-            <span className="mb-1 block">Name / label (optional)</span>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Base Set Booster Box"
+            <span className="mb-1 block">Quantity</span>
+            <NumberField
+              kind="int"
+              value={quantity}
+              onCommit={(v) => setQuantity(v ?? LIMITS.sealedQty.min)}
+              min={LIMITS.sealedQty.min}
+              max={LIMITS.sealedQty.max}
               className={inputClass}
             />
           </label>
-
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className="mb-1 block">Quantity</span>
-              <NumberField
-                kind="int"
-                value={quantity}
-                onCommit={(v) => setQuantity(v ?? LIMITS.sealedQty.min)}
-                min={LIMITS.sealedQty.min}
-                max={LIMITS.sealedQty.max}
-                className={inputClass}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block">Value (optional)</span>
-              <NumberField
-                kind="money"
-                value={value}
-                onCommit={setValue}
-                min={LIMITS.money.min}
-                max={LIMITS.money.max}
-                placeholder="—"
-                className={inputClass}
-              />
-            </label>
-          </div>
         </div>
 
         <div className="mt-4 flex justify-end gap-2">

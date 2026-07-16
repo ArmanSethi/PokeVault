@@ -86,9 +86,7 @@ async def test_create_and_list(auth_client, seed, signing_key) -> None:
         headers=a,
     )
     # A set-less "other" item with no value → quantity defaults to 1.
-    r3 = await auth_client.post(
-        _SEALED, json={"product_type": "other", "name": "Mystery box"}, headers=a
-    )
+    r3 = await auth_client.post(_SEALED, json={"product_type": "other"}, headers=a)
     b3 = r3.json()
     assert b3["set_id"] is None
     assert b3["set_name"] is None

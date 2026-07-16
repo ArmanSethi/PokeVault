@@ -12,7 +12,7 @@ from __future__ import annotations
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -23,6 +23,13 @@ from app.models.deck import Deck, DeckCard
 from app.schemas.deck import DeckCardCreate, DeckCardRead, DeckCreate, DeckRead, DeckUpdate
 from app.services.cards import unit_price_usd
 from app.services.collection import UnknownCard
+
+# Free-tier cap on the number of decks a user may own (Pro is unlimited).
+FREE_DECK_LIMIT = 5
+
+
+class DeckLimitReached(Exception):
+    """Raised when a free-tier user tries to create a deck past ``FREE_DECK_LIMIT``."""
 
 
 def _to_deck_read(deck: Deck, *, eur_usd_rate: float) -> DeckRead:
@@ -90,7 +97,18 @@ async def get_deck(session: AsyncSession, user_id: uuid.UUID, deck_id: int) -> D
     return _to_deck_read(deck, eur_usd_rate=settings.EUR_USD_RATE) if deck is not None else None
 
 
-async def create_deck(session: AsyncSession, user_id: uuid.UUID, data: DeckCreate) -> DeckRead:
+async def create_deck(
+    session: AsyncSession, user_id: uuid.UUID, data: DeckCreate, *, is_pro: bool = False
+) -> DeckRead:
+    if not is_pro:
+        count = (
+            await session.scalar(
+                select(func.count()).select_from(Deck).where(Deck.user_id == user_id)
+            )
+            or 0
+        )
+        if count >= FREE_DECK_LIMIT:
+            raise DeckLimitReached
     deck = Deck(user_id=user_id, name=data.name, target_size=data.target_size)
     session.add(deck)
     await session.flush()

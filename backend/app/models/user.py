@@ -29,6 +29,11 @@ class User(Base):
     # touched by the per-request upsert in api/deps.py, so they survive normal auth traffic.
     handle: Mapped[str | None] = mapped_column(String(30), unique=True, index=True, default=None)
     is_public: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    # Pro entitlement. FALSE = free tier. The whole entitlement for now: Pro lifts the pack/scan
+    # daily caps and the deck cap, and unlocks collection export. Granted manually (flip in the DB
+    # / admin); a future Stripe integration will just set this same flag. Like the other profile
+    # flags above, it is NOT touched by the per-request upsert in api/deps.py, so it survives.
+    is_pro: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     # NB: comments on public showcases are always enabled (no per-user toggle), and best-pulls
     # leaderboard eligibility is simply "has a handle + ≥1 kept pull" — neither is gated by a
     # user column anymore. The old `comments_enabled` / `leaderboard_opt_in` columns were dropped.

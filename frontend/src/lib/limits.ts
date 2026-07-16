@@ -7,6 +7,10 @@ export const LIMITS = {
   money: { min: 0, max: 1_000_000 }, // acquired price, wishlist target — decimals allowed
 } as const;
 
+/** Free-tier deck cap (mirrors the backend; the server is the source of truth). Pack + scan
+ *  daily caps come from the server quota endpoints, so only the deck cap is mirrored here. */
+export const FREE_DECK_LIMIT = 5;
+
 /** Clamp an integer field (quantity / target size) into [min, max]. NaN → min. */
 export function clampInt(n: number, min: number, max: number): number {
   if (!Number.isFinite(n)) return min;

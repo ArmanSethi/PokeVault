@@ -38,7 +38,6 @@ class SealedItem(Base):
     set_id: Mapped[str | None] = mapped_column(
         ForeignKey("sets.id", ondelete="SET NULL"), default=None, index=True
     )
-    name: Mapped[str | None] = mapped_column(String(200), default=None)
     quantity: Mapped[int] = mapped_column(default=1)
     # Manual value (USD). NULL = no value → shows "—" and contributes 0 to any total.
     value: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), default=None)

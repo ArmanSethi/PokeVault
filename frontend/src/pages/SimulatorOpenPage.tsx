@@ -37,6 +37,7 @@ export function SimulatorOpenPage() {
 
   const remaining = quota.data?.packs_remaining_today ?? null;
   const dailyLimit = quota.data?.daily_limit ?? 2;
+  const unlimited = !!quota.data && quota.data.daily_limit === null; // Pro
 
   function open() {
     if (!setId) return;
@@ -106,10 +107,18 @@ export function SimulatorOpenPage() {
             Pick any set and open a rarity-weighted booster. Odds are approximate.
           </p>
         </div>
-        {remaining !== null && (
+        {quota.data && (
           <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-sm text-slate-200">
-            Packs left today: <span className="font-semibold text-amber-300">{remaining}</span> /{" "}
-            {dailyLimit}
+            {unlimited ? (
+              <>
+                Packs today: <span className="font-semibold text-amber-300">Unlimited</span>
+              </>
+            ) : (
+              <>
+                Packs left today: <span className="font-semibold text-amber-300">{remaining}</span>{" "}
+                / {dailyLimit}
+              </>
+            )}
           </span>
         )}
       </div>
@@ -148,9 +157,7 @@ export function SimulatorOpenPage() {
         </div>
       )}
 
-      {phase === "revealing" && pack && (
-        <PackReveal cards={pack.cards} onDecided={handleDecided} />
-      )}
+      {phase === "revealing" && pack && <PackReveal cards={pack.cards} onDecided={handleDecided} />}
 
       {phase === "recap" && pack && (
         <div className="flex flex-col items-center gap-5 py-4">

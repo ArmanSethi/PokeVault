@@ -5,12 +5,14 @@ from __future__ import annotations
 from decimal import Decimal
 from types import SimpleNamespace
 
+from app.core.config import settings
 from app.ingest import mappers
 from app.services.cards import (
     market_price_for_entry,
     select_display_price,
     select_primary_price,
 )
+from app.services.fx import to_usd
 
 
 def _price(source: str, variant: str, market, currency: str = "USD", *, low=None, mid=None):
@@ -64,12 +66,14 @@ def test_display_price_prefers_tcgplayer_market() -> None:
 
 
 def test_display_price_falls_back_to_cardmarket_when_no_tcg_market() -> None:
-    """Cards with only a CardMarket price still show a value (in EUR), not a blank."""
+    """Cards with only a CardMarket (EUR) price still show a value — converted to USD, since the
+    headline is always canonical USD (never a EUR magnitude mislabeled as the display currency)."""
     prices = [
         _price("tcgplayer", "normal", None),  # no market
         _price("cardmarket", "normal", Decimal("9.99"), currency="EUR"),
     ]
-    assert select_display_price(prices) == (Decimal("9.99"), "EUR")
+    expected = to_usd(Decimal("9.99"), "EUR", settings.EUR_USD_RATE)
+    assert select_display_price(prices) == (expected, "USD")
 
 
 def test_display_price_falls_back_to_tcg_mid_then_low() -> None:

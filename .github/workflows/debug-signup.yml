@@ -35,7 +35,7 @@ jobs:
                   try:
                       result = await create_confirmed_user(
                           session,
-                          "pokevault.qa.probe2.20261121@outlook.com",
+                          "pokevault.qa.probe3.20261121@outlook.com",
                           "PokeVault!2026",
                       )
                       print("SIGNUP_RESULT=" + str(result))

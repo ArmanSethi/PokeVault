@@ -69,7 +69,7 @@ async def create_confirmed_user(session: AsyncSession, email: str, password: str
                 ) VALUES (
                     :nil_uuid, :id, 'authenticated', 'authenticated', :email, :password_hash,
                     now(), '', '', '', '', '', '', '', '',
-                    :app_meta::jsonb, '{}'::jsonb,
+                    CAST(:app_meta AS jsonb), CAST('{}' AS jsonb),
                     now(), now(), false, false
                 )
             """),
@@ -86,7 +86,7 @@ async def create_confirmed_user(session: AsyncSession, email: str, password: str
                 INSERT INTO auth.identities (
                     provider_id, user_id, identity_data, provider, created_at, updated_at
                 ) VALUES (
-                    :id, :id, :identity_data::jsonb, 'email', now(), now()
+                    :id, :id, CAST(:identity_data AS jsonb), 'email', now(), now()
                 )
                 ON CONFLICT (provider_id, provider) DO NOTHING
             """),

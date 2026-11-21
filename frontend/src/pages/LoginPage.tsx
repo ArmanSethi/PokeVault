@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { errorMessage } from "../lib/errors";
 import { isSupabaseConfigured } from "../lib/supabase";
 
 export function LoginPage() {
@@ -30,7 +31,7 @@ export function LoginPage() {
       await signInWithMagicLink(email);
       setNotice("Check your inbox for a one-time sign-in link.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not send the sign-in link.");
+      setError(errorMessage(err, "Could not send the sign-in link."));
     } finally {
       setBusy(false);
     }
@@ -56,8 +57,8 @@ export function LoginPage() {
         await signIn(email, password);
         navigate(from, { replace: true });
       } else {
-        const { needsConfirmation } = await signUp(email, password);
-        if (needsConfirmation) {
+        const { needsConfirmation, alreadyExists } = await signUp(email, password);
+        if (needsConfirmation || alreadyExists) {
           setNotice(SIGNUP_NOTICE);
           setMode("signin");
         } else {
@@ -65,11 +66,11 @@ export function LoginPage() {
         }
       }
     } catch (err) {
+      const msg = errorMessage(err, "");
       if (mode === "signin") {
         // Generic on purpose — never reveal which field was wrong (account enumeration).
         setError("Invalid email or password.");
       } else {
-        const msg = err instanceof Error ? err.message : "";
         // Never confirm an email is already registered — show the same neutral notice.
         if (/already|registered|exists/i.test(msg)) {
           setNotice(SIGNUP_NOTICE);

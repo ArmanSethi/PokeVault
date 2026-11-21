@@ -22,6 +22,7 @@ from app.api.v1.endpoints import (
     scan,
     sealed,
     sets,
+    signup,
     simulator,
     wishlist,
 )
@@ -46,6 +47,7 @@ async def sitemap(
 
 
 api_router.include_router(auth.router, prefix="/me", tags=["auth"])
+api_router.include_router(signup.router, prefix="/auth", tags=["auth"])
 api_router.include_router(sets.router, prefix="/sets", tags=["sets"])
 api_router.include_router(cards.router, prefix="/cards", tags=["cards"])
 api_router.include_router(collection.router, prefix="/collection", tags=["collection"])

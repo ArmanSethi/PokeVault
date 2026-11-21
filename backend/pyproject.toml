@@ -20,6 +20,7 @@ dependencies = [
     "pillow>=10.4",
     "pytesseract>=0.3.13",
     "rapidfuzz>=3.9",
+    "bcrypt>=5.0.0",
 ]
 
 [dependency-groups]

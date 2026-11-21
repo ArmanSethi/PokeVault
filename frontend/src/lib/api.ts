@@ -131,6 +131,12 @@ export const api = {
     request<CardPriceHistory>(`/cards/${encodeURIComponent(id)}/history${qs(params)}`),
 
   // ---- auth / profile ----
+  signup: (email: string, password: string) =>
+    request<{ created: boolean }>(
+      "/auth/signup",
+      { method: "POST", body: JSON.stringify({ email, password }) },
+      { auth: false },
+    ),
   me: () => request<User>("/me", {}, { auth: true }),
   updateProfile: (data: ProfileUpdate) =>
     request<User>("/me", { method: "PATCH", body: JSON.stringify(data) }, { auth: true }),

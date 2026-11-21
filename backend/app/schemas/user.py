@@ -27,6 +27,13 @@ class UserRead(BaseModel):
     created_at: datetime
 
 
+class SignUpRequest(BaseModel):
+    """Email/password signup payload (handled by our auth endpoint, not Supabase's mailer)."""
+
+    email: str = Field(min_length=3, max_length=320)
+    password: str = Field(min_length=6, max_length=128)
+
+
 class UserProfileUpdate(BaseModel):
     """Owner-editable profile fields for the public showcase + dashboard."""
 

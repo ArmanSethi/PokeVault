@@ -1,12 +1,17 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { api } from "../lib/api";
+import { errorMessage } from "../lib/errors";
 import { supabase } from "../lib/supabase";
 
 interface AuthState {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<{ needsConfirmation: boolean }>;
+  signUp: (
+    email: string,
+    password: string,
+  ) => Promise<{ needsConfirmation: boolean; alreadyExists?: boolean }>;
   signOut: () => Promise<void>;
   /** Send a password-reset email; the link lands on /reset-password with a recovery session. */
   resetPassword: (email: string) => Promise<void>;
@@ -39,13 +44,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       signIn: async (email, password) => {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw new Error(error.message);
+        if (error) throw new Error(errorMessage(error, "Invalid email or password."));
       },
       signUp: async (email, password) => {
-        const { data, error } = await supabase.auth.signUp({ email, password });
-        if (error) throw new Error(error.message);
-        // If email confirmation is on, there's a user but no active session yet.
-        return { needsConfirmation: Boolean(data.user && !data.session) };
+        // Supabase's built-in confirmation mailer is broken on this project, so create the
+        // confirmed auth user through our own API and then log in normally for a real session.
+        const { created } = await api.signup(email, password);
+        if (!created) return { needsConfirmation: false, alreadyExists: true };
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw new Error(errorMessage(error, "Could not sign in after signup."));
+        return { needsConfirmation: false };
       },
       signOut: async () => {
         await supabase.auth.signOut();
@@ -54,18 +62,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/reset-password`,
         });
-        if (error) throw new Error(error.message);
+        if (error) throw new Error(errorMessage(error));
       },
       updatePassword: async (password) => {
         const { error } = await supabase.auth.updateUser({ password });
-        if (error) throw new Error(error.message);
+        if (error) throw new Error(errorMessage(error));
       },
       signInWithMagicLink: async (email) => {
         const { error } = await supabase.auth.signInWithOtp({
           email,
           options: { emailRedirectTo: `${window.location.origin}/` },
         });
-        if (error) throw new Error(error.message);
+        if (error) throw new Error(errorMessage(error));
       },
     }),
     [session, loading],

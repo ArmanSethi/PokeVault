@@ -44,12 +44,15 @@ jobs:
           async def main():
               conn = await asyncpg.connect(**kwargs)
               try:
-                  if os.environ.get("FETCH", "true").lower() == "true":
-                      rows = await conn.fetch(sql)
-                      print("RESULT_JSON=" + json.dumps([dict(r) for r in rows], default=str))
-                  else:
-                      status = await conn.execute(sql)
-                      print("STATUS=" + status)
+                  statements = [s.strip() for s in sql.split(";") if s.strip()]
+                  fetch = os.environ.get("FETCH", "true").lower() == "true"
+                  for i, stmt in enumerate(statements):
+                      if fetch and i == len(statements) - 1:
+                          rows = await conn.fetch(stmt)
+                          print("RESULT_JSON=" + json.dumps([dict(r) for r in rows], default=str))
+                      else:
+                          status = await conn.execute(stmt)
+                          print("STATUS=" + status)
               finally:
                   await conn.close()
 

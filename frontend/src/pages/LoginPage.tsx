@@ -38,8 +38,9 @@ export function LoginPage() {
   }
 
   // Same message whether the email is new or already registered — never confirm existence.
+  // Signup creates the account immediately (no confirmation email is sent).
   const SIGNUP_NOTICE =
-    "If this email isn't already registered, we've sent a confirmation link. Check your inbox — or sign in if you already have an account.";
+    "If this email is new, your account is ready and you're signed in. Otherwise, sign in with your existing password.";
 
   async function submit(e: FormEvent) {
     e.preventDefault();

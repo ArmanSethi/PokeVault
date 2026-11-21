@@ -622,9 +622,16 @@ as the user, no `Co-Authored-By` trailers. Project rules now live in
 `a7c9e1f3b5d7` pack_pulls. (Leaderboard removal left `users.show_value_on_leaderboard` as a
 harmless vestige — no destructive drop.)
 
-**OUTSTANDING — pre-launch blocker:**
-- **Signup is currently broken** (`POST /auth/v1/signup` → 500 `unexpected_failure`, no user row):
-  the built-in Supabase mailer is bounce-throttled. Fix = **custom SMTP via Resend** — frontend
-  reset/magic-link code is shipped, but SMTP is **paused awaiting a Resend account** (then wire
-  Supabase SMTP fields + verify a domain's DNS). Do NOT launch publicly until signup delivers.
-- Confirm-email is ON (`mailer_autoconfirm:false`) — launch-safe once SMTP works.
+**Signup (fixed):**
+- Supabase's built-in confirmation mailer is still bounce-throttled (`POST /auth/v1/signup` → 500
+  `unexpected_failure`), so the app no longer uses it. `POST /api/v1/auth/signup` creates a
+  confirmed `auth.users` + `auth.identities` row directly (bcrypt cost 10) and the frontend then
+  signs in through Supabase's normal token endpoint for a real JWT. Signup works end-to-end
+  without any email delivery.
+
+**OUTSTANDING — pre-launch:**
+- Custom SMTP via Resend is still pending for **password reset / magic-link emails** (frontend is
+  shipped; SMTP is paused awaiting a Resend account + verified domain DNS). Signup itself no
+  longer depends on it.
+- Supabase still has `mailer_autoconfirm:false`; harmless for signup now because direct-created
+  users are already confirmed.

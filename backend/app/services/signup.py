@@ -69,7 +69,7 @@ async def create_confirmed_user(session: AsyncSession, email: str, password: str
                 ) VALUES (
                     :nil_uuid, :id, 'authenticated', 'authenticated', :email, :password_hash,
                     now(), '', '', '', '', '', '', '', '',
-                    :app_meta, '{}'::jsonb,
+                    :app_meta::jsonb, '{}'::jsonb,
                     now(), now(), false, false
                 )
             """),
